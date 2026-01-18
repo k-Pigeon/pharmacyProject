@@ -8,9 +8,9 @@
     String idSortation =  "";
 
     // 초기값 설정
-    String jdbcDriver = "jdbc:mysql://rlawldls04171.cafe24.com:3306/rlawldls04171?useUnicode=true&characterEncoding=utf8";
-    String dbUser = "rlawldls04171";
-    String dbPwd = "jikim@136464790";
+    String jdbcDriver = "외부DB";
+    String dbUser = "외부DB아이디";
+    String dbPwd = "외부DB비밀번호";
 
     Connection conn = null;
     PreparedStatement pstmt = null;
@@ -36,13 +36,13 @@
             
             // id 값에 따라 데이터베이스 이름 동적으로 설정
             if (userIdInt.equals("b") || userIdInt.equals("E")) {
-                jdbcDriver = "jdbc:mysql://rlawldls04171.cafe24.com:3306/rlawldls04171?useUnicode=true&characterEncoding=utf8";
-                dbUser = "rlawldls04171";
-                dbPwd = "jikim@136464790";
+                jdbcDriver = "외부서버";
+                dbUser = "외부서버아이디";
+                dbPwd = "외부서버비밀번호";
             }else if(userIdInt.equals("a") || userIdInt.equals("D")){
-                jdbcDriver = "jdbc:mysql://localhost:3306/tutorial?useUnicode=true&characterEncoding=utf8";
-                dbUser = "root";
-                dbPwd = "pharmacy@1234";
+                jdbcDriver = "로컬DB";
+                dbUser = "로컬아이디";
+                dbPwd = "로컬비밀번호";
             }
             else {
                 throw new Exception("유효하지 않은 데이터베이스 선택");
