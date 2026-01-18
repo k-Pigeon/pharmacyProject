@@ -1,0 +1,101 @@
+<%@ page contentType="text/csv; charset=UTF-8" pageEncoding="UTF-8" %>
+<%@ page import="java.sql.*, java.util.*" %>
+<%
+    response.setHeader("Content-Disposition", "attachment; filename=\"재고차감결과.csv\"");
+    response.setContentType("text/csv; charset=UTF-8");
+
+    String jdbcUrl = "jdbc:mysql://localhost:3306/tutorial2?useUnicode=true&characterEncoding=utf8";
+    String dbUser = "root";
+    String dbPassword = "pharmacy@1234";
+
+    Connection conn = null;
+    PreparedStatement selectStmt = null;
+    PreparedStatement updateStmt = null;
+    PrintWriter writer = response.getWriter();
+
+    try {
+        Class.forName("com.mysql.cj.jdbc.Driver");
+        conn = DriverManager.getConnection(jdbcUrl, dbUser, dbPassword);
+        
+        conn.setAutoCommit(false); // 트랜잭션 시작
+
+        String[] serialNumbers = request.getParameterValues("serialNumber");
+        String[] inventories = request.getParameterValues("inventory");
+
+        // CSV 헤더
+        writer.println("SerialNumber,MedicineName,원래 재고,차감할 재고,남은 차감량,최종 재고");
+
+        for (int i = 0; i < serialNumbers.length; i++) {
+            String serialNumber = serialNumbers[i];
+            String numericInventory = inventories[i].replaceAll("[^0-9.]","");
+            double inventoryToDeduct = numericInventory.isEmpty() ? 0 : Double.parseDouble(numericInventory);
+
+            boolean isFirstRow = true;
+            String medicineName = "";
+
+            while (inventoryToDeduct > 0) {
+                String selectQuery = "SELECT serialNumber, CAST(inventory AS DECIMAL(12,4)) AS inventory, deliveryDate, medicineName " +
+                                     "FROM testTable " +
+                                     "WHERE serialNumber = ? AND CAST(inventory AS DECIMAL(12,4)) > 0 " +
+                                     "ORDER BY STR_TO_DATE(deliveryDate, '%Y-%m-%d') ASC LIMIT 1";
+
+                selectStmt = conn.prepareStatement(selectQuery);
+                selectStmt.setString(1, serialNumber);
+                ResultSet rs = selectStmt.executeQuery();
+
+                if (rs.next()) {
+                    String currentSerial = rs.getString("serialNumber");
+                    double originalInventory = rs.getDouble("inventory");
+                    double currentInventory = originalInventory;
+                    String deliveryDate = rs.getString("deliveryDate");
+                    medicineName = rs.getString("medicineName");
+
+                    double deduction = Math.min(inventoryToDeduct, currentInventory);
+                    double updatedInventory = currentInventory - deduction;
+
+                    // 재고 업데이트 실행
+                    String updateQuery = "UPDATE testTable SET inventory = ? WHERE serialNumber = ? AND deliveryDate = ?";
+                    updateStmt = conn.prepareStatement(updateQuery);
+                    updateStmt.setDouble(1, updatedInventory);
+                    updateStmt.setString(2, currentSerial);
+                    updateStmt.setString(3, deliveryDate);
+                    updateStmt.executeUpdate();
+
+                    inventoryToDeduct -= deduction;
+
+                    // 첫 번째 행에는 SerialNumber, medicineName 표시, 이후 행에는 빈 값 처리
+                    if (isFirstRow) {
+                        writer.println(currentSerial + "," + medicineName + "," + String.format("%.2f", originalInventory) + "," +
+                                       String.format("%.2f", deduction) + "," + String.format("%.2f", inventoryToDeduct) + "," + 
+                                       String.format("%.2f", updatedInventory));
+                        isFirstRow = false;
+                    } else {
+                        writer.println("," + "," + String.format("%.2f", originalInventory) + "," +
+                                       String.format("%.2f", deduction) + "," + String.format("%.2f", inventoryToDeduct) + "," + 
+                                       String.format("%.2f", updatedInventory));
+                    }
+
+                } else {
+                    break;
+                }
+                rs.close();
+            }
+        }
+
+        conn.commit(); // 트랜잭션 커밋
+
+    } catch (Exception e) {
+        e.printStackTrace();
+        if (conn != null) conn.rollback(); // 오류 발생 시 롤백
+        writer.println("오류 발생: " + e.getMessage());
+    } finally {
+        try {
+            if (selectStmt != null) selectStmt.close();
+            if (updateStmt != null) updateStmt.close();
+            if (conn != null) conn.close();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        writer.close();
+    }
+%>

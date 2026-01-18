@@ -1,0 +1,95 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8"
+	pageEncoding="UTF-8"%>
+<%@ page import="java.sql.*"%>
+<%@ include file="sessionManager.jsp"%>
+<%@ include file="DBconnection.jsp"%>
+<%
+String dbName = (session != null) ? (String) session.getAttribute("dbName") : null;
+String id = (session != null) ? (String) session.getAttribute("id") : null;
+
+String idSortation = (session != null) ? (String) session.getAttribute("idSortation") : null; if (id == null || dbName == null) {
+    response.sendRedirect("login.jsp");
+    return;
+}
+
+jdbcDriver = dbName;
+
+String Sortation = request.getParameter("Sortation");
+String memberName = request.getParameter("memberName");
+String memberphone = request.getParameter("memberphone");
+
+PreparedStatement stmt = null;
+ResultSet rs = null;
+%>
+<html>
+<head>
+<meta charset="UTF-8">
+</head>
+<body>
+	<%
+try {
+    Class.forName("com.mysql.cj.jdbc.Driver");
+    conn = DriverManager.getConnection(jdbcDriver, dbUser, dbPwd);
+
+    String query = null;
+    if ("2".equals(Sortation)) {
+        query = "SELECT * FROM members WHERE memberName LIKE ?";
+    } else if ("1".equals(Sortation)) {
+        query = "SELECT * FROM members WHERE memberphone LIKE ?";
+        memberName = memberphone;
+    }
+
+    stmt = conn.prepareStatement(query);
+    stmt.setString(1, "%" + memberName + "%");
+    rs = stmt.executeQuery();
+
+    if (rs.next()) {
+%>
+	<div
+		style="max-height: 300px; overflow-y: auto; border: 1px solid #ccc;">
+		<table class="table_line" border="1" style="width: 100%; table-layout: fixed; text-align: center;">
+			<thead>
+				<tr>
+					<th>회원 이름</th>
+					<th>회원 번호</th>
+					<th>주민등록번호</th>
+					<th>성별</th>
+					<th>고객번호</th>
+				</tr>
+			</thead>
+			<tbody>
+				<%
+        do {
+        %>
+				<tr>
+					<td><%= rs.getString("memberName") %></td>
+					<td><%= rs.getString("memberPhone") %></td>
+					<td><%= rs.getString("jumin1") %>-<%= rs.getString("jumin2") %></td>
+					<td><%= rs.getString("gender") %></td>
+					<td><%= rs.getString("customerNumber") %></td>
+				</tr>
+				<%
+        } while (rs.next());
+        %>
+			</tbody>
+		</table>
+	</div>
+	<%
+    } else {
+%>
+	<p>검색 결과가 없습니다.</p>
+	<%
+    }
+} catch (Exception e) {
+    e.printStackTrace();
+} finally {
+    try {
+        try { if (pstmt != null) pstmt.close(); } catch (Exception ignored) {}
+        try { if (pstmt != null) pstmt.close(); } catch (Exception ignored) {}
+    } catch (SQLException e) {
+        e.printStackTrace();
+    }
+}
+%>
+</body>
+</html>

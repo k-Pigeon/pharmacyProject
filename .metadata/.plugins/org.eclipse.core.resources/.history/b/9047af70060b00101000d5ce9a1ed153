@@ -1,0 +1,111 @@
+package dto;
+
+public class CompanyDto {
+	private int SerialNumber;
+	private String medicineName;
+	private String BuyingPrice;
+	private String price;
+	private Double inventory;
+	private String kind;
+	private String standard;
+	private String receptDate;
+	private String DeliveryDate;
+	private String countNumber;
+	private int Bookmark;
+	private int returnInv;
+	
+	public CompanyDto() {
+		super();
+	}
+	
+	public CompanyDto(int SerialNumber, String medicineName, String BuyingPrice, String price, Double inventory, String kind, String standard, String receptDate, String DeliveryDate, String countNumber, int Bookmark, int returnInv) {
+		super();
+		this.Bookmark = Bookmark;
+		this.BuyingPrice = BuyingPrice;
+		this.countNumber = countNumber;
+		this.DeliveryDate = DeliveryDate;
+		this.inventory = inventory;
+		this.kind = kind;
+		this.medicineName = medicineName;
+		this.price = price;
+		this.receptDate = receptDate;
+		this.returnInv = returnInv;
+		this.SerialNumber = SerialNumber;
+		this.standard = standard;
+	}
+	
+	public int getSerialNumber() {
+		return SerialNumber;
+	}
+	public void setSerialNumber(int serialNumber) {
+		SerialNumber = serialNumber;
+	}
+	public String getMedicineName() {
+		return medicineName;
+	}
+	public void setMedicineName(String medicineName) {
+		this.medicineName = medicineName;
+	}
+	public String getBuyingPrice() {
+		return BuyingPrice;
+	}
+	public void setBuyingPrice(String buyingPrice) {
+		BuyingPrice = buyingPrice;
+	}
+	public String getPrice() {
+		return price;
+	}
+	public void setPrice(String price) {
+		this.price = price;
+	}
+	public Double getInventory() {
+		return inventory;
+	}
+	public void setInventory(Double inventory) {
+		this.inventory = inventory;
+	}
+	public String getKind() {
+		return kind;
+	}
+	public void setKind(String kind) {
+		this.kind = kind;
+	}
+	public String getStandard() {
+		return standard;
+	}
+	public void setStandard(String standard) {
+		this.standard = standard;
+	}
+	public String getReceptDate() {
+		return receptDate;
+	}
+	public void setReceptDate(String receptDate) {
+		this.receptDate = receptDate;
+	}
+	public String getDeliveryDate() {
+		return DeliveryDate;
+	}
+	public void setDeliveryDate(String deliveryDate) {
+		DeliveryDate = deliveryDate;
+	}
+	public String getCountNumber() {
+		return countNumber;
+	}
+	public void setCountNumber(String countNumber) {
+		this.countNumber = countNumber;
+	}
+	public int getBookmark() {
+		return Bookmark;
+	}
+	public void setBookmark(int bookmark) {
+		Bookmark = bookmark;
+	}
+	public int getReturnInv() {
+		return returnInv;
+	}
+	public void setReturnInv(int returnInv) {
+		this.returnInv = returnInv;
+	}
+	
+
+}

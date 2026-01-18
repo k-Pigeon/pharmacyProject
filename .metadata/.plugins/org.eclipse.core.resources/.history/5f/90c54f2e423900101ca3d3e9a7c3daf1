@@ -1,0 +1,133 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8"
+	pageEncoding="UTF-8"%>
+<%@ page import="java.sql.*"%>
+<%@ page import="java.util.regex.*, java.util.*"%>
+<%@ include file="sessionManager.jsp"%>
+<%@ include file="DBconnection.jsp"%>
+<%
+String dbName = (session != null) ? (String) session.getAttribute("dbName") : null;
+String id = (session != null) ? (String) session.getAttribute("id") : null;
+String password = (session != null) ? (String) session.getAttribute("password") : null;
+
+if (id == null || dbName == null) {
+    response.sendRedirect("login.jsp");
+    return;
+}
+
+jdbcDriver = dbName;
+%>
+<%
+    String saleDate = request.getParameter("saleDate");
+    PreparedStatement pstmt = null;
+    ResultSet rs = null;
+    double totalSum = 0;  // 총합계 변수 추가
+
+    try {
+        String sql = " SELECT saleDate, medicineName, " +
+                     " inventory, standard, price, " +
+        			 " case " +
+                     " when standard LIKE '%ml%' then (price * inventory) " +
+                     " when standard LIKE '%l%' then (price * inventory) " +
+                     " ELSE ((price/standard) * inventory) " +
+                     " END AS total " +
+                     " FROM SalesRecord " +
+                     " WHERE saleDate = ?";
+        
+        pstmt = conn.prepareStatement(sql);
+        pstmt.setString(1, saleDate);
+        rs = pstmt.executeQuery();
+
+        boolean hasRecords = false;
+%>
+
+<table class="table_line"
+	style="text-align: center; border: 1px solid black; width: calc(95%); margin: 0 auto;">
+	<colgroup>
+		<col width="40%">
+		<col width="20%">
+		<col width="20%">
+		<col width="20%">
+	</colgroup>
+	<thead>
+		<tr>
+			<th>제품이름</th>
+			<th>개수</th>
+			<th>규격</th>
+			<th>개당 가격</th>
+		</tr>
+	</thead>
+	<tbody>
+<%
+while (rs.next()) {
+    hasRecords = true;
+    String medicineName = rs.getString("medicineName");
+    int inventory = rs.getInt("inventory");
+    String standard = rs.getString("standard");
+
+    double factor = 1.0;
+    try {
+        // 숫자 추출
+        Pattern pattern = Pattern.compile("(\\d+(\\.\\d+)?)");
+        Matcher matcher = pattern.matcher(standard);
+
+        List<Double> numbers = new ArrayList<>();
+        while (matcher.find()) {
+            numbers.add(Double.parseDouble(matcher.group()));
+        }
+
+        if (!numbers.isEmpty()) {
+            factor = 1.0;
+            for (double num : numbers) {
+                factor *= num;
+            }
+        }
+    } catch (Exception e) {
+        factor = 1.0;
+    }
+
+    int finalInventory = inventory;
+    int totalPrice = finalInventory * rs.getDouble("price");
+    totalSum += totalPrice;
+%>
+    <tr>
+        <td><%= medicineName %></td>
+        <td><%= finalInventory %></td>
+        <td><%= standard %></td>
+        <td><%= rs.getString("price") %></td>
+    </tr>
+<%
+}
+
+        if (!hasRecords) {
+%>
+		<tr>
+			<td colspan="3">해당 날짜에 대한 기록이 없습니다.</td>
+		</tr>
+		<%
+        }
+%>
+	</tbody>
+</table>
+
+<%-- 총합계를 표시하는 tr 추가 --%>
+<% if (hasRecords) { %>
+<table class="table_line"
+	style="text-align: center; border: 1px solid black; width: calc(95%); margin: 0 auto;">
+	<tr>
+		<td colspan="2" style="text-align: right; font-weight: bold;">총합계</td>
+		<td colspan="2"><%= totalSum %> 원</td>
+	</tr>
+</table>
+<% } %>
+
+<%
+    } catch (SQLException se) {
+        se.printStackTrace();
+    } catch (Exception e) {
+        e.printStackTrace();
+    } finally {
+        if (rs != null) try { rs.close(); } catch (SQLException ignore) {}
+        if (pstmt != null) try { pstmt.close(); } catch (SQLException ignore) {}
+        if (conn != null) try { conn.close(); } catch (SQLException ignore) {}
+    }
+%>

@@ -1,0 +1,92 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ page import="java.sql.*" %>
+<%@ include file="sessionManager.jsp" %>
+<%@ include file="DBconnection.jsp" %>
+<%
+    request.setCharacterEncoding("UTF-8");
+
+    String dbName = (session != null) ? (String) session.getAttribute("dbName") : null;
+    String id = (session != null) ? (String) session.getAttribute("id") : null;
+
+    if (id == null || dbName == null) {
+        response.sendRedirect("login.jsp");
+        return;
+    }
+
+    jdbcDriver = dbName;
+
+    // POST로 등록 요청이 들어왔을 때
+    if ("POST".equalsIgnoreCase(request.getMethod())) {
+        String medicineName = request.getParameter("medicineName");
+        String companyName = request.getParameter("companyName");
+        String standard = request.getParameter("standard");
+        String kind = request.getParameter("kind");
+        String serialNumber = request.getParameter("serialNumber");
+        String receiptDate = request.getParameter("receiptDate");
+        String deliveryDate = request.getParameter("deliveryDate");
+        String buyingPrice = request.getParameter("buyingPrice");
+        String price = request.getParameter("price");
+        String inventory = request.getParameter("inventory");
+
+        Connection conn = null;
+        PreparedStatement pstmt = null;
+
+        try {
+            Class.forName("com.mysql.cj.jdbc.Driver");
+
+            String sql = "INSERT INTO testTable "
+                       + "(medicineName, companyName, standard, kind, serialNumber, receiptDate, deliveryDate, buyingPrice, price, inventory) "
+                       + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            pstmt = conn.prepareStatement(sql);
+            pstmt.setString(1, medicineName);
+            pstmt.setString(2, companyName);
+            pstmt.setString(3, standard);
+            pstmt.setString(4, kind);
+            pstmt.setString(5, serialNumber);
+            pstmt.setString(6, receiptDate);
+            pstmt.setString(7, deliveryDate);
+            pstmt.setString(8, buyingPrice);
+            pstmt.setString(9, price);
+            pstmt.setString(10, inventory);
+
+            int result = pstmt.executeUpdate();
+            if (result > 0) {
+%>
+<script>
+    alert("✅ 제품이 성공적으로 등록되었습니다!");
+    window.location.href = "mainPage.jsp"; // 등록 후 이동할 페이지
+</script>
+<%
+            } else {
+%>
+<p style="color:red;">❌ 등록 실패. 다시 시도해주세요.</p>
+<%
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+%>
+<p style="color:red;">오류 발생: <%= e.getMessage() %></p>
+<%
+        } finally {
+            if (pstmt != null) pstmt.close();
+            if (conn != null) conn.close();
+        }
+    }
+%>
+
+<!-- 등록 폼은 항상 출력 -->
+<h2>📝 제품 등록</h2>
+<form action="addProduct.jsp" method="post">
+    <label>제품명: <input type="text" name="medicineName" required></label><br><br>
+    <label>제조사: <input type="text" name="companyName" required></label><br><br>
+    <label>규격: <input type="text" name="standard" required></label><br><br>
+    <label>종류: <input type="text" name="kind" required></label><br><br>
+    <label>바코드: <input type="text" name="serialNumber" required></label><br><br>
+    <label>입고일: <input type="date" name="receiptDate" required></label><br><br>
+    <label>유통기한: <input type="date" name="deliveryDate" required></label><br><br>
+    <label>매입가: <input type="number" name="buyingPrice" required></label><br><br>
+    <label>판매가: <input type="number" name="price" required></label><br><br>
+    <label>재고수량: <input type="number" name="inventory" required></label><br><br>
+
+    <button type="submit">등록하기</button>
+</form>

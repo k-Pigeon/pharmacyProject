@@ -1,0 +1,241 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8"
+	pageEncoding="UTF-8"%>
+<%@ page import="java.sql.*"%>
+<%@ include file="sessionManager.jsp"%>
+<%@ include file="DBconnection.jsp"%>
+<%
+request.setCharacterEncoding("UTF-8");
+
+String dbName = (session != null) ? (String) session.getAttribute("dbName") : null;
+String id = (session != null) ? (String) session.getAttribute("id") : null;
+if (id == null || dbName == null) {
+	response.sendRedirect("login.jsp");
+	return;
+}
+jdbcDriver = dbName;
+
+boolean isSubmitted = "true".equals(request.getParameter("submitted"));
+%>
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="style.css">
+<title>제품 등록</title>
+<style>
+/* 기존 스타일 유지 */
+body {
+	font-family: '맑은 고딕', sans-serif;
+	background-color: #f9f9f9;
+}
+
+.container {
+	width: 75vh;
+	height: 73vh;
+	margin: 7% auto;
+	background: white;
+	border: 1px solid #ccc;
+	border-radius: 10px;
+	padding: 20px 30px;
+	box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+	overflow: scroll;
+}
+
+table {
+	width: 100%;
+}
+
+td {
+	padding: 8px;
+}
+
+input {
+	width: 32%;
+	padding: 6px;
+	box-sizing: border-box;
+}
+
+button.submitNew {
+	padding: 10px 20px;
+	font-size: 15px;
+	background-color: #4CAF50;
+	color: white;
+	border: none;
+	border-radius: 6px;
+	cursor: pointer;
+}
+
+button.submitNew:hover {
+	background-color: #45a049;
+}
+
+#wrap .container .backLocal {
+	display: block;
+	position: relative;
+	float: right;
+	border: 1px solid black;
+	border-radius: 20px;
+	padding: 10px;
+}
+
+#wrap .container .backLocal:hover {
+	cursor: pointer;
+	background-color: RGBA(127, 127, 127, 0.6);
+}
+</style>
+</head>
+<body>
+
+<%
+if (isSubmitted) {
+    String medicineName = request.getParameter("medicineName");
+    String[] standardList = request.getParameter("standardList").split(",");
+    String[] priceList = request.getParameter("priceList").split(",");
+    String[] buyingPriceList = request.getParameter("buyingPriceList").split(",");
+    String inventory = "1";
+
+    try {
+        Class.forName("com.mysql.cj.jdbc.Driver");
+        String sql = "INSERT INTO testTable (medicineName, standard, buyingPrice, price) VALUES (?, ?, ?, ?)";
+        PreparedStatement pstmt = conn.prepareStatement(sql);
+
+        for (int i = 0; i < standardList.length; i++) {
+            String standard = standardList[i].trim();
+            String price = priceList[i].trim();
+            String buyingPrice = buyingPriceList[i].trim();
+
+            pstmt.setObject(1, medicineName, Types.VARCHAR);
+            pstmt.setObject(2, standard.isEmpty() ? null : standard, Types.VARCHAR);
+            pstmt.setObject(3, buyingPrice.isEmpty() ? null : Double.parseDouble(buyingPrice), Types.DOUBLE);
+            pstmt.setObject(4, price.isEmpty() ? null : Double.parseDouble(price), Types.DOUBLE);
+
+            pstmt.executeUpdate();
+        }
+%>
+	<script>
+		alert("제품이 등록되었습니다.");
+		history.go(-2);
+	</script>
+	<%
+	return;
+	} catch (Exception e) {
+	%>
+	<p style="color: red;">
+		에러:
+		<%=e.getMessage()%></p>
+	<%
+	} finally {
+	if (conn != null)
+		conn.close();
+	}
+	} else {
+	String medicineName = request.getParameter("medicineName") != null ? request.getParameter("medicineName") : "";
+	%>
+
+	<div id="wrap">
+		<header>
+			<jsp:include page="header.jsp"></jsp:include>
+		</header>
+		<div class="container">
+			<h2 style="text-align: center;">제품 등록</h2>
+			<h3 class="backLocal">뒤로 가기</h3>
+			<table>
+				<tr>
+					<td>제품명</td>
+					<td><input type="text" id="medicineName"
+						value="<%=medicineName%>"></td>
+				</tr>
+				<tr>
+					<td>규격 및 가격</td>
+					<td>
+						<div id="standardPriceContainer">
+							<div class="standardPriceGroup">
+								<input type="text" class="standard" placeholder="규격"> 
+								<input type="number" class="price" placeholder="판매가">
+								<input type="number" class="buyingPrice" placeholder="사입가">
+								<button type="button" class="removeStandardPrice" style="display: none;">삭제</button>
+							</div>
+						</div>
+						<button type="button" id="addStandardPrice">+ 추가</button>
+					</td>
+				</tr>
+				<tr>
+					<td colspan="2" style="text-align: center;"><button
+							class="submitNew">등록하기</button></td>
+				</tr>
+			</table>
+
+		</div>
+	</div>
+
+	<script src="jquery-3.7.1.min.js"></script>
+	<script>
+		$(document).ready(function() {
+		    $("#addStandardPrice").on("click", function() {
+		        const newGroup = `
+		            <div class="standardPriceGroup" style="margin-top: 5px;">
+		                <input type="text" class="standard" placeholder="규격">
+		                <input type="number" class="price" placeholder="판매가">
+						<input type="number" class="buyingPrice" placeholder="사입가">
+		                <button type="button" class="removeStandardPrice">삭제</button>
+		            </div>
+		        `;
+		        $("#standardPriceContainer").append(newGroup);
+		        $(".removeStandardPrice").show(); // 최소 2개 이상일 때 삭제 버튼 보이게
+		    });
+
+		    // 규격/가격 삭제 버튼
+		    $(document).on("click", ".removeStandardPrice", function() {
+		        $(this).closest(".standardPriceGroup").remove();
+		        if ($(".standardPriceGroup").length === 1) {
+		            $(".removeStandardPrice").hide();
+		        }
+		    });
+
+		    // 처음에는 삭제 버튼 안보이게
+		    if ($(".standardPriceGroup").length === 1) {
+		        $(".removeStandardPrice").hide();
+		    }
+		    $(".submitNew").on("click", function(e) {
+		        let standardList = [];
+		        let priceList = [];
+		        let buyingPriceList = [];
+
+		        $(".standard").each(function() {
+		            standardList.push($(this).val());
+		        });
+		        $(".price").each(function() {
+		            priceList.push($(this).val());
+		        });
+		        $(".buyingPrice").each(function() {
+		            buyingPriceList.push($(this).val());
+		        });
+		        const params = new URLSearchParams();
+		        params.append("submitted", "true");
+		        params.append("medicineName", $("#medicineName").val());
+		        params.append("companyName", $("#companyName").val());
+		        params.append("kind", $("#kind").val());
+		        params.append("serialNumber", $("#serialNumber").val());
+		        params.append("receiptDate", $("#receiptDate").val());
+		        params.append("deliveryDate", $("#deliveryDate").val());
+		        params.append("inventory", $("#inventory").val());
+
+		        params.append("standardList", standardList.join(","));
+		        params.append("priceList", priceList.join(","));
+		        params.append("buyingPriceList", buyingPriceList.join(","));
+
+		        location.href = "addProduct.jsp?" + params.toString();
+		    });
+
+
+			$(".backLocal").on("click", function() {
+				setTimeout(function() {
+					history.go(-2);
+				}, 3000);
+			});
+		});
+	</script>
+
+	<% } %>
+</body>
+</html>

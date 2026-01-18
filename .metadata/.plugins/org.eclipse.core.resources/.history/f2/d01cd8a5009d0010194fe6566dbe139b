@@ -1,0 +1,63 @@
+<%@ page contentType="application/json; charset=UTF-8" %>
+<%@ page import="java.sql.*, org.json.JSONObject" %>
+<%@ include file="sessionManager.jsp" %>
+<%@ include file="DBconnection.jsp" %>
+<%
+String dbName = (session != null) ? (String) session.getAttribute("dbName") : null;
+String id = (session != null) ? (String) session.getAttribute("id") : null;
+String password = (session != null) ? (String) session.getAttribute("password") : null;
+
+/* out.println(password);
+out.println(dbName);
+out.println(id);
+out.println(password); */
+
+String idSortation = (session != null) ? (String) session.getAttribute("idSortation") : null;
+if (id == null || dbName == null) {
+	response.sendRedirect("login.jsp");
+	return;
+}
+
+jdbcDriver = dbName;
+response.setCharacterEncoding("UTF-8");
+
+JSONObject result = new JSONObject();
+
+try {
+    String sql = "SELECT medicineName, quantity, inventory " +
+                 "FROM testTable" + idSortation +
+                 " WHERE inventory < quantity ORDER BY (quantity - inventory) DESC";
+
+    ps = conn.prepareStatement(sql);
+    rs = ps.executeQuery();
+
+    if (rs.next()) {
+        String firstName = rs.getString("medicineName");
+        int qty = rs.getInt("quantity");
+        int inv = rs.getInt("inventory");
+
+        // 대표 메시지
+        String rep = firstName + " : 재고 " + inv + ", 필요 " + qty;
+
+        // 나머지 개수
+        rs.last();
+        int total = rs.getRow();
+        int others = total - 1;
+
+        result.put("representative", rep);
+        result.put("others", others);
+    } else {
+        result.put("representative", "");
+        result.put("others", 0);
+    }
+
+} catch (Exception e) {
+    result.put("error", e.getMessage());
+} finally {
+    if (rs != null) try { rs.close(); } catch (SQLException ignore) {}
+    if (ps != null) try { ps.close(); } catch (SQLException ignore) {}
+    if (conn != null) try { conn.close(); } catch (SQLException ignore) {}
+}
+
+out.print(result.toString());
+%>

@@ -1,0 +1,135 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ page import="org.json.JSONArray" %>
+<%@ page import="org.json.JSONObject" %>
+<%@ page import="java.sql.*" %>
+<%@ page import="java.util.*" %>
+<%@ page import="java.text.*" %>
+<%@ include file="sessionManager.jsp"%>
+<%@ include file="DBconnection.jsp"%>
+<%
+    String dbName = (session != null) ? (String) session.getAttribute("dbName") : null;
+    String id = (session != null) ? (String) session.getAttribute("id") : null;
+    String password = (session != null) ? (String) session.getAttribute("password") : null;
+
+    if (id == null || dbName == null) {
+        response.sendRedirect("login.jsp");
+        return;
+    }
+
+    jdbcDriver = dbName;
+    request.setCharacterEncoding("UTF-8");
+    PreparedStatement ps = null;
+    PreparedStatement ps2 = null;
+    PreparedStatement psCheck = null;
+    PreparedStatement psInsertMember = null;
+    ResultSet rs = null;
+    ResultSet rsMax = null;
+
+    try {
+        Class.forName("com.mysql.cj.jdbc.Driver");
+
+        String medicinesJson = request.getParameter("medicines");
+        JSONArray medicines = new JSONArray(medicinesJson);
+
+        String regiDate = request.getParameter("regiDate");
+        Timestamp currentTime = null;
+        if (regiDate == null || regiDate.trim().isEmpty()) {
+            currentTime = new Timestamp(System.currentTimeMillis());
+        } else {
+            SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+            java.util.Date parsedDate = dateFormat.parse(regiDate);
+            currentTime = new Timestamp(parsedDate.getTime());
+        }
+
+        if (regiDate != null && !regiDate.trim().isEmpty()) {
+            String SQL = "DELETE FROM SalesData WHERE sale_date = ?";
+            ps2 = conn.prepareStatement(SQL);
+            ps2.setString(1, regiDate);
+            ps2.executeUpdate();
+        }
+
+        for (int i = 0; i < medicines.length(); i++) {
+            JSONObject medicine = medicines.getJSONObject(i);
+            String medicineName = medicine.getString("medicineName");
+            if (medicineName == null || medicineName.trim().isEmpty()) {
+                continue;
+            }
+
+            String inventory = medicine.getString("inventory");
+            int inventoryValue = inventory.isEmpty() ? 0 : Integer.parseInt(inventory);
+
+            String standard = medicine.getString("standard");
+            String price = medicine.getString("price");
+            double priceValue = price.isEmpty() ? 0.0 : Double.parseDouble(price);
+
+            String totalPrice = medicine.getString("totalPrice");
+            double totalPriceValue = totalPrice.isEmpty() ? 0.0 : Double.parseDouble(totalPrice);
+
+            String customerId = medicine.getString("customerId").trim();
+            String discounted = String.valueOf(medicine.get("discounted"));
+
+            // members 테이블에 customerId 존재 여부 확인
+            String checkSQL = "SELECT id FROM members WHERE customerNumber = ?";
+            psCheck = conn.prepareStatement(checkSQL);
+            psCheck.setString(1, customerId);
+            rs = psCheck.executeQuery();
+
+            // 고객이 없으면 members에 새로 추가
+            if (!rs.next()) {
+                // 가장 큰 id와 customerNumber 찾기
+                String maxSQL = "SELECT MAX(id) AS maxId, MAX(customerNumber) AS maxCust FROM members";
+                psCheck.close();
+                rs.close();
+                psCheck = conn.prepareStatement(maxSQL);
+                rsMax = psCheck.executeQuery();
+
+                int newId = 1;
+                int newCustNumber = 1;
+                if (rsMax.next()) {
+                    newId = rsMax.getInt("maxId") + 1;
+                    newCustNumber = rsMax.getInt("maxCust") + 1;
+                }
+
+                // members 테이블에 새로 삽입
+                String insertMemberSQL = "INSERT INTO members (id, memberName, memberPhone, customerNumber, memoInfo, gender, jumin1, jumin2) VALUES (?, ?, '', ?, '', 1, NULL, NULL)";
+                psInsertMember = conn.prepareStatement(insertMemberSQL);
+                psInsertMember.setInt(1, newId);
+                psInsertMember.setInt(2, newCustNumber);
+                psInsertMember.executeUpdate();
+
+                customerId = String.valueOf(newCustNumber);  // 새 customerId로 교체
+            }
+
+            // SalesData에 삽입
+            String saleInsertQuery = "INSERT INTO SalesData (sale_date, customer_id, medicine_name, inventory, standard, price, total_price, discounted) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+            ps = conn.prepareStatement(saleInsertQuery);
+            ps.setTimestamp(1, currentTime);
+            ps.setString(2, customerId);
+            ps.setString(3, medicineName);
+            ps.setInt(4, inventoryValue);
+            ps.setString(5, standard);
+            ps.setDouble(6, priceValue);
+            ps.setDouble(7, totalPriceValue);
+            ps.setString(8, discounted);
+            ps.executeUpdate();
+        }
+
+        out.println("Data inserted successfully.");
+
+    } catch (Exception e) {
+        e.printStackTrace();
+        out.println("Error: " + e.getMessage());
+    } finally {
+        try {
+            if (rs != null) rs.close();
+            if (rsMax != null) rsMax.close();
+            if (ps != null) ps.close();
+            if (ps2 != null) ps2.close();
+            if (psCheck != null) psCheck.close();
+            if (psInsertMember != null) psInsertMember.close();
+            if (conn != null) conn.close();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+%>

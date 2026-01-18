@@ -1,0 +1,43 @@
+<%@ page contentType="application/json; charset=UTF-8" %>
+<%@ page import="java.sql.*, org.json.*" %>
+<%@ include file="DBconnection.jsp" %>
+
+<%
+int page = Integer.parseInt(request.getParameter("page"));
+int limit = 50;
+int offset = (page - 1) * limit;
+
+// 전체 데이터 개수 구하기
+PreparedStatement countStmt = conn.prepareStatement("SELECT COUNT(*) FROM testTable");
+ResultSet countRs = countStmt.executeQuery();
+countRs.next();
+int totalRows = countRs.getInt(1);
+int totalPages = (int)Math.ceil((double)totalRows / limit);
+
+// 실제 데이터 불러오기
+String sql = "SELECT * FROM testTable ORDER BY medicineName ASC, DeliveryDate ASC LIMIT ? OFFSET ?";
+PreparedStatement pstmt = conn.prepareStatement(sql);
+pstmt.setInt(1, limit);
+pstmt.setInt(2, offset);
+ResultSet rs = pstmt.executeQuery();
+
+// HTML 조합
+StringBuilder html = new StringBuilder();
+while(rs.next()){
+    html.append("<tr data-id='" + rs.getInt("id") + "'>");
+    html.append("<td><input class='editable' name='medicineName' value='" + rs.getString("medicineName") + "'></td>");
+    html.append("<td><input class='editable' name='DeliveryDate' value='" + rs.getString("DeliveryDate") + "'></td>");
+    html.append("<td><input class='editable' name='inventory' value='" + rs.getString("inventory") + "'></td>");
+    html.append("<td><input class='editable' name='price' value='" + rs.getString("price") + "'></td>");
+    html.append("<td><input class='editable' name='kind' value='" + rs.getString("kind") + "'></td>");
+    html.append("<td><input class='editable' name='companyName' value='" + rs.getString("companyName") + "'></td>");
+    html.append("<td><input class='editable' name='receiptDate' value='" + rs.getString("receiptDate") + "'></td>");
+    html.append("</tr>");
+}
+
+// JSON으로 응답
+JSONObject obj = new JSONObject();
+obj.put("html", html.toString());
+obj.put("totalPages", totalPages);
+out.print(obj.toString());
+%>

@@ -1,0 +1,468 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8"
+	pageEncoding="UTF-8"%>
+<%@ page import="java.sql.*"%>
+<%@ page import="java.util.*"%>
+<%@ page import="java.text.*"%>
+<%@ include file="sessionManager.jsp"%>
+<%@ include file="DBconnection.jsp"%>
+<%
+String dbName = (session != null) ? (String) session.getAttribute("dbName") : null;
+String id = (session != null) ? (String) session.getAttribute("id") : null;
+String password = (session != null) ? (String) session.getAttribute("password") : null;
+
+String idSortation = (session != null) ? (String) session.getAttribute("idSortation") : null;
+if (id == null || dbName == null) {
+	response.sendRedirect("login.jsp");
+	return;
+}
+
+jdbcDriver = dbName;
+%>
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>세트 만들기</title>
+<link href="style.css" rel="stylesheet">
+<style>
+#popup #popup-table #popup-content tr:hover {
+	background-color: #FAFAD2;
+}
+
+#wrap #table_input input[type=text] {
+	height: 30px;
+	width: 75%;
+}
+</style>
+</head>
+<body>
+	<div id="wrap">
+		<header>
+			<jsp:include page="header.jsp"></jsp:include>
+		</header>
+		<h1
+			style="position: absolute; display: block; text-align: center; width: 100%; margin-top: 80px;">종합
+			세트 만들기</h1>
+		<table class="table_line" id="table_input"
+			style="height: 45vh; margin-top: 200px;">
+			<thead>
+				<tr>
+					<th colspan="3">세트 이름</th>
+					<td colspan="4"><input type="text" id="setName" name="setName"
+						required></td>
+				</tr>
+				<tr>
+					<th colspan="7">제품 정보</th>
+				</tr>
+				<tr>
+					<th>제품 이름</th>
+					<th>사입 가격</th>
+					<th>판매 가격</th>
+					<th>규격</th>
+					<th>수량</th>
+					<th colspan="2">작업란</th>
+				</tr>
+			</thead>
+
+			<!-- 데이터 행만! -->
+			<tbody id="productTbody">
+				<%
+				for (int i = 0; i <= 4; i++) {
+				%>
+				<tr>
+					<td><input type="text" name="productName[]"
+						class="medicineName"></td>
+					<td><input type="text" name="buyingPrice[]"
+						class="buyingPrice"></td>
+					<td><input type="text" name="price[]" class="price"></td>
+					<td><input type="text" name="standard[]" class="standard"></td>
+					<td><input type="number" name="inventory[]" class="inventory"
+						value="1" min="1"></td>
+					<td><input type="button" class="textRemove" value="내용란 삭제"></td>
+					<td><input type="button" class="lineRemove" value="행 삭제"></td>
+				</tr>
+				<%
+				}
+				%>
+			</tbody>
+
+			<tfoot>
+				<tr>
+					<th colspan="3">사입 가격 총합</th>
+					<td colspan="4"><input type="text" id="totalBuyingPrice"></td>
+				</tr>
+				<tr>
+					<th colspan="3">판매 가격 총합</th>
+					<td colspan="4"><input type="text" id="totalSellingPrice"></td>
+				</tr>
+				<tr>
+					<td colspan="7"><input type="button" class="setMakeAjax"
+						value="세트 추가"></td>
+				</tr>
+			</tfoot>
+		</table>
+
+		<br>
+	</div>
+	<div id="popup"
+		style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background-color: white; border: 1px solid #ccc; z-index: 1000; box-shadow: 0px 0px 10px gray; min-width: 1500px; min-height: 30vh;">
+		<h3
+			style="position: fixed; margin: 10px; width: 100%; text-align: center;">검색
+			결과</h3>
+		<table id="popup-table"
+			style="display: block; width: 100%; height: 50vh; border-collapse: collapse; margin-top: 50px; overflow: scroll;">
+			<colgroup>
+				<col style="width: 600px">
+				<col style="width: 200px">
+				<col style="width: 100px">
+				<col style="width: 150px">
+				<col style="width: 150px">
+				<col style="width: 150px">
+				<col style="width: 150px">
+			</colgroup>
+			<thead>
+				<tr style="background-color: #f0f0f0;">
+					<th style="border: 1px solid #ccc; padding: 5px;">제품명</th>
+					<th style="border: 1px solid #ccc; padding: 5px;">회사명</th>
+					<th style="border: 1px solid #ccc; padding: 5px;">재고</th>
+					<th style="border: 1px solid #ccc; padding: 5px;">규격</th>
+					<th style="border: 1px solid #ccc; padding: 5px;">일련번호</th>
+					<th style="border: 1px solid #ccc; padding: 5px;">입고 날짜</th>
+					<th style="border: 1px solid #ccc; padding: 5px;">유통기한</th>
+					<th style="border: 1px solid #ccc; padding: 5px;">사입가격</th>
+					<th style="border: 1px solid #ccc; padding: 5px;">구매가격</th>
+				</tr>
+			</thead>
+			<tbody id="popup-content"></tbody>
+		</table>
+	</div>
+	<script src="jquery-3.7.1.min.js"></script>
+	<script src="script.js"></script>
+	<script>
+		$(document).ready(function(){
+			// ✅ 행의 입력만 비우기 (.textRemove)
+			$("#table_input").on("click", ".textRemove", function (e) {
+			  e.preventDefault();
+
+			  const $row = $(this).closest("tr");
+			  // 입력값 비우기 + 수량은 1로
+			  $row.find(".medicineName, .buyingPrice, .price, .standard").val("");
+			  $row.find(".inventory").val(1);
+
+			  // 합계 갱신
+			  calculateTotal
+
+			  // 포커스는 제품명으로
+			  $row.find(".medicineName").focus().select();
+			});
+
+
+			// ✅ 행 자체 삭제 (.lineRemove)
+			$("#table_input").on("click", ".lineRemove", function (e) {
+			  e.preventDefault();
+
+			  const $tbody = $("#productTbody");
+			  const $rows  = $tbody.find("tr");
+			  const $row   = $(this).closest("tr");
+
+			  // 마지막 1행이면 삭제 대신 비우기
+			  if ($rows.length === 2) {
+			    $row.find(".medicineName, .buyingPrice, .price, .standard").val("");
+			    $row.find(".inventory").val(1);
+			    calculateTotal?.();
+			    $row.find(".medicineName").focus().select();
+			    return;
+			  }
+
+			  // 삭제 후 포커스 줄 대상(아래 행 우선)
+			  const $next = $row.next("tr").length ? $row.next("tr") : $row.prev("tr");
+
+			  // 동일한 '제품명' 칼럼으로 포커스 주기 위해 인덱스 구함
+			  const nameColIdx = $row.find(".medicineName").closest("td").index();
+
+			  // 행 제거
+			  $row.remove();
+
+			  // 합계 갱신
+			  calculateTotal
+
+			  // 다음 행의 동일 칼럼에 포커스 시도, 없으면 제품명에 포커스
+			  const $targetCell = $next.children("td").eq(nameColIdx);
+			  const $targets = $targetCell
+			    .find("input, select, textarea")
+			    .filter(":visible:enabled");
+
+			  if ($targets.length) $targets.first().focus().select();
+			  else $next.find(".medicineName").focus().select();
+			});
+
+			function addRow(){
+				  const $tbody = $("#productTbody");         // ★ 단일 tbody 고정
+				  const $last  = $tbody.find("tr").last();
+				  const $copy  = $last.clone(true, true);
+
+				  $copy.find(".medicineName").val("");
+				  $copy.find(".buyingPrice").val("");
+				  $copy.find(".price").val("");
+				  $copy.find(".standard").val("");
+				  $copy.find(".inventory").val(1);
+
+				  $tbody.append($copy);
+
+				  $copy[0].scrollIntoView({behavior:"smooth", block:"nearest"});
+			  	$copy.find(".medicineName").focus().select();
+			}
+			$(document).on("keydown.addrow", function(e){
+				  if ($("#popup").is(":visible")) return;
+				  if (e.altKey || e.ctrlKey || e.metaKey) return;
+
+				  // ---- 추가(+) 처리 ----
+				  const isPlus =
+				    e.code === "NumpadAdd" ||
+				    e.key === "NumpadAdd" ||
+				    e.which === 107 ||
+				    (e.shiftKey && (e.key === "=" || e.key === "+")) ||
+				    e.key === "+";
+
+				  if (isPlus) {
+				    e.preventDefault();
+				    addRow();
+				    return;
+				  }
+
+				  // ---- 삭제(- / Delete) 처리 ----
+				  const isMinus =
+				    e.code === "NumpadSubtract" ||
+				    e.key === "NumpadSubtract" ||
+				    e.which === 109 ||
+				    e.key === "-" ||
+				    e.key === "Subtract";
+
+				  const isDel = (e.key === "Delete"); // 물리 Delete 키
+
+				  if (isMinus || isDel) {
+				    e.preventDefault();
+				    deleteCurrentRow();
+				    return;
+				  }
+				});
+			function getFocusedRow() {
+				  // input/select/textarea 중 포커스된 요소의 tr
+				  const $active = $(document.activeElement);
+				  if ($active.length && $active.closest("#productTbody tr").length) {
+				    return $active.closest("tr");
+				  }
+				  // 없으면 마지막 데이터 행 반환
+				  const $tbody = $("#productTbody");
+				  return $tbody.find("tr").last();
+				}
+			function deleteCurrentRow() {
+				  const $tbody = $("#productTbody");
+				  const $rows  = $tbody.find("tr");
+				  if ($rows.length === 0) return;
+
+				  const $row = getFocusedRow();
+				  if ($rows.length === 2) {
+				    // 마지막 1행: 지우지 말고 비우기
+				    $row.find(".medicineName,.buyingPrice,.price,.standard").val("");
+				    $row.find(".inventory").val(1);
+				    calculateTotal?.();
+				    $row.find(".medicineName").focus().select();
+				    return;
+				  }
+
+				  // 포커스 이동 타겟 결정 (아래 행 우선, 없으면 위 행)
+				  const $next = $row.next("tr").length ? $row.next("tr") : $row.prev("tr");
+
+				  $row.remove();
+				  calculateTotal?.();
+
+				  // 같은 컬럼 인덱스에 포커스 시도
+				  const colIdx =  $row.find("td").index($(document.activeElement).closest("td"));
+				  const $targets = $next.find("td").eq(colIdx).find("input,select,textarea").filter(":visible:enabled");
+				  if ($targets.length) $targets.first().focus().select();
+				  else $next.find(".medicineName").focus().select();
+				}
+
+			$(".table_line").on("keydown", ".medicineName", function (e) {
+		        if (e.key === "Enter") { // Enter 키 감지
+		            e.preventDefault(); // 폼 제출 방지
+		            let medicineName = $(this).val();
+		            currentRow = $(this).closest('tr');
+
+		            // 현재 포커스가 있는 행을 추적
+		            currentRow = $(this).closest('tr'); // 현재 입력 필드가 속한 행
+
+		            if (medicineName.trim() !== "") {
+		                // Ajax 요청
+		                $.ajax({
+		                    url: "searchMedicine.jsp", // 데이터 검색 JSP
+		                    method: "POST",
+		                    data: { medicineName: medicineName }, // LIKE 검색 조건
+		                    success: function (response) {
+		                        $("#popup-content").html(response); // 결과를 테이블에 표시
+		                        $("#popup").show(); // 팝업 표시
+		                        currentRowIndex = -1;
+		                    },
+		                    error: function () {
+		                        return false;
+		                    }
+		                });
+		            }
+		        }
+		    });
+		    $(document).on("click", function (e) {
+		        if (!$(e.target).closest("#popup, .medicineName").length) {
+		            $("#popup").hide();
+		        }
+		    });
+		    $(document).on("keydown", function (e) {
+		        if ($("#popup").is(":visible")) { // 팝업이 열려 있을 때만 동작
+		            const rows = $("#popup-content .result-row");
+
+		            if (e.key === "ArrowDown") { // ↓ 키
+		                e.preventDefault();
+		                if (currentRowIndex < rows.length - 1) {
+		                    currentRowIndex++;
+		                }
+		            } else if (e.key === "ArrowUp") { // ↑ 키
+		                e.preventDefault();
+		                if (currentRowIndex > 0) {
+		                    currentRowIndex--;
+		                }
+		            } else if (e.key === "Enter" && currentRowIndex >= 0) { // Enter 키로 선택된 행 처리
+		                e.preventDefault();
+		                const selectedRow = $(rows[currentRowIndex]); // 현재 강조된 행
+		                populateFields(selectedRow.data()); // 선택된 데이터 채우기
+		            }
+
+		            // 강조 효과 업데이트
+		            rows.removeClass("highlight"); // 모든 행의 강조 제거
+		            if (currentRowIndex >= 0) {
+		                $(rows[currentRowIndex]).addClass("highlight"); // 현재 선택된 행에 강조 추가
+		            }
+		        }
+		    });
+		    $(document).on("click", "#popup-content tr", function () {
+		        let selectedRow = $(this);
+		        let medicineName = selectedRow.find("td:eq(0)").text().trim(); // 첫 번째 컬럼 (제품명)
+		        let buyingPrice = selectedRow.find("td:eq(7)").text().trim(); // 두 번째 컬럼 (사입 가격)
+		        let sellingPrice = selectedRow.find("td:eq(8)").text().trim(); // 세 번째 컬럼 (판매 가격)
+		        let standard = selectedRow.find("td:eq(3)").text().trim(); // 세 번째 컬럼 (판매 가격)
+
+		        console.log(medicineName);
+		        console.log(buyingPrice);
+		        console.log(sellingPrice);
+		        
+		        
+		        // 현재 입력 중이던 행에 값 채우기
+		        currentRow.find(".medicineName").val(medicineName);
+		        currentRow.find(".buyingPrice").val(buyingPrice);
+		        currentRow.find(".price").val(sellingPrice);
+		        currentRow.find(".standard").val(standard);
+
+		        $("#popup").hide(); // 팝업 숨기기
+		    });
+		    
+		    function calculateTotal(){
+		    	  let totalBuying = 0;
+		    	  let totalSelling = 0;
+
+		    	  $("#table_input tbody tr").each(function(){
+		    	    const qty = parseFloat($(this).find(".inventory").val()) || 0;
+
+		    	    const buying = parseFloat( ( $(this).find(".buyingPrice").val() || "0" ).replace(/,/g,"") ) || 0;
+		    	    const price  = parseFloat( ( $(this).find(".price").val() || "0" ).replace(/,/g,"") ) || 0;
+
+		    	    totalBuying += buying * qty;
+		    	    totalSelling += price * qty;
+		    	  });
+
+		    	  $("#totalBuyingPrice").val( totalBuying.toLocaleString() );
+		    	  $("#totalSellingPrice").val( totalSelling.toLocaleString() );
+		    	}
+
+		    	$(document).on("input", ".buyingPrice,.price,.inventory", calculateTotal);
+
+
+
+	        // 가격 입력할 때마다 계산
+	        $(document).on("keyup", ".buyingPrice, .price", function() {
+	            calculateTotal();
+	        });
+
+	        // 팝업에서 제품 선택 시 자동 합산 반영
+	        $(document).on("click", "#popup-content tr", function () {
+	            let selectedRow = $(this);
+	            let buyingPrice = selectedRow.find("td:eq(7)").text().trim();
+	            let sellingPrice = selectedRow.find("td:eq(8)").text().trim();
+
+	            currentRow.find(".buyingPrice").val(buyingPrice);
+	            currentRow.find(".sellingPrice").val(sellingPrice);
+
+	            $("#popup").hide();
+	            calculateTotal(); // 선택 후 합산 업데이트
+	        });
+	        
+	        $(".setMakeAjax").on("click", function () {
+	            let setName = $("#setName").val().trim();
+	            let inventory = parseInt($("#inventory").val()) || 1;
+	            let productList = [];
+
+	            // 제품 정보 수집
+	            $("#table_input tbody tr").each(function (index) {
+
+	                let medicineName = $(this).find(".medicineName").val()?.trim();
+	                let standard = $(this).find(".standard").val()?.trim();
+
+	                if (medicineName && standard) {
+	                    productList.push({
+	                        medicineName: medicineName,
+	                        standard: standard
+	                    });
+	                }
+	            });
+
+	            // 필수 입력 체크
+	            if (!setName || productList.length === 0) {
+	                alert("세트 이름과 제품 정보를 모두 입력해주세요.");
+	                return;
+	            }
+
+	            // 합계 input에서 값 추출 (쉼표 제거 후 숫자 변환)
+	            let buyingpriceStr = $("#totalBuyingPrice").val()?.replace(/,/g, '') || "0";
+	            let priceStr = $("#totalSellingPrice").val()?.replace(/,/g, '') || "0";
+	            let totalBuying = parseInt(buyingpriceStr);
+	            let totalSelling = parseInt(priceStr);
+
+	            // 전송 데이터 구성
+	            let sendData = {
+	                setName: setName,
+	                buyingprice: totalBuying,
+	                price: totalSelling,
+	                inventory: inventory,
+	                products: productList
+	            };
+
+	            console.log("전송 데이터 확인:", sendData);  // 디버깅용
+
+	            // Ajax 전송
+	            $.ajax({
+	                url: "setDataSave.jsp",
+	                type: "POST",
+	                contentType: "application/json",
+	                data: JSON.stringify(sendData),
+	                success: function (response) {
+	                    console.log("서버 응답:", response);
+	                    alert("세트 정보가 성공적으로 저장되었습니다!");
+	                },
+	                error: function (xhr, status, error) {
+	                    console.error("AJAX 오류:", error);
+	                    alert("저장 중 오류가 발생했습니다.");
+	                }
+	            });
+	        });
+		});
+	</script>
+</body>
+</html>

@@ -1,0 +1,79 @@
+<%@ page contentType="application/json; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ page import="java.sql.*, org.json.*, java.util.regex.*" %>
+<%@ include file="sessionManager.jsp" %>
+<%@ include file="DBconnection.jsp" %>
+
+<%
+String dbName = (session != null) ? (String) session.getAttribute("dbName") : null;
+String id = (session != null) ? (String) session.getAttribute("id") : null;
+String idSortation = (session != null) ? (String) session.getAttribute("idSortation") : null;
+
+if (id == null || dbName == null) {
+    response.sendRedirect("login.jsp");
+    return;
+}
+jdbcDriver = dbName;
+ResultSet countRs = null;
+PreparedStatement pstmt = null;
+
+try{
+	int pages = 1;
+	int limit = 100;
+	if (request.getParameter("page") != null) {
+	    pages = Integer.parseInt(request.getParameter("page"));
+	}
+	int offset = (pages - 1) * limit;
+
+	// 전체 행 개수
+	PreparedStatement countStmt = conn.prepareStatement("SELECT COUNT(*) FROM testTable" + idSortation);
+	countRs = countStmt.executeQuery();
+	countRs.next();
+	int totalRows = countRs.getInt(1);
+	int totalPages = (int) Math.ceil((double) totalRows / limit);
+
+	// 실제 데이터 조회
+	String sql = "SELECT *, format(price, 0) AS realPrice FROM testTable" + idSortation +
+	             " ORDER BY medicineName ASC, DeliveryDate ASC LIMIT ? OFFSET ?";
+	pstmt = conn.prepareStatement(sql);
+	pstmt.setInt(1, limit);
+	pstmt.setInt(2, offset);
+	ResultSet rs = pstmt.executeQuery();
+
+	// HTML 조립
+	StringBuilder html = new StringBuilder();
+
+	while (rs.next()) {
+
+	    // ----- HTML append (input 제거, 순수 텍스트) -----
+	    html.append("<tr data-key='")
+	        .append(rs.getString("medicineName")).append("|")
+	        .append(rs.getString("DeliveryDate")).append("|")
+	        .append(rs.getString("standard") == null ? "" : rs.getString("standard"))
+	        .append("'>");
+
+	    html.append("<td>").append(rs.getString("medicineName")).append("</td>");
+	    html.append("<td>").append(rs.getString("DeliveryDate")).append("</td>");
+	    html.append("<td>").append(rs.getString("inventory")).append("</td>");
+	    html.append("<td>").append(rs.getString("realPrice")).append("</td>");
+	    html.append("<td>").append(rs.getString("standard") == null ? "" : rs.getString("standard")).append("</td>");
+	    html.append("<td>").append(rs.getString("kind")).append("</td>");
+	    html.append("<td>").append(rs.getString("companyName")).append("</td>");
+	    html.append("<td>").append(rs.getString("receiptDate")).append("</td>");
+	    html.append("<td>").append(rs.getString("quantity")).append("</td>");
+	    html.append("</tr>");
+	}
+
+	JSONObject result = new JSONObject();
+	result.put("html", html.toString());
+	result.put("totalPages", totalPages);
+	out.print(result.toString());
+}catch(Exception e){
+	e.printStackTrace();
+}finally{
+	try{ if(countRs != null) countRs.close(); } catch(Exception ignore) {}
+	try{ if(pstmt != null) pstmt.close(); } catch(Exception ignore) {}
+	try{ if(countRs != null) countRs.close(); } catch(Exception ignore) {}
+}
+
+
+%>

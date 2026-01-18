@@ -1,0 +1,287 @@
+<%@ page language="java" contentType="application/json; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ page import="java.io.*, java.util.*, java.sql.*, javax.servlet.*, javax.servlet.http.*, org.json.JSONArray, org.json.JSONObject, java.util.regex.Pattern, java.util.regex.Matcher" %>
+<%@ include file="sessionManager.jsp" %>
+<%@ include file="DBconnection.jsp" %>
+
+<%
+String dbName = (session != null) ? (String) session.getAttribute("dbName") : null;
+String id = (session != null) ? (String) session.getAttribute("id") : null;
+String idSortation = (session != null) ? (String) session.getAttribute("idSortation") : null;
+if (id == null || dbName == null) {
+    response.sendRedirect("login.jsp");
+    return;
+}
+request.setCharacterEncoding("UTF-8");
+conn.setAutoCommit(false);
+%><%!
+private String formatDate(String inputDate) {
+    try {
+        if (inputDate == null) return null;
+        String s = inputDate.trim();
+        if (s.isEmpty() || "null".equalsIgnoreCase(s) || "undefined".equalsIgnoreCase(s)) return null;
+
+        s = s.replace('T', ' ');
+
+        // yyyy-MM-dd HH:mm:ss
+        if (s.matches("\\d{4}-\\d{2}-\\d{2}\\s+\\d{2}:\\d{2}:\\d{2}")) return s;
+
+        // yyyy-MM-dd → 자정
+        if (s.matches("\\d{4}-\\d{2}-\\d{2}")) return s + " 00:00:00";
+
+        // yy/MM/dd 또는 yyyy/MM/dd → 자정
+        if (s.matches("\\d{2,4}/\\d{1,2}/\\d{1,2}")) {
+            String[] p = s.split("/");
+            int y = Integer.parseInt(p[0]);
+            int m = Integer.parseInt(p[1]);
+            int d = Integer.parseInt(p[2]);
+            if (y < 100) y += 2000;
+            return String.format("%04d-%02d-%02d 00:00:00", y, m, d);
+        }
+        return null;
+    } catch (Exception e) {
+        System.err.println("날짜 변환 오류: " + inputDate + " / " + e.getMessage());
+        return null;
+    }
+}
+
+/** 
+ * 주어진 baseTs가 이미 존재하면 1ms(=0.001초)씩 더해 유일한 saleDate를 찾아 반환.
+ * 세 테이블(SalesRecord{idSortation}.saleDate, priceRecord{idSortation}.saleDate, discountedDB.sale_date)을 모두 검사.
+ * 컬럼 정밀도는 DATETIME(3)/TIMESTAMP(3) 이상이어야 1ms 단위 저장이 의미가 있음.
+ */
+private Timestamp findUniqueSaleDate(Connection conn, String idSortation, Timestamp baseTs) throws SQLException {
+    Timestamp ts = baseTs;
+
+    final String sqlSales = "SELECT 1 FROM SalesRecord" + idSortation + " WHERE saleDate = ? LIMIT 1";
+    final String sqlPrice = "SELECT 1 FROM priceRecord" + idSortation + " WHERE saleDate = ? LIMIT 1";
+    final String sqlDisc  = "SELECT 1 FROM discountedDB WHERE sale_date = ? LIMIT 1";
+
+    while (true) {
+        boolean exists = false;
+
+        try (PreparedStatement ps = conn.prepareStatement(sqlSales)) {
+            ps.setTimestamp(1, ts);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) exists = true;
+            }
+        }
+        if (!exists) {
+            try (PreparedStatement ps = conn.prepareStatement(sqlPrice)) {
+                ps.setTimestamp(1, ts);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next()) exists = true;
+                }
+            }
+        }
+        if (!exists) {
+            try (PreparedStatement ps = conn.prepareStatement(sqlDisc)) {
+                ps.setTimestamp(1, ts);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next()) exists = true;
+                }
+            }
+        }
+
+        if (!exists) break;           // 충돌 없음 → 사용
+        ts = new Timestamp(ts.getTime() + 1); // 1ms 증가
+    }
+    return ts;
+}
+%><%
+try {
+    StringBuilder sb = new StringBuilder();
+    try (BufferedReader br = request.getReader()) {
+        String line;
+        while ((line = br.readLine()) != null) sb.append(line);
+    }
+
+    JSONArray jsonArr = new JSONArray(sb.toString());
+    JSONObject meta = jsonArr.getJSONObject(jsonArr.length() - 1);
+    System.out.println(meta);
+
+    String medicinePrice = meta.getString("medicinePrice");
+    String generalPrice  = meta.getString("generalPrice");
+    String clientName    = meta.getString("discounted");
+
+    String raw = meta.has("ScheduleDate")
+            ? meta.optString("ScheduleDate", "")
+            : meta.optString("scheduleDate", "");
+    raw = (raw == null) ? "" : raw.trim();
+
+    // "yyyy-MM-dd HH:mm:ss" 또는 "yyyy-MM-dd" 또는 "yy/MM/dd" → 표준화
+    String formatted = formatDate(raw);
+
+    // 기본 now: 포맷 불가/빈 값이면 현재시각, 아니면 주어진 시각(종종 00:00:00)
+    Timestamp baseNow = (formatted == null || formatted.isEmpty())
+            ? new Timestamp(System.currentTimeMillis())
+            : Timestamp.valueOf(formatted);
+
+    // ★ 충돌 방지: 필요한 경우 1ms씩 증가하여 유일한 saleDate 확보
+    Timestamp now = findUniqueSaleDate(conn, idSortation, baseNow);
+
+    System.out.println("now(final) : " + now + " \nraw : " + raw + " \nformatted : " + formatted);
+
+    // 1) priceRecord
+    try (PreparedStatement ps = conn.prepareStatement(
+        "INSERT INTO priceRecord" + idSortation + " (saleDate, maxmedicinePrice, generalPrice) VALUES (?, ?, ?)"
+    )) {
+        ps.setTimestamp(1, now);
+        ps.setString(2, medicinePrice);
+        ps.setString(3, generalPrice);
+        ps.executeUpdate();
+    }
+
+    // 2) discountedDB
+    try (PreparedStatement ps = conn.prepareStatement(
+        "INSERT INTO discountedDB (sale_date, discounted) VALUES (?, ?)"
+    )) {
+        ps.setTimestamp(1, now);
+        ps.setString(2, clientName);
+        ps.executeUpdate();
+    }
+
+    final String selBySerial = "SELECT DeliveryDate, inventory FROM testTable"  + idSortation + "  WHERE SerialNumber = ? AND medicineName = ? AND returnInv='0' AND inventory>0 ORDER BY DeliveryDate ASC LIMIT 1";
+    final String selByName   = "SELECT DeliveryDate, inventory FROM testTable"  + idSortation + "  WHERE medicineName = ? AND returnInv='0' AND inventory>0 ORDER BY DeliveryDate ASC LIMIT 1";
+    final String updBySerial = "UPDATE testTable"  + idSortation + "  SET inventory = inventory - ? WHERE SerialNumber = ? AND medicineName = ? AND DeliveryDate = ? AND returnInv='0'";
+    final String updByName   = "UPDATE testTable"  + idSortation + "  SET inventory = inventory - ? WHERE medicineName = ? AND DeliveryDate = ? AND returnInv='0'";
+
+    for (int i = 0; i < jsonArr.length() - 1; i++) {
+        JSONObject item = jsonArr.getJSONObject(i);
+
+        String serial   = item.optString("serialNumber", "").trim();
+        String medName  = item.optString("medicineName", "").trim();
+        double qtySale  = item.optInt("inventory", 0.0);
+        String priceStr = item.optString("price", "0").replaceAll("[^\\d.]", "");
+        String buyStr   = item.optString("Buyingprice", "0").replaceAll("[^\\d.]", "");
+        boolean bySerial = !serial.isEmpty();
+
+        double salePrice = 0.0, buyPrice = 0.0;
+        try { salePrice = Double.parseDouble(priceStr); } catch (NumberFormatException ignore) {}
+        try { buyPrice  = Double.parseDouble(buyStr);   } catch (NumberFormatException ignore) {}
+
+        double factor = 1.0;
+        try {
+            Matcher m = Pattern.compile("\\d+(\\.\\d+)?").matcher(item.optString("standard", ""));
+            double n1 = 1.0, n2 = 1.0;
+            if (m.find()) n1 = Double.parseDouble(m.group());
+            if (m.find()) n2 = Double.parseDouble(m.group());
+            factor = n1 * n2;
+        } catch (Exception ignore) {}
+
+        boolean isSet = false;
+        try (PreparedStatement ck = conn.prepareStatement("SELECT 1 FROM productSet WHERE setName = ? LIMIT 1")) {
+            ck.setString(1, medName);
+            try (ResultSet rs = ck.executeQuery()) {
+                if (rs.next()) isSet = true;
+            }
+        }
+
+        if (isSet) {
+            try (PreparedStatement setQ = conn.prepareStatement(
+                "SELECT psd.medicineName, psd.standard " +
+                "FROM productSet_detail psd " +
+                "JOIN productSet ps ON ps.id = psd.productSet_id " +
+                "WHERE ps.setName = ?"
+            )) {
+                setQ.setString(1, medName);
+                try (ResultSet rsSet = setQ.executeQuery()) {
+                    while (rsSet.next()) {
+                        String inner = rsSet.getString("medicineName");
+                        String standard = rsSet.getString("standard");
+                        if (inner == null || inner.trim().isEmpty()) continue;
+
+                        double innerFactor = 1.0;
+                        try {
+                            Matcher m = Pattern.compile("\\d+(\\.\\d+)?").matcher(standard);
+                            double n1 = 1.0, n2 = 1.0;
+                            if (m.find()) n1 = Double.parseDouble(m.group());
+                            if (m.find()) n2 = Double.parseDouble(m.group());
+                            innerFactor = n1 * n2;
+                        } catch (Exception ignore) {}
+
+                        double remain = qtySale;
+                        while (remain > 0.0001) {
+                            try (PreparedStatement sel = conn.prepareStatement(selByName)) {
+                                sel.setString(1, inner);
+                                try (ResultSet rs = sel.executeQuery()) {
+                                    if (!rs.next()) break;
+
+                                    String dDate = rs.getString("DeliveryDate");
+                                    double stock = rs.getDouble("inventory");
+                                    if (stock <= 0.00001) break;
+
+                                    double needDb = remain * innerFactor;
+                                    double useDb  = Math.min(needDb, stock);
+                                    if (useDb <= 0.00001) break;
+
+                                    double usedSaleUnit = useDb / innerFactor;
+
+                                    try (PreparedStatement upd = conn.prepareStatement(updByName)) {
+                                        upd.setDouble(1, useDb);
+                                        upd.setString(2, inner);
+                                        upd.setString(3, dDate);
+                                        int affected = upd.executeUpdate();
+                                        if (affected == 0)
+                                            throw new SQLException("세트 구성품 차감 실패");
+                                    }
+
+                                    remain -= usedSaleUnit;
+                                    if (remain < 0.0001) break;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }else if ("한약세트".equals(serial) || "일반세트".equals(serial)) {
+            // ✅ 세트 판매 시 구성품 재고 차감
+            String sql =
+                "UPDATE testTable tt " +
+                "JOIN regularSet rs ON rs.medicineName = tt.medicineName " +
+                "SET tt.inventory = tt.inventory - (COALESCE(rs.inventory,1) * ?) " +
+                "WHERE rs.setName = ?";
+
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                ps.setInt(1, qtySale);   // 판매된 세트 수량
+                ps.setString(2, serial); // 세트 이름 ("한약세트" / "일반세트")
+
+                int updated = ps.executeUpdate();
+                if (updated == 0) {
+                    throw new SQLException("세트 차감 실패: " + serial);
+                }
+            }
+        }
+
+
+        try (PreparedStatement ps = conn.prepareStatement(
+            "INSERT INTO SalesRecord" + idSortation +
+            " (saleDate, medicineName, Buyingprice, price, inventory, SerialNumber, DeliveryDate, standard, memberName) " +
+            " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+        )) {
+            ps.setTimestamp(1, now);
+            ps.setString(2, medName);
+            ps.setDouble(3, buyPrice);
+            ps.setDouble(4, salePrice);
+            ps.setString(5, item.optString("inventory", ""));
+            ps.setString(6, serial);
+            ps.setString(7, item.optString("deliveryDate", ""));
+            ps.setString(8, item.optString("standard", ""));
+            ps.setString(9, item.optString("memberName", ""));
+            ps.executeUpdate();
+        }
+
+        String deleteQuery = "DELETE FROM SalesRecord" + idSortation + " WHERE medicineName = ''";
+        try (PreparedStatement deleteTmt = conn.prepareStatement(deleteQuery)) {
+            deleteTmt.executeUpdate();
+        }
+    }
+
+    conn.commit();
+    out.println("{\"result\":\"success\"}");
+
+} catch (Exception e) {
+    if (conn != null) try { conn.rollback(); } catch (SQLException ignore) {}
+    e.printStackTrace();
+    out.println("{\"result\":\"error\", \"message\":\"" + e.getMessage().replace("\"", "'") + "\"}");
+}
+%>

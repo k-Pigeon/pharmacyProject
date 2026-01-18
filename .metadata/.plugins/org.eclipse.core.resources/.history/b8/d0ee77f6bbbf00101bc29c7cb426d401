@@ -1,0 +1,36 @@
+<%@ page contentType="application/json; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ page import="java.sql.*, org.json.*" %>
+<%@ include file="DBconnection.jsp" %>
+<%
+int pages = Integer.parseInt(request.getParameter("page"));
+int limit = 30;
+int offset = (pages - 1) * limit;
+
+// 전체 행 수 계산
+PreparedStatement countStmt = conn.prepareStatement("SELECT COUNT(*) FROM medicineTable");
+ResultSet countRs = countStmt.executeQuery();
+countRs.next();
+int totalRows = countRs.getInt(1);
+int totalPages = (int) Math.ceil((double) totalRows / limit);
+
+// 데이터 조회
+PreparedStatement pstmt = conn.prepareStatement("SELECT * FROM medicineTable ORDER BY id DESC LIMIT ? OFFSET ?");
+pstmt.setInt(1, limit);
+pstmt.setInt(2, offset);
+ResultSet rs = pstmt.executeQuery();
+
+StringBuilder html = new StringBuilder();
+while(rs.next()) {
+	html.append("<tr data-id='" + rs.getInt("id") + "'>");
+	html.append("<td>" + rs.getInt("id") + "</td>");
+	html.append("<td><input class='editable' name='medicineName' value='" + rs.getString("medicineName") + "'></td>");
+	html.append("<td><input class='editable' name='quantity' value='" + rs.getInt("quantity") + "'></td>");
+	html.append("<td><input class='editable' name='price' value='" + rs.getDouble("price") + "'></td>");
+	html.append("</tr>");
+}
+
+JSONObject result = new JSONObject();
+result.put("html", html.toString());
+result.put("totalPages", totalPages);
+out.print(result.toString());
+%>

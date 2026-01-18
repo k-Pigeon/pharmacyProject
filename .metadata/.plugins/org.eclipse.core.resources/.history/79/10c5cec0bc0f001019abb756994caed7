@@ -1,0 +1,67 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ page import="java.sql.*" %>
+<%@ page import="org.json.JSONArray" %>
+<%@ page import="org.json.JSONObject" %>
+<%@ include file="sessionManager.jsp"%>
+<%@ include file="DBconnection.jsp"%>
+<%
+String dbName = (session != null) ? (String) session.getAttribute("dbName") : null;
+String id = (session != null) ? (String) session.getAttribute("id") : null;
+String password = (session != null) ? (String) session.getAttribute("password") : null;
+
+if (id == null || dbName == null) {
+    response.sendRedirect("login.jsp");
+    return;
+}
+
+jdbcDriver = dbName;
+String custnumber = request.getParameter("custnumber");  // 클라이언트에서 전달된 고객 번호
+System.out.println(custnumber);
+StringBuilder tableHtml = new StringBuilder();
+
+PreparedStatement ps = null;
+ResultSet rs = null;
+
+try {
+    // DB 연결
+    String query = "SELECT sale_date, MIN(price) AS price, MIN(medicine_name) AS medicine_name";
+    ps = conn.prepareStatement(query);
+    ps.setString(1, custnumber);
+    rs = ps.executeQuery();
+
+    // 테이블 헤더
+    tableHtml.append("<table border='1'>");
+    tableHtml.append("<thead><tr>");
+    tableHtml.append("<th>판매일자</th>");
+    tableHtml.append("<th>판매가격</th>");
+    tableHtml.append("<th>약품명</th>");
+    tableHtml.append("</tr></thead>");
+    
+    // 결과를 테이블 행으로 변환
+    tableHtml.append("<tbody>");
+    while (rs.next()) {
+        tableHtml.append("<tr>");
+        tableHtml.append("<td>").append(rs.getString("sale_date")).append("</td>");
+        tableHtml.append("<td>").append(rs.getDouble("price")).append("</td>");
+        tableHtml.append("<td>").append(rs.getString("medicine_name")).append("</td>");
+        tableHtml.append("</tr>");
+    }
+    tableHtml.append("</tbody>");
+    tableHtml.append("</table>");
+    
+    // HTML 테이블을 응답으로 반환
+    response.getWriter().write(tableHtml.toString());  // 생성된 HTML 테이블 반환
+
+} catch (Exception e) {
+    e.printStackTrace();
+    response.getWriter().write("{\"error\": \"" + e.getMessage() + "\"}");  // 오류 처리
+} finally {
+    try {
+        if (rs != null) rs.close();
+        if (ps != null) ps.close();
+        if (conn != null) conn.close();
+    } catch (SQLException e) {
+        e.printStackTrace();
+    }
+}
+%>

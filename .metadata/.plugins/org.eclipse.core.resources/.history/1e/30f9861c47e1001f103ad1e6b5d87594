@@ -1,0 +1,37 @@
+import javax.swing.*;
+import javax.swing.table.DefaultTableModel;
+
+public class TableExample extends JFrame {
+    public TableExample() {
+        setTitle("재고 관리 테이블");
+        setSize(500, 300);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setLocationRelativeTo(null);
+
+        // 컬럼명 정의
+        String[] columnNames = {"제품명", "수량", "가격"};
+
+        // 샘플 데이터
+        Object[][] data = {
+            {"타이레놀", 10, 5000},
+            {"판콜", 20, 3500},
+            {"아스피린", 15, 4000}
+        };
+
+        // 테이블 모델 생성
+        DefaultTableModel model = new DefaultTableModel(data, columnNames);
+
+        // JTable 생성
+        JTable table = new JTable(model);
+
+        // JScrollPane에 JTable 추가 (스크롤 가능하도록)
+        JScrollPane scrollPane = new JScrollPane(table);
+        add(scrollPane);
+
+        setVisible(true);
+    }
+
+    public static void main(String[] args) {
+        new TableExample();
+    }
+}

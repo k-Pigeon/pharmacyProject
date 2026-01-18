@@ -1,0 +1,76 @@
+<%@ page language="java" contentType="application/json; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ page import="java.sql.*, java.util.*, org.json.*" %>
+<%@ include file="sessionManager.jsp" %>
+<%@ include file="DBconnection.jsp" %>
+
+<%
+String dbName = (session != null) ? (String) session.getAttribute("dbName") : null;
+String id = (session != null) ? (String) session.getAttribute("id") : null;
+String idSortation = (session != null) ? (String) session.getAttribute("idSortation") : null;
+
+if (id == null || dbName == null) {
+    response.sendRedirect("login.jsp");
+    return;
+}
+
+request.setCharacterEncoding("UTF-8");
+String medicineName = request.getParameter("medicineName");
+
+PreparedStatement pstmt = null;
+ResultSet rs = null;
+
+try {
+	String sql = "SELECT t.SerialNumber, t.medicineName, t.Buyingprice, t.price, t.kind, " +
+            "t.standard, t.receiptDate, t.DeliveryDate " +
+            "FROM testTable" + idSortation + " t " +
+            "INNER JOIN ( " +
+            "    SELECT medicineName, standard, MAX(receiptDate) AS maxDate " +
+            "    FROM testTable" + idSortation + " " +
+            "    WHERE medicineName LIKE ? " +
+            "    GROUP BY medicineName, standard " +
+            ") latest ON t.medicineName = latest.medicineName " +
+            "AND t.standard = latest.standard " +
+            "AND t.receiptDate = latest.maxDate";
+
+
+    pstmt = conn.prepareStatement(sql);
+    pstmt.setString(1, "%" + medicineName + "%");
+    rs = pstmt.executeQuery();
+
+    JSONArray items = new JSONArray();
+
+    while (rs.next()) {
+        JSONObject item = new JSONObject();
+        item.put("SerialNumber", rs.getString("SerialNumber"));
+        item.put("medicineName", rs.getString("medicineName"));
+        item.put("Buyingprice", rs.getDouble("Buyingprice"));
+        item.put("price", rs.getDouble("price"));
+        item.put("inventory", 1);
+        item.put("kind", rs.getString("kind"));
+        item.put("standard", rs.getString("standard"));
+        item.put("receiptDate", rs.getString("receiptDate"));
+        item.put("DeliveryDate", rs.getString("DeliveryDate"));
+        items.put(item);
+    }
+
+    response.setContentType("application/json");
+
+    if (items.length() == 0) {
+        response.getWriter().write("{}");
+    } else if (items.length() == 1) {
+        response.getWriter().write(items.getJSONObject(0).toString());
+    } else {
+        JSONObject result = new JSONObject();
+        result.put("items", items);
+        result.put("rowCount", items.length());
+        response.getWriter().write(result.toString());
+    }
+
+} catch (Exception e) {
+    e.printStackTrace();
+} finally {
+    if (rs != null) try { rs.close(); } catch (Exception e) {}
+    if (pstmt != null) try { pstmt.close(); } catch (Exception e) {}
+    if (conn != null) try { conn.close(); } catch (Exception e) {}
+}
+%>

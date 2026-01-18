@@ -1,0 +1,115 @@
+<%@ page language="java" contentType="application/json; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ page import="java.sql.*, java.util.*, java.util.regex.*"%>
+<%@ include file="sessionManager.jsp"%>
+<%@ include file="DBconnection.jsp"%>
+
+<%!
+double parseStandard(String str) {
+    if (str == null) return 1;
+
+    Matcher m = Pattern.compile("\\d+(\\.\\d+)?").matcher(str);
+    double result = 1;
+    boolean matched = false;
+
+    while (m.find()) {
+        matched = true;
+        result *= Double.parseDouble(m.group());
+    }
+
+    return matched ? result : 1;
+}
+%>
+
+<%
+response.setContentType("application/json; charset=UTF-8");
+out.clear();
+
+String idSortation = (String) session.getAttribute("idSortation");
+
+String sql =
+    "SELECT medicineName, DeliveryDate, inventory, price, standard, kind, " +
+    "companyName, receiptDate, quantity " +
+    "FROM testTable" + idSortation + " " +
+    "WHERE returnInv='0' " +
+    "ORDER BY medicineName ASC";
+
+PreparedStatement ps = conn.prepareStatement(sql);
+ResultSet rs = ps.executeQuery();
+
+class Info {
+    double totalRealInventory = 0;   // inventory * standard숫자곱 합계
+    double totalQuantity      = 0;   // quantity 합계
+
+    String DeliveryDate;
+    String price;
+    String standard;
+    String kind;
+    String companyName;
+    String receiptDate;
+}
+
+Map<String, Info> map = new LinkedHashMap<>();  // 출력 순서 유지
+
+while (rs.next()) {
+
+    String name = rs.getString("medicineName");
+    double inventory = rs.getDouble("inventory");
+    double quantity = rs.getDouble("quantity");
+    String standard = rs.getString("standard");
+
+    double std = parseStandard(standard);      // 규격 숫자 곱셈값
+    double realInv = inventory * std;          // ★ 핵심 계산식 (곱하기)
+
+    Info data = map.getOrDefault(name, new Info());
+
+    data.totalRealInventory += realInv;        // 합산
+    data.totalQuantity      += quantity;       // 합산
+
+    // 대표값 저장 (마지막 값 기준)
+    data.DeliveryDate = rs.getString("DeliveryDate");
+    data.price = rs.getString("price");
+    data.standard = standard;
+    data.kind = rs.getString("kind");
+    data.companyName = rs.getString("companyName");
+    data.receiptDate = rs.getString("receiptDate");
+
+    map.put(name, data);
+}
+
+rs.close();
+ps.close();
+conn.close();
+
+StringBuilder html = new StringBuilder();
+boolean found = false;
+
+for (String name : map.keySet()) {
+
+    Info d = map.get(name);
+
+    if (d.totalRealInventory < d.totalQuantity) {
+
+        found = true;
+
+        html.append("<tr>");
+        html.append("<td>").append(name).append("</td>");
+        html.append("<td>").append(d.DeliveryDate).append("</td>");
+        html.append("<td>").append(d.totalRealInventory).append("</td>");
+        html.append("<td>").append(d.price).append("</td>");
+        html.append("<td>").append(d.standard).append("</td>");
+        html.append("<td>").append(d.kind).append("</td>");
+        html.append("<td>").append(d.companyName).append("</td>");
+        html.append("<td>").append(d.receiptDate).append("</td>");
+        html.append("<td>").append(d.totalQuantity).append("</td>");
+        html.append("</tr>");
+    }
+}
+
+/* ---------------------------------------------------------
+   3. JSON 출력
+--------------------------------------------------------- */
+out.print("{");
+out.print("\"found\": " + found + ",");
+out.print("\"html\": \"" + html.toString().replace("\"", "\\\"") + "\"");
+out.print("}");
+%>

@@ -1,0 +1,337 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ page import="java.sql.*"%>
+<%@ include file="sessionManager.jsp"%>
+<%@ include file="DBconnection.jsp"%>
+<%
+String dbName = (session != null) ? (String) session.getAttribute("dbName") : null;
+String id = (session != null) ? (String) session.getAttribute("id") : null;
+String password = (session != null) ? (String) session.getAttribute("password") : null;
+
+String idSortation = (session != null) ? (String) session.getAttribute("idSortation") : null; 
+if (id == null || dbName == null) {
+    response.sendRedirect("login.jsp");
+    return;
+}
+
+jdbcDriver = dbName;
+%>
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Insert title here</title>
+<link rel="stylesheet" href="stock/style.css">
+</head>
+<body>
+<div id="content">
+    <!-- Ajax로 본문이 들어올 자리 -->
+</div>
+	<div id="wrap">
+		<header>
+			<jsp:include page="header.jsp"></jsp:include>
+		</header>
+		<form name="data" method="post" id="formTeg" style="min-width: 85%; max-width: 85%;">
+			<div>
+				<h1>재고 목록</h1>
+				<div class="filter">
+					<input type="text" id="nameSearch" placeholder=" 제품명을 입력하세요">
+					<div class="filterButton">
+						<button class="custom-btn btn-12" data-value="1">1개월 이내</button>
+						<button class="custom-btn btn-12" data-value="3">3개월 이내</button>
+						<button class="custom-btn btn-12" data-value="6">6개월 이내</button>
+						<button class="custom-btn btn-12" data-value="12">1년 이내</button>
+						<input type="button" class="quantity" value="주문목록">
+						<input type="button" class="saveSale" value="주문완료">
+					</div>
+					<div class="ExcelDownload">
+						<button type="button" class="downloadBtn btn green mini" value="Excel 다운로드">Excel 다운로드</button>
+					</div>
+				</div>
+			</div>
+			<table class="table_line indexTable">
+				<colgroup>
+					<col width="9%">
+					<col width="9%">
+					<col width="10%">
+					<col width="9%">
+					<col width="9%">
+					<col width="9%">
+					<col width="9%">
+					<col width="9%">
+					<col width="9%">
+					<col width="9%">
+					<col width="9%">
+				</colgroup>
+				<thead>
+					<tr>
+						<th>모두보기</th>
+						<th>수정 / 삭제<br>
+						<th>이름<span class="ascendingOrder nameAscendingOrder">↑</span><span class="descendingOrder nameDescendingOrder">↓</span></th>
+						<th>유통기한<br>(유효기간)
+						<th>주문 최소 수량</th>
+						<th>실제 수량<span class="ascendingOrder invAscendingOrder">↑</span><span class="ascendingOrder invDescendingOrder">↓</span></th>
+						<th>규격</th>
+						<th>가격<span class="ascendingOrder priceAscendingOrder">↑</span><span class="descendingOrder priceDescendingOrder">↓</span></th>
+						<th>회사명</th>
+						<th>입고 날짜</th>
+						<th>반품개시<br></th>
+					</tr>
+				</thead>
+				<tbody id="inventory_list">
+				</tbody>
+			</table>
+			<div id="pagination"></div>
+		</form>
+	</div>
+	<script src="jquery-3.7.1.min.js"></script>
+	<script src="script.js"></script>
+	<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+	
+	<script type="text/javascript">
+	// ===== 전체 jQuery 통합 리팩토링 =====
+	$(document).ready(function () {
+	    initEvents();
+	    initPagination();
+	    autoClickTrigger();
+	    showFirstToggleButton();
+	});
+
+
+	// --------------------------------------------
+	// 기본 이벤트 및 액션 핸들러 통합
+	// --------------------------------------------
+function initEvents() {
+
+    // 주문 선택
+    $("#wrap").on("click", ".isOrdered", function () {
+        $(this).closest("tr").toggleClass("selectTr");
+    });
+
+    // 검색 focus
+    $("#nameSearch").hover(
+        function () { $(this).addClass("searchFocus"); },
+        function () { $(this).removeClass("searchFocus"); }
+    );
+
+    // 반품 UI
+    $("#inventory_list").on("change", ".returnProduct", function () {
+        $(this).closest("tr").css("opacity", $(this).val() === "반품됨" ? 0.5 : 1);
+    });
+
+    // 수정 / 삭제
+    $("#inventory_list").on("click", ".updateInfo", (e) => handleRowEdit($(e.target).closest("tr")));
+    $("#inventory_list").on("click", ".deleteInfo", (e) => handleRowDelete($(e.target).closest("tr")));
+
+    // 정렬
+    $(".priceAscendingOrder").click(() => sortTable("price", true));
+    $(".priceDescendingOrder").click(() => sortTable("price", false));
+    $(".nameAscendingOrder").click(() => sortTable("name", true));
+    $(".nameDescendingOrder").click(() => sortTable("name", false));
+    $(".invAscendingOrder").click(() => sortTable("inv", true));
+    $(".invDescendingOrder").click(() => sortTable("inv", false));
+
+    // 수량
+    $(".quantity").click(loadQuantityData);
+
+    // 주문완료
+    $(".saveSale").click(processSaleOrder);
+
+    // 검색 Enter
+    $("#nameSearch").keydown(e => e.key === "Enter" && (e.preventDefault(), executeNameSearch()));
+
+    // ======= 문제였던 두개 추가한 부분 =======
+
+    // 개월 필터 버튼
+    $(".filter .filterButton .custom-btn").on("click", function (event) {
+        event.preventDefault();
+        const filterValue = parseInt($(this).data("value"), 10);
+
+        $.post("filterData.jsp", { filterValue }, function (response) {
+            $("#inventory_list").html(response);
+        });
+    });
+
+    // 엑셀 다운로드 버튼
+    $(".downloadBtn").on("click", function () {
+        const table = document.querySelector(".table_line");
+        const workbook = XLSX.utils.table_to_book(table, { sheet: "Sheet1" });
+        const t = new Date();
+        XLSX.writeFile(workbook, `${t.getFullYear()}.${t.getMonth() + 1}.${t.getDate()}.xlsx`);
+    });
+}
+
+
+
+	// --------------------------------------------
+	// 공통 AJAX 함수
+	// --------------------------------------------
+	function ajaxPost(url, data, onSuccess) {
+	    $.ajax({
+	        url,
+	        type: "POST",
+	        contentType: "application/json; charset=UTF-8",
+	        data: JSON.stringify(data),
+	        success: onSuccess,
+	        error: (xhr, status, error) => console.error(url + " Error:", error)
+	    });
+	}
+
+
+	// --------------------------------------------
+	// 행 수정 및 삭제 핸들러
+	// --------------------------------------------
+function handleRowEdit(row) {
+
+    const medicineName = row.find("td:nth-child(3)").text().trim();
+    const deliveryDate = row.find("td:nth-child(4)").text().trim();
+    const quantity = row.find("td:nth-child(7)").text().trim();
+
+    alert("medicineName: " + medicineName);
+
+    ajaxPost("dataUpdate.jsp", {
+        secondData: medicineName,
+        eighthData: deliveryDate, 
+        ninthData: quantity
+    }, () => window.location.href = "editPage.jsp");
+}
+
+
+	function handleRowDelete(row) {
+	    if (!confirm("삭제하시겠습니까?")) return;
+
+	    ajaxPost("datadelete.jsp", [{
+	        secondData: row.find("td:eq(3)").text().trim(),
+	        eighthData: row.find("td:eq(6)").text().trim(),
+	        ninthData: row.find("td:eq(4)").text().trim()
+	    }], () => row.remove());
+	}
+
+
+	// --------------------------------------------
+	// 주문 체크된 항목 처리
+	// --------------------------------------------
+	function processSaleOrder() {
+	    const checkedRows = [];
+
+	    $("#inventory_list tr").each(function () {
+	        const checkbox = $(this).find(".isOrdered");
+	        if (checkbox.is(":checked")) {
+	            checkedRows.push({
+	                medicineName: $(this).find("td:eq(2)").text().trim(),
+	                DeliveryDate: $(this).find("td:eq(3)").text().trim()
+	            });
+	        }
+	    });
+
+	    if (checkedRows.length === 0) {
+	        return alert("주문완료 처리할 제품을 선택하세요.");
+	    }
+
+	    ajaxPost("updateIsOrdered.jsp", checkedRows, () => {
+	        alert("주문완료로 처리되었습니다.");
+	        $(".quantity").click();
+	    });
+	}
+
+
+	// --------------------------------------------
+	// 정렬 함수 통합
+	// --------------------------------------------
+	function sortTable(type, ascending) {
+	    const index = { price: 3, name: 1, inv: 4 }[type];
+	    const rows = $(".table_line tbody tr").get();
+
+	    rows.sort((a, b) => {
+	        const A = $(a).find(`td:eq(${index})`).text().trim().toUpperCase();
+	        const B = $(b).find(`td:eq(${index})`).text().trim().toUpperCase();
+	        const numeric = !isNaN(A) && !isNaN(B);
+	        return ascending ? (numeric ? A - B : A.localeCompare(B))
+	                         : (numeric ? B - A : B.localeCompare(A));
+	    });
+
+	    $(".table_line tbody").append(rows);
+	}
+
+
+	// --------------------------------------------
+	// 수량 변동 후 테이블 리로드
+	// --------------------------------------------
+	function loadQuantityData() {
+	    $.post("quantityData.jsp", function (response) {
+	        $("#inventory_list").html(response);
+	        $("#inventory_list .isOrdered:checked").closest("tr").addClass("selectTr");
+	    });
+	}
+
+
+	// --------------------------------------------
+	// 자동 실행
+	// --------------------------------------------
+	function autoClickTrigger() {
+	    const params = new URLSearchParams(window.location.search);
+	    if (params.get("autoClick") === "true") $(".quantity").first().trigger("click");
+	}
+
+
+	// --------------------------------------------
+	// 제품명 검색 AJAX
+	// --------------------------------------------
+	function executeNameSearch() {
+	    const keyword = $("#nameSearch").val().trim();
+	    if (keyword === "") return alert("검색어를 입력해 주세요.");
+
+	    $.post("getData.jsp", { nameSearch: keyword }, function (response) {
+	        $("#inventory_list").html(response);
+	    });
+	}
+
+
+	// --------------------------------------------
+	// 제품명 동일 그룹 토글 버튼
+	// --------------------------------------------
+	function showFirstToggleButton() {
+	    const grouped = {};
+
+	    $("#inventory_list tr").each(function () {
+	        const name = $(this).find("td:eq(2)").text();
+	        const btn = $(this).find(".toggle-details");
+
+	        if (!grouped[name]) grouped[name] = [];
+	        grouped[name].push($(this));
+
+	        if (grouped[name].length > 1) btn.hide();
+	    });
+	}
+
+
+	// --------------------------------------------
+	// 페이지네이션
+	// --------------------------------------------
+	function initPagination() {
+	    const rowsPerPage = 50;
+	    const rows = $("#inventory_list tr").get();
+	    const totalPages = Math.ceil(rows.length / rowsPerPage);
+
+	    function showPage(p) {
+	        rows.forEach((row, i) => row.style.display = (i >= (p - 1) * rowsPerPage && i < p * rowsPerPage) ? "" : "none");
+	        buildPaginationButtons(p);
+	    }
+
+	    function buildPaginationButtons(p) {
+	        const pag = $("#pagination").empty();
+	        for (let i = 1; i <= totalPages; i++) {
+	            $("<button>")
+	                .text(i)
+	                .toggleClass("activePage", i === p)
+	                .click(() => showPage(i))
+	                .appendTo(pag);
+	        }
+	    }
+	    showPage(1);
+	}
+
+    </script>
+</body>
+</html>

@@ -1,0 +1,56 @@
+<%@page import="com.mysql.cj.protocol.Resultset"%>
+<%@page import="com.mysql.cj.x.protobuf.MysqlxPrepare.Prepare"%>
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ page import="java.sql.*"%>
+<%@ include file="sessionManager.jsp"%>
+<%@ include file="DBconnection.jsp"%>
+<%
+String dbName = (session != null) ? (String) session.getAttribute("dbName") : null;
+String id = (session != null) ? (String) session.getAttribute("id") : null;
+String password = (session != null) ? (String) session.getAttribute("password") : null;
+
+/* out.println(password);
+out.println(dbName);
+out.println(id);
+out.println(password); */
+
+String idSortation = (session != null) ? (String) session.getAttribute("idSortation") : null; if (id == null || dbName == null) {
+    response.sendRedirect("login.jsp");
+    return;
+}
+
+jdbcDriver = dbName;
+PreparedStatement pstmt = null;
+ResultSet rs = null;
+try{
+	request.setCharacterEncoding("UTF-8");
+	
+	String medicineStandard = request.getParameter("medicineStandard");
+	
+	String query = " select standard from RegistTable "
+				 + " where medicineName = ?";
+	pstmt = conn.prepareStatement(query);
+	pstmt.setString(1, medicineStandard);
+	rs = pstmt.executeQuery();
+%>
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Insert title here</title>
+</head>
+<body>
+<% while(rs.next()){%>
+	<div><%=rs.getString("standard") %></div>
+<%}%>
+</body>
+</html>
+<%	
+}catch(Exception e){
+	e.printStackTrace();
+}finally{
+    try { if (pstmt != null) pstmt.close(); } catch (Exception ignored) {}
+    try { if (rs != null) rs.close(); } catch (Exception ignored) {}
+}
+%>
+<%@ include file="DBclose.jsp" %>

@@ -1,0 +1,13 @@
+import javax.swing.JFrame;
+
+public class JFrame_Test {
+
+	public static void main(String[] args) {
+		//GUI 창(변수명 : jf)
+		JFrame jf = new JFrame();
+		
+		//형태 좌표(x축, y축, 폭, 높이)
+		jf.setBounds(600, 300, 300, 300);
+	}
+
+}

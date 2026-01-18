@@ -1,0 +1,102 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ page import="java.sql.*"%>
+<%@ include file="sessionManager.jsp"%>
+<%@ include file="DBconnection.jsp"%>
+<%
+String dbName = (session != null) ? (String) session.getAttribute("dbName") : null;
+String id = (session != null) ? (String) session.getAttribute("id") : null;
+String password = (session != null) ? (String) session.getAttribute("password") : null;
+
+/* out.println(password);
+out.println(dbName);
+out.println(id);
+out.println(password); */
+
+String idSortation = (session != null) ? (String) session.getAttribute("idSortation") : null; if (id == null || dbName == null) {
+    response.sendRedirect("login.jsp");
+    return;
+}
+
+jdbcDriver = dbName;
+
+    // 폼 데이터 받기
+    String Sortation = request.getParameter("Sortation");
+    String memberName = request.getParameter("memberName");
+    String memberPhone = request.getParameter("memberPhone");
+    String jumin1 = request.getParameter("jumin1");
+    String jumin2 = request.getParameter("jumin2");
+    String gender = request.getParameter("gender");
+    String customerNumber = request.getParameter("customerNumber");
+    System.out.println();
+
+    // null 값 처리 (빈값일 경우 null로 설정)
+    if (memberName == null || memberName.isEmpty()) memberName = null;
+    if (memberPhone == null || memberPhone.isEmpty()) memberPhone = null;
+    if (jumin1 == null || jumin1.isEmpty()) jumin1 = null;
+    if (jumin2 == null || jumin2.isEmpty()) jumin2 = null;
+    if (gender == null || gender.isEmpty()) gender = null;
+    if (customerNumber == null || customerNumber.isEmpty()) customerNumber = null;
+
+    PreparedStatement stmt = null;
+    PreparedStatement stmt2 = null;
+
+    try {
+        // DB 연결
+        Class.forName("com.mysql.cj.jdbc.Driver");
+
+        if(Sortation.equals("1")){
+            // SQL 쿼리
+            String sql = "INSERT INTO members (memberName, memberPhone, jumin1, jumin2, gender, customerNumber) " +
+                         "VALUES (?, ?, ?, ?, ?, ?)";
+            stmt = conn.prepareStatement(sql);
+
+            // 파라미터 설정
+            stmt.setString(1, memberName);
+            stmt.setString(2, memberPhone);
+            stmt.setString(3, jumin1);
+            stmt.setString(4, jumin2);
+            stmt.setString(5, gender);
+            stmt.setString(6, customerNumber);
+
+            // 쿼리 실행
+            int rowsAffected = stmt.executeUpdate();
+
+            if (rowsAffected > 0) {
+                out.println("고객 등록이 완료되었습니다.");
+            } else {
+                out.println("고객 등록 실패!");
+            }
+        }
+        if(Sortation.equals("2")){
+        	String sql = "update members set memberName = ?, memberphone = ?, jumin1=?, jumin2=?, gender=? "
+        			   + " where customerNumber = ?";
+        	System.out.println("customerNumber: " + customerNumber);
+        	stmt2 = conn.prepareStatement(sql);
+            stmt2.setString(1, memberName);
+            stmt2.setString(2, memberPhone);
+            stmt2.setString(3, jumin1);
+            stmt2.setString(4, jumin2);
+            stmt2.setString(5, gender);
+            stmt2.setString(6, customerNumber);
+            
+            int rowsAffect = stmt2.executeUpdate();
+
+            if (rowsAffect > 0) {
+                out.println("고객 등록이 완료되었습니다.");
+            } else {
+                out.println("고객 등록 실패!");
+            }
+        }
+    } catch (Exception e) {
+        e.printStackTrace();
+        out.println("오류 발생: " + e.getMessage());
+    } finally {
+        // 자원 반환
+        try {
+            try { if (stmt2 != null) stmt2.close(); } catch (Exception ignored) {}
+            try { if (stmt != null) stmt.close(); } catch (Exception ignored) {}
+        } catch (SQLException se) {
+            se.printStackTrace();
+        }
+    }
+%>

@@ -1,0 +1,72 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ page import="org.json.JSONArray" %>
+<%@ page import="org.json.JSONObject" %>
+<%@ page import="java.sql.*" %>
+<%@ page import="java.util.*" %>
+<%@ page import="java.text.*" %>
+<%@ include file="sessionManager.jsp"%>
+<%@ include file="DBconnection.jsp"%>
+<%
+    String dbName = (session != null) ? (String) session.getAttribute("dbName") : null;
+    String id = (session != null) ? (String) session.getAttribute("id") : null;
+    String password = (session != null) ? (String) session.getAttribute("password") : null;
+
+    if (id == null || dbName == null) {
+        response.sendRedirect("login.jsp");
+        return;
+    }
+
+    jdbcDriver = dbName;
+    request.setCharacterEncoding("UTF-8");
+    PreparedStatement ps = null;
+    ResultSet rs = null;
+
+    try {
+        // DB 연결
+        Class.forName("com.mysql.cj.jdbc.Driver");
+
+        // AJAX에서 보낸 JSON 데이터 받기
+        String medicinesJson = request.getParameter("medicines");  // JSON 형태로 받음
+        JSONArray medicines = new JSONArray(medicinesJson);  // JSON 배열로 파싱
+
+        // 각 약품에 대한 정보를 반복하며 DB에 저장
+        Timestamp currentTime = new Timestamp(System.currentTimeMillis());
+
+        for (int i = 0; i < medicines.length(); i++) {
+            JSONObject medicine = medicines.getJSONObject(i);
+            String medicineName = medicine.getString("medicineName");
+            String inventory = medicine.getString("inventory");
+            String standard = medicine.getString("standard");
+            String price = medicine.getString("price");
+            String totalPrice = medicine.getString("totalPrice");
+            String customerId = medicine.getString("customerId");
+            String discounted = medicine.getString("discounted");
+
+            // 판매 기록 삽입
+            String saleInsertQuery = "INSERT INTO SalesData (sale_date, customer_id, medicine_name, inventory, standard, price, total_price, discounted) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+            ps = conn.prepareStatement(saleInsertQuery);
+            ps.setTimestamp(1, currentTime);
+            ps.setString(2, customerId);
+            ps.setString(3, medicineName);
+            ps.setInt(4, Integer.parseInt(inventory));  // 재고 수량
+            ps.setString(5, standard);
+            ps.setDouble(6, Double.parseDouble(price));  // 단가
+            ps.setDouble(7, Double.parseDouble(totalPrice));  // 총합
+            ps.setDouble(8, discounted);  // 총합
+            ps.executeUpdate();
+        }
+
+        out.println("Data inserted successfully.");
+    } catch (Exception e) {
+        e.printStackTrace();
+        out.println("Error: " + e.getMessage());
+    } finally {
+        try {
+            if (rs != null) rs.close();
+            if (ps != null) ps.close();
+            if (conn != null) conn.close();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+%>

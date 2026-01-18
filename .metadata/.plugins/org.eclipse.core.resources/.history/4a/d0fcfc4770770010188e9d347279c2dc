@@ -1,0 +1,118 @@
+<%@ page import="java.sql.*, javax.servlet.http.*, javax.servlet.*, java.io.*, org.json.*, java.util.*, java.util.regex.*" %>
+<%@ page contentType="text/html;charset=UTF-8" language="java" %>
+<%@ include file="sessionManager.jsp"%>
+<%@ include file="DBconnection.jsp"%>
+
+<%
+String dbName = (session != null) ? (String) session.getAttribute("dbName") : null;
+String id = (session != null) ? (String) session.getAttribute("id") : null;
+
+String idSortation = (session != null) ? (String) session.getAttribute("idSortation") : null; if (id == null || dbName == null) {
+    response.sendRedirect("login.jsp");
+    return;
+}
+
+jdbcDriver = dbName;
+
+try {
+    BufferedReader reader = request.getReader();
+    StringBuilder jsonBuilder = new StringBuilder();
+    String line;
+    while ((line = reader.readLine()) != null) {
+        jsonBuilder.append(line);
+    }
+    String jsonData = jsonBuilder.toString();
+
+    JSONArray rows = new JSONArray(jsonData);
+    System.out.println("📦 수신된 JSON 데이터: " + rows);
+
+    for (int i = 0; i < rows.length(); i++) {
+        JSONObject row = rows.getJSONObject(i);
+
+        // 추출
+        String serialNumber = row.optString("serialNumber", "");
+        String medicineName = row.optString("medicineName", "");
+        String buyingPrice = row.optString("buyingPrice", "0");
+        String price = row.optString("price", "0");
+        double inventory = row.optDouble("inventory", 0.0);
+        String companyName = row.optString("companyName", "");
+        String standard = row.optString("standard", "");
+        String kind = row.optString("kind", "");
+        String receiptDate = row.optString("receiptDate", "");
+        String deliveryDate = row.optString("deliveryDate", "");
+
+        String tipMedicineName = row.optString("tipMedicineName", "");
+        String tipStandard = row.optString("tipstandard", "");
+        String testDate = row.optString("tipDeliveryDate", "");
+
+        // deliveryDate 변환
+        String formattedDeliveryDate = deliveryDate;
+        if (deliveryDate.matches("\\d{2}/\\d{2}/\\d{2}")) {
+            String[] parts = deliveryDate.split("/");
+            formattedDeliveryDate = "20" + parts[0] + "-" + parts[1] + "-" + parts[2];
+        }
+
+        // testDate도 같은 방식으로 보정
+        String formattedTestDate = testDate;
+        if (testDate.matches("\\d{2}/\\d{2}/\\d{2}")) {
+            String[] parts = testDate.split("/");
+            formattedTestDate = "20" + parts[0] + "-" + parts[1] + "-" + parts[2];
+        }
+
+        // 숫자 추출 곱셈
+        double adjustedInventory = inventory;
+        try {
+            Pattern numberPattern = Pattern.compile("\\d+(\\.\\d+)?");
+            Matcher matcher = numberPattern.matcher(standard);
+            double product = 1.0;
+            while (matcher.find()) {
+                product *= Double.parseDouble(matcher.group());
+            }
+            adjustedInventory = inventory * product;
+        } catch (Exception e) {
+            adjustedInventory = inventory;
+        }
+
+        // ✅ UPDATE 쿼리 수정: 조건 필드 반영
+        String updateQuery = "UPDATE testTable"  + idSortation + "  SET medicineName = ?, buyingPrice = ?, price = ?, " +
+                "inventory = ?, companyName = ?, standard = ?, receiptDate = ?, deliveryDate = ?, kind = ? " +
+                "WHERE serialNumber = ? AND medicineName = ? AND standard = ? AND deliveryDate = ?";
+
+        PreparedStatement updateStmt = conn.prepareStatement(updateQuery);
+        updateStmt.setString(1, medicineName);
+        updateStmt.setString(2, buyingPrice);
+        updateStmt.setString(3, price);
+        updateStmt.setDouble(4, adjustedInventory);
+        updateStmt.setString(5, companyName);
+        updateStmt.setString(6, standard);
+        updateStmt.setString(7, receiptDate);
+        updateStmt.setString(8, formattedDeliveryDate);  // 저장용 deliveryDate
+        updateStmt.setString(9, kind);
+
+        updateStmt.setString(10, serialNumber);
+        updateStmt.setString(11, tipMedicineName);
+        updateStmt.setString(12, tipStandard);
+        updateStmt.setString(13, formattedTestDate);     // 조건용 testDate
+
+        int rowsUpdated = updateStmt.executeUpdate();
+        updateStmt.close();
+
+        if (rowsUpdated == 0) {
+            System.out.println("❌ UPDATE 실패: 조건 불일치 [" +
+                "serialNumber=" + serialNumber +
+                ", medicineName=" + tipMedicineName +
+                ", standard=" + tipStandard +
+                ", deliveryDate=" + formattedTestDate + "]");
+        } else {
+            System.out.println("✅ UPDATE 성공: " + rowsUpdated + "행 갱신됨");
+        }
+    }
+
+    out.println("✅ 데이터 처리가 완료되었습니다.");
+    conn.close();
+} catch (Exception e) {
+    e.printStackTrace();
+    response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+    out.println("❌ 데이터베이스 오류 발생: " + e.getMessage());
+}
+%>

@@ -1,0 +1,17 @@
+import javax.swing.*;
+import java.awt.*;
+
+public class HeaderPanel extends JPanel {
+    public HeaderPanel() {
+        setLayout(new FlowLayout(FlowLayout.LEFT));
+        setBackground(Color.LIGHT_GRAY);
+
+        JLabel logo = new JLabel("MyApp");
+        JButton homeButton = new JButton("Home");
+        JButton aboutButton = new JButton("About");
+
+        add(logo);
+        add(homeButton);
+        add(aboutButton);
+    }
+}

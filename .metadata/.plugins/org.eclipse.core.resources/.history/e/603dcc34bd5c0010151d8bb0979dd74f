@@ -1,0 +1,190 @@
+<%@ page language="java" contentType="application/json; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ page import="java.io.*, java.util.*, java.sql.*,
+                 javax.servlet.*, javax.servlet.http.*,
+                 org.json.JSONArray, org.json.JSONObject,
+                 java.util.regex.Pattern, java.util.regex.Matcher" %>
+<%@ include file="sessionManager.jsp"%>
+<%@ include file="DBconnection.jsp"%>
+
+<%
+String dbName = (session != null) ? (String) session.getAttribute("dbName") : null;
+String id = (session != null) ? (String) session.getAttribute("id") : null;
+
+if (id == null || dbName == null) {
+    response.sendRedirect("login.jsp");
+    return;
+}
+
+request.setCharacterEncoding("UTF-8");
+Timestamp now = new Timestamp(System.currentTimeMillis());
+
+conn.setAutoCommit(false);
+
+try {
+    StringBuilder sb = new StringBuilder();
+    try (BufferedReader br = request.getReader()) {
+        String line;
+        while ((line = br.readLine()) != null) sb.append(line);
+    }
+
+    JSONArray jsonArr = new JSONArray(sb.toString());
+    JSONObject meta = jsonArr.getJSONObject(jsonArr.length() - 1);
+
+    String medicinePrice = meta.getString("medicinePrice");
+    String generalPrice = meta.getString("generalPrice");
+    String clientName = meta.getString("discounted");
+
+    try (PreparedStatement ps = conn.prepareStatement(
+            "INSERT INTO priceRecord (saleDate, maxmedicinePrice, generalPrice) VALUES (?, ?, ?)")) {
+        ps.setTimestamp(1, now);
+        ps.setString(2, medicinePrice);
+        ps.setString(3, generalPrice);
+        ps.executeUpdate();
+    }
+
+    try (PreparedStatement ps = conn.prepareStatement(
+            "INSERT INTO discountedDB (sale_date, discounted) VALUES (?, ?)")) {
+        ps.setTimestamp(1, now);
+        ps.setString(2, clientName);
+        ps.executeUpdate();
+    }
+
+    final String selBySerial = "SELECT DeliveryDate, inventory FROM testTable WHERE SerialNumber = ? AND medicineName = ? AND returnInv='0' AND inventory>0 ORDER BY DeliveryDate ASC LIMIT 1";
+    final String selByName = "SELECT DeliveryDate, inventory FROM testTable WHERE medicineName = ? AND returnInv='0' AND inventory>0 ORDER BY DeliveryDate ASC LIMIT 1";
+    final String updBySerial = "UPDATE testTable SET inventory = inventory - ? WHERE SerialNumber = ? AND medicineName = ? AND DeliveryDate = ? AND returnInv='0'";
+    final String updByName = "UPDATE testTable SET inventory = inventory - ? WHERE medicineName = ? AND DeliveryDate = ? AND returnInv='0'";
+
+    for (int i = 0; i < jsonArr.length() - 1; i++) {
+        JSONObject item = jsonArr.getJSONObject(i);
+
+        String serial = item.optString("serialNumber", "").trim();
+        String medName = item.optString("medicineName", "").trim();
+        double qtySale = item.optDouble("inventory", 0.0);
+        String priceStr = item.optString("price", "0").replaceAll("[^0-9.]", "");
+        String buyStr = item.optString("Buyingprice", "0").replaceAll("[^0-9.]", "");
+        boolean bySerial = !serial.isEmpty();
+
+        double salePrice = 0.0, buyPrice = 0.0;
+        try { salePrice = Double.parseDouble(priceStr); } catch (NumberFormatException ignore) {}
+        try { buyPrice = Double.parseDouble(buyStr); } catch (NumberFormatException ignore) {}
+
+        double factor = 1.0;
+        try {
+            Matcher m = Pattern.compile("\\d+(\\.\\d+)?").matcher(item.optString("standard", ""));
+            double n1 = 1.0, n2 = 1.0;
+            if (m.find()) n1 = Double.parseDouble(m.group());
+            if (m.find()) n2 = Double.parseDouble(m.group());
+            factor = n1 * n2;
+        } catch (Exception ignore) {}
+
+        boolean isSet = false;
+        try (PreparedStatement ck = conn.prepareStatement(
+                "SELECT 1 FROM productSet WHERE medicineName = ? LIMIT 1")) {
+            ck.setString(1, medName);
+            try (ResultSet rs = ck.executeQuery()) {
+                if (rs.next()) isSet = true;
+            }
+        }
+
+        if (isSet) {
+            try (PreparedStatement setQ = conn.prepareStatement(
+                    "SELECT medicineName_1, medicineName_2, medicineName_3, medicineName_4 FROM productSet WHERE medicineName = ?")) {
+                setQ.setString(1, medName);
+                try (ResultSet rsSet = setQ.executeQuery()) {
+                    if (rsSet.next()) {
+                        for (int idx = 1; idx <= 4; idx++) {
+                            String inner = rsSet.getString("medicineName_" + idx);
+                            if (inner == null || inner.trim().isEmpty()) continue;
+
+                            double remain = qtySale;
+                            while (remain > 0) {
+                                try (PreparedStatement sel = conn.prepareStatement(selByName)) {
+                                    sel.setString(1, inner);
+                                    try (ResultSet rs = sel.executeQuery()) {
+                                        if (!rs.next()) break;
+
+                                        String dDate = rs.getString("DeliveryDate");
+                                        double stock = rs.getDouble("inventory");
+
+                                        // ← 여기에 factor 적용
+                                        double needDb = remain * factor;
+                                        double useDb = Math.min(needDb, stock);
+                                        double usedSaleUnit = useDb / factor;
+
+                                        try (PreparedStatement upd = conn.prepareStatement(updByName)) {
+                                            upd.setDouble(1, useDb);
+                                            upd.setString(2, inner);
+                                            upd.setString(3, dDate);
+                                            if (upd.executeUpdate() == 0)
+                                                throw new SQLException("세트 구성품 차감 실패");
+                                        }
+
+                                        remain -= usedSaleUnit;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+ else if (!"일반세트".equals(serial) && !"한약세트".equals(serial)) {
+            double remain = qtySale;
+            while (remain > 0) {
+                try (PreparedStatement sel = conn.prepareStatement(bySerial ? selBySerial : selByName)) {
+                    if (bySerial) {
+                        sel.setString(1, serial);
+                        sel.setString(2, medName);
+                    } else {
+                        sel.setString(1, medName);
+                    }
+
+                    try (ResultSet rs = sel.executeQuery()) {
+                        if (!rs.next()) break;
+
+                        String dDate = rs.getString("DeliveryDate");
+                        double stock = rs.getDouble("inventory");
+                        double needDb = remain * factor;
+                        double useDb = Math.min(needDb, stock);
+                        double usedSaleUnit = useDb / factor;
+
+                        try (PreparedStatement upd = conn.prepareStatement(bySerial ? updBySerial : updByName)) {
+                            int p = 1;
+                            upd.setDouble(p++, useDb);
+                            if (bySerial) upd.setString(p++, serial);
+                            upd.setString(p++, medName);
+                            upd.setString(p, dDate);
+
+                            if (upd.executeUpdate() == 0)
+                                throw new SQLException("단품 차감 실패");
+                        }
+
+                        remain -= usedSaleUnit;
+                    }
+                }
+            }
+        }
+
+        try (PreparedStatement ps = conn.prepareStatement(
+                "INSERT INTO SalesRecord (saleDate, medicineName, Buyingprice, price, inventory, SerialNumber, DeliveryDate, standard) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")) {
+            ps.setTimestamp(1, now);
+            ps.setString(2, medName);
+            ps.setDouble(3, buyPrice);
+            ps.setDouble(4, salePrice);
+            ps.setString(5, item.optString("inventory", ""));
+            ps.setString(6, serial);
+            ps.setString(7, item.optString("deliveryDate", ""));
+            ps.setString(8, item.optString("standard", ""));
+            ps.executeUpdate();
+        }
+    }
+
+    conn.commit();
+    out.println("{\"result\":\"success\"}");
+
+} catch (Exception e) {
+    if (conn != null) try { conn.rollback(); } catch (SQLException ignore) {}
+    e.printStackTrace();
+    out.println("{\"result\":\"error\", \"message\":\"" + e.getMessage().replace("\"", "'") + "\"}");
+}
+%>

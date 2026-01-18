@@ -1,0 +1,22 @@
+package frameProject;
+import java.awt.*;
+
+import javax.swing.*; //스윙 클래스
+
+public class frame {
+	public static void main(String[] args) {
+		JFrame f = new JFrame("Frame");
+		JPanel jp = new JPanel();
+		JLabel jl = new JLabel();
+		jp.add(new JLabel("WelCome to Korea!"));//jp에 Label를 이용해 글자를 추가
+		
+		
+		f.add(jp);//add를 통해 f에 jp를 추가
+		
+		f.setSize(600, 400);//크기
+		f.setLocationRelativeTo(null);//출력될 위치(null = 중앙)
+		f.setResizable(false);//크기 조정 유무(true: 가능, false: 불가능)
+		f.setVisible(true);//프래임 호출
+	}
+
+}

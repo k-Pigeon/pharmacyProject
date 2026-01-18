@@ -1,0 +1,18 @@
+import javax.swing.*;
+public class JLabelText01 {
+
+	public static void main(String[] args) {
+		// TODO Auto-generated method stub
+		JFrame jf = new JFrame();
+		jf.setBounds(600, 300, 300, 300);
+		jf.setTitle("서가종로온누리약국");
+		jf.setLayout(null);
+		
+		JLabel jl = new JLabel("아이디 : ");
+		jl.setSize(100, 40);
+		jl.setLocation(30, 30);
+		
+		jf.setVisible(true);
+	}
+
+}

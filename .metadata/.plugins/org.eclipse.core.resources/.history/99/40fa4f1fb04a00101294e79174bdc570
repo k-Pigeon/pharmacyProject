@@ -1,0 +1,50 @@
+<%@page import="com.mysql.cj.x.protobuf.MysqlxPrepare.Prepare"%>
+<%@page import="com.mysql.cj.protocol.Resultset"%>
+<%@ page language="java" contentType="text/html; charset=UTF-8"
+    pageEncoding="UTF-8"%>
+<%@ page import="java.sql.*"%>
+<%@ include file="sessionManager.jsp"%>
+<%@ include file="DBconnection.jsp"%>
+<%
+String dbName = (session != null) ? (String) session.getAttribute("dbName") : null;
+String id = (session != null) ? (String) session.getAttribute("id") : null;
+String password = (session != null) ? (String) session.getAttribute("password") : null;
+
+if (id == null || dbName == null) {
+	response.sendRedirect("login.jsp");
+	return;
+}
+
+jdbcDriver = dbName;
+
+	request.setCharacterEncoding("UTF-8");
+	String dateDetail = request.getParameter("dateDetail");
+	ResultSet rs = null;
+	PreparedStatement pstmt = null;
+	try{
+		String SQL = " select DATE_FORMAT(saleDate, '%Y-%m') AS salesDate, "
+				   + " medicineName, Buyingprice, price, inventory, "
+				   + " (price - buyingprice) AS margin, "
+				   + "  ((price - buyingprice) / price * 100) AS marginRate"
+				   + " from salesRecord "
+				   + " where DATE_FORMAT(sale_date, '%Y-%m') = ? ";
+		pstmt = conn.prepareStatement(SQL);
+		pstmt.setString(1, dateDetail);
+		rs = pstmt.executeQuery();
+		
+		while(rs.next()){
+			%>
+			<tr>
+				<td><%= rs.getString("medicineName") %></td>
+				<td><%= rs.getString("Buyingprice") %></td>
+				<td><%= rs.getString("price") %></td>
+				<td><%= rs.getString("margin") %></td>
+				<td><%= rs.getString("marginRate") %></td>
+			</tr>
+			<%
+		}
+		
+	}catch(Exception e){
+		e.printStackTrace();
+	}
+%>

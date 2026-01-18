@@ -1,0 +1,104 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ page import="java.sql.*"%>
+<%@ include file="sessionManager.jsp"%>
+<%@ include file="DBconnection.jsp"%>
+<%
+String dbName = (session != null) ? (String) session.getAttribute("dbName") : null;
+String id = (session != null) ? (String) session.getAttribute("id") : null;
+String password = (session != null) ? (String) session.getAttribute("password") : null;
+
+if (id == null || dbName == null) {
+    response.sendRedirect("login.jsp");
+    return;
+}
+
+jdbcDriver = dbName;
+%>
+<%
+    String medicineName = request.getParameter("medicineName");
+    PreparedStatement pstmt = null;
+    ResultSet rs = null;
+
+    boolean hasResult = false; // while 문 외부에서 선언
+
+    try {
+        Class.forName("com.mysql.cj.jdbc.Driver");
+
+        String sql = " SELECT medicineName, standard, FORMAT(buyingprice, 0) AS byPrice, price, "
+        		   + " countNumber, lowerAndHigest "
+			       + " FROM RegistTable "
+	 			   + " WHERE medicineName LIKE ?";
+        pstmt = conn.prepareStatement(sql);
+        pstmt.setString(1, "%" + medicineName + "%");
+        rs = pstmt.executeQuery();
+%>
+<% while (rs.next()) { 
+     hasResult = true;
+%>
+<tr class='result-row' style='cursor: pointer;'
+    data-medicinename='<%= rs.getString("medicineName") %>'
+    data-standard='<%= rs.getString("standard") %>'
+    data-buyingprice='<%= "1" %>'
+    data-price='<%= rs.getString("price") %>'
+    data-lowerandhigest='<%= rs.getString("lowerAndHigest") %>'
+    >
+    <td style='border: 1px solid #ccc; padding: 5px;'><%= rs.getString("medicineName") %></td>
+    <td style='border: 1px solid #ccc; padding: 5px;'><%= rs.getString("standard") %></td>
+    <td style='border: 1px solid #ccc; padding: 5px;'><%= rs.getString("byPrice") %></td>
+    <td style='border: 1px solid #ccc; padding: 5px;'><%= rs.getString("price") %></td>
+    <td style='border: 1px solid #ccc; padding: 5px;'><%= rs.getString("lowerAndHigest") %></td>
+</tr>
+
+<% } %>
+<tr>
+    <td colspan="9" style="text-align: center;">
+        <div style="margin-top: 10px;">
+            <button onclick="location.href='addProduct.jsp?medicineName=<%= medicineName %>'">등록하러 가기</button>
+        </div>
+    </td>
+</tr>
+<% if (!hasResult) { %>
+<tr>
+    <td colspan="9" style="text-align: center; padding: 10px;">검색 결과가 없습니다.</td>
+</tr>
+<tr>
+    <td colspan="9" style="text-align: center; padding: 10px;">제품 등록을 하시겠습니까?</td>
+</tr>
+<tr>
+    <td colspan="9" style="text-align: center;">
+        <div style="margin-top: 10px;">
+            <button onclick="location.href='addProduct.jsp?medicineName=<%= medicineName %>'">등록하러 가기</button>
+        </div>
+    </td>
+</tr>
+<% } %>
+
+
+<%
+    } catch (Exception e) {
+        e.printStackTrace();
+    } finally {
+        if (rs != null) rs.close();
+        if (pstmt != null) pstmt.close();
+        if (conn != null) conn.close();
+    }
+%>
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  document.querySelectorAll(".result-row").forEach(row => {
+    row.addEventListener("click", function () {
+      if (window.opener && !window.opener.closed) {
+        const focused = window.opener.document.querySelector("input[name='medicineName[]']:focus");
+        if (focused) {
+          const tr = focused.closest("tr");
+          tr.querySelector("input[name='medicineName[]']").value = this.dataset.medicinename;
+          tr.querySelector("input[name='standard[]']").value = this.dataset.standard;
+          tr.querySelector("input[name='price[]']").value = this.dataset.price;
+          tr.querySelector("input[name='lowerAndHigest[]']").value = this.dataset.lowerandhigest;
+        }
+        window.close();
+      }
+    });
+  });
+});
+</script>

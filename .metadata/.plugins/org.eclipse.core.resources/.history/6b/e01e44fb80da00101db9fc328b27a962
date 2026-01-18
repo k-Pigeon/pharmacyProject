@@ -1,0 +1,58 @@
+<%@ page contentType="application/json; charset=UTF-8" pageEncoding="UTF-8" %>
+<%@ page import="java.sql.*" %>
+<%@ page import="org.json.JSONObject" %>
+<%@ include file="sessionManager.jsp"%>
+<%@ include file="DBconnection.jsp"%>
+<%
+String dbName = (session != null) ? (String) session.getAttribute("dbName") : null;
+String id = (session != null) ? (String) session.getAttribute("id") : null;
+String password = (session != null) ? (String) session.getAttribute("password") : null;
+
+String idSortation = (session != null) ? (String) session.getAttribute("idSortation") : null; if (id == null || dbName == null) {
+	response.sendRedirect("login.jsp");
+	return;
+}
+
+jdbcDriver = dbName;
+PreparedStatement pstmt = null;
+ResultSet rs = null;
+    request.setCharacterEncoding("UTF-8");
+    String custnumberStr = request.getParameter("custnumber");
+    System.out.println("요청 받은 고객번호: " + custnumberStr);
+
+    JSONObject responseJson = new JSONObject();
+
+    if (custnumberStr == null || custnumberStr.trim().isEmpty()) {
+        responseJson.put("error", "고객번호가 전달되지 않았습니다.");
+        response.getWriter().write(responseJson.toString());
+        return;
+    }
+
+
+
+    try {
+        // 쿼리 실행
+        String sql = "SELECT memoInfo FROM members WHERE customerNumber = ?";
+        pstmt = conn.prepareStatement(sql);
+        pstmt.setString(1, custnumberStr);
+        rs = pstmt.executeQuery();
+
+        if (rs.next()) {
+            String memo = rs.getString("memoInfo");
+            responseJson.put("rowNumber", custnumberStr);
+            responseJson.put("memo", memo != null ? memo : "");
+        } else {
+            responseJson.put("error", "해당 고객번호에 대한 메모가 없습니다.");
+        }
+
+    } catch (Exception e) {
+        e.printStackTrace();
+        responseJson.put("error", "DB 오류: " + e.getMessage());
+    } finally {
+        if (rs != null) try { rs.close(); } catch (Exception e) {}
+        if (pstmt != null) try { pstmt.close(); } catch (Exception e) {}
+        if (conn != null) try { conn.close(); } catch (Exception e) {}
+    }
+
+    response.getWriter().write(responseJson.toString());
+%>

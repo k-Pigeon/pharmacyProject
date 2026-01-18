@@ -1,0 +1,111 @@
+<%@ page language="java" contentType="application/json; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ page import="java.sql.*, java.util.*"%>
+<%@ include file="sessionManager.jsp"%>
+<%@ include file="DBconnection.jsp"%>
+
+<%
+response.setContentType("application/json; charset=UTF-8");
+out.clear();
+
+try{
+	
+}catch(Exception e){
+	out.println("Error : " + e.Message);
+}
+
+String idSortation = (String) session.getAttribute("idSortation");
+
+String sql =
+    "SELECT medicineName, DeliveryDate, inventory, price, standard, kind, " +
+    "companyName, receiptDate, quantity " +
+    "FROM testTable" + idSortation + " " +
+    "WHERE returnInv='0' " +
+    "ORDER BY medicineName ASC, DeliveryDate DESC";
+
+PreparedStatement ps = conn.prepareStatement(sql);
+ResultSet rs = ps.executeQuery();
+
+// 이름별 합산 정보
+class Info {
+    double totalInv = 0;     // ← 규격 보정 없는 실제 재고 합산
+    double totalQty = 0;
+
+    String DeliveryDate;
+    String price;
+    String standard;
+    String kind;
+    String companyName;
+    String receiptDate;
+}
+
+Map<String, Info> map = new LinkedHashMap<>();
+
+while (rs.next()) {
+
+    String name = rs.getString("medicineName");
+    if (name == null || name.trim().isEmpty()) continue;
+    name = name.trim();
+
+    double inventory = rs.getDouble("inventory");
+
+    double quantity = 0;
+    try {
+        String q = rs.getString("quantity");
+        quantity = (q == null || q.trim().isEmpty()) ? 0 : Double.parseDouble(q.trim());
+    } catch (Exception ignore) {}
+
+    Info data = map.getOrDefault(name, new Info());
+
+    // 🔥 규격 기반 보정 없이 순수 재고 합산
+    data.totalInv += inventory;
+
+    // 주문 최소 수량 (여러 row 중 하나만 사용)
+    data.totalQty = quantity;
+
+    // 최신 row를 기준으로 대표값 저장
+    if (data.DeliveryDate == null) {
+        data.DeliveryDate = rs.getString("DeliveryDate");
+        data.price = rs.getString("price");
+        data.standard = rs.getString("standard");
+        data.kind = rs.getString("kind");
+        data.companyName = rs.getString("companyName");
+        data.receiptDate = rs.getString("receiptDate");
+    }
+
+    map.put(name, data);
+}
+
+rs.close();
+ps.close();
+conn.close();
+
+StringBuilder html = new StringBuilder();
+boolean found = false;
+
+for (String name : map.keySet()) {
+    Info d = map.get(name);
+
+    // 🔥 규격 보정 없는 단순 비교
+    if (d.totalInv < d.totalQty) {
+
+        found = true;
+
+        html.append("<tr>");
+        html.append("<td>").append(name).append("</td>");
+        html.append("<td>").append(d.DeliveryDate).append("</td>");
+        html.append("<td>").append(d.totalInv).append("</td>");
+        html.append("<td>").append(d.price).append("</td>");
+        html.append("<td>").append(d.standard).append("</td>");
+        html.append("<td>").append(d.kind).append("</td>");
+        html.append("<td>").append(d.companyName).append("</td>");
+        html.append("<td>").append(d.receiptDate).append("</td>");
+        html.append("<td>").append(d.totalQty).append("</td>");
+        html.append("</tr>");
+    }
+}
+
+out.print("{");
+out.print("\"found\": " + found + ",");
+out.print("\"html\": \"" + html.toString().replace("\"", "\\\"") + "\"");
+out.print("}");
+%>

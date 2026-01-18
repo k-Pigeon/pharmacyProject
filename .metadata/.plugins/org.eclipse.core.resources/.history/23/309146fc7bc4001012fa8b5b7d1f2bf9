@@ -1,0 +1,41 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8"
+    pageEncoding="UTF-8"%>
+<%@ page import="java.sql.*, org.json.*, java.util.*" %>
+String sql = "SELECT inventory, standard, quantity FROM testTable" + idSortation;
+
+boolean warningFound = false;
+
+try (PreparedStatement ps = conn.prepareStatement(sql);
+     ResultSet rs = ps.executeQuery()) {
+
+    while (rs.next()) {
+        
+        double inventory = rs.getDouble("inventory");
+        String standardStr = rs.getString("standard");
+        double quantity = rs.getDouble("quantity");
+
+        // 규격 숫자 파싱
+        double standard = 1;
+        if (standardStr != null) {
+            java.util.regex.Matcher m = java.util.regex.Pattern
+                    .compile("\\d+(\\.\\d+)?")
+                    .matcher(standardStr);
+
+            while (m.find()) {
+                standard *= Double.parseDouble(m.group());
+            }
+        }
+
+        // 조건 확인
+        if (quantity < inventory * standard) {
+            warningFound = true;
+            break;
+        }
+    }
+} catch(Exception e) {
+    e.printStackTrace();
+}
+
+// 세션에 결과 저장
+session.setAttribute("inventoryWarning", warningFound ? "Y" : "N");
+%>

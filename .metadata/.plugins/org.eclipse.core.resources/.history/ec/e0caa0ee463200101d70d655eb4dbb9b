@@ -1,0 +1,122 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ page import="java.sql.*"%>
+<%@ page import="java.util.*"%>
+<%@ page import="java.io.*"%>
+<%@ page import="java.sql.*, java.util.*" %>
+<%@ include file="sessionManager.jsp"%>
+<%@ include file="DBconnection.jsp"%>
+<%
+String dbName = (session != null) ? (String) session.getAttribute("dbName") : null;
+String id = (session != null) ? (String) session.getAttribute("id") : null;
+String password = (session != null) ? (String) session.getAttribute("password") : null;
+
+/* out.println(password);
+out.println(dbName);
+out.println(id);
+out.println(password); */
+
+if (id == null || dbName == null) {
+    response.sendRedirect("login.jsp");
+    return;
+}
+
+jdbcDriver = dbName;
+%>
+<!DOCTYPE html>
+<html>
+<head>
+<title>에스팜</title>
+<style>
+#header ul {
+	display: block;
+}
+#wrap #section{
+	display: block;
+    width: 100%;
+    height: 95vh;
+    transform: translateY(5vh);
+}
+#wrap #section h1{
+	text-align:center;
+}
+#wrap #section .tableContent{
+    width: 80%;
+    height: 50vh;
+    overflow: auto;
+    margin:0 auto;
+}
+#wrap #section .tableContent tbody{
+	display:block;
+	max-height:800px;
+	oveflow-y: scroll;
+}
+#wrap #section .tableHeader{
+	width: 80%;
+    margin:0 auto;
+}
+</style>
+</head>
+<body>
+	<div id="wrap" style="display: block;">
+		<header>
+			<jsp:include page="header.jsp"></jsp:include>
+		</header>
+		<section id="section">
+			<h1>매출</h1>
+			<table border="1" class="tableHeader">
+				<colgroup>
+					<col width="20%">
+					<col width="20%">
+					<col width="20%">
+					<col width="20%">
+					<col width="20%">
+				</colgroup>
+				<thead>
+					<tr>
+						<th>날짜</th>
+						<th>판매액</th>
+						<th>사입가</th>
+						<th>마진</th>
+						<th>마진률</th>
+					</tr>
+				</thead>
+			</table>
+			<table border="1" class="tableContent">
+				<colgroup>
+					<col width="20%">
+					<col width="20%">
+					<col width="20%">
+					<col width="20%">
+					<col width="20%">
+				</colgroup>
+				<tbody id = "totalSales">
+					<%
+						PreparedStatement pstmt = null;
+						ResultSet rs = null;
+						
+						String sql = " select date(saleDate) AS SalesDate "
+								   + " from salesRecord";
+						pstmt = conn.prepareStatement(sql);
+						rs = pstmt.executeQuery();
+						
+						while(rs.next()){
+					%>
+					<tr>
+						<td><%= rs.getString("SalesDate") %></td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+					</tr>
+					<%
+						}
+					%>
+				</tbody>
+			</table>
+		</section>
+	</div>
+	<script src="jquery-3.7.1.min.js"></script><script src="script.js"></script>
+	<script>
+	</script>
+</body>
+</html>

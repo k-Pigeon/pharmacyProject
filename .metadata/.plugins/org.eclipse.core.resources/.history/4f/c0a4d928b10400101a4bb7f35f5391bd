@@ -1,0 +1,101 @@
+<%@ page contentType="text/html; charset=UTF-8" %>
+<%@ page import="java.sql.*" %>
+<%
+    // UTF-8 인코딩 설정
+    request.setCharacterEncoding("UTF-8");
+
+    // 검색어 파라미터 가져오기
+    String nameSearch = request.getParameter("nameSearch");
+
+    if (nameSearch != null && !nameSearch.trim().isEmpty()) {
+        Connection conn = null;
+        PreparedStatement pstmt = null;
+        ResultSet rs = null;
+
+        try {
+            // 데이터베이스 연결 정보
+            String jdbcDriver = "jdbc:mysql://localhost:3306/tutorial2?useUnicode=true&characterEncoding=utf8";
+            String dbUser = "root";
+            String dbPwd = "pharmacy@1234";
+
+            // 데이터베이스 연결 및 SQL 실행
+            Class.forName("com.mysql.cj.jdbc.Driver");
+            conn = DriverManager.getConnection(jdbcDriver, dbUser, dbPwd);
+
+            String sql = " SELECT medicineName, price, inventory, wholesaler, companyName, standard, receiptDate, DeliveryDate, returnInv "
+                       + " FROM testTable WHERE medicineName LIKE ? AND inventory > 0"
+            		   + " ORDER BY medicineName ASC";
+
+            pstmt = conn.prepareStatement(sql);
+            pstmt.setString(1, "%" + nameSearch + "%");
+
+            rs = pstmt.executeQuery();
+
+            // 검색 결과 출력
+            while (rs.next()) { %>
+                <tr>
+                    <td><button>▼</button></td>
+                    <td>
+                        <button type="button" class="updateInfo">수정</button>
+                        <button class="deleteInfo">삭제</button>
+                    </td>
+                    <td><%= rs.getString("medicineName") %></td>
+                    <td><%= rs.getString("DeliveryDate") %></td>
+                    <td><%= rs.getString("wholesaler") %></td>
+                    <td><%= rs.getString("inventory") %></td>
+                    <td><%= rs.getString("standard") %></td>
+                    <td><%= rs.getString("price") %></td>
+                    <td><%= rs.getString("companyName") %></td>
+                    <td><%= rs.getString("receiptDate") %></td>
+                    <td>
+                        <input type="button" value="<%= rs.getInt("returnInv") == 1 ? "반품됨" : "반품하기" %>" class="returnProduct">
+                    </td>
+                </tr>
+<%          }
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            // 자원 해제
+            if (rs != null) try { rs.close(); } catch (SQLException e) {}
+            if (pstmt != null) try { pstmt.close(); } catch (SQLException e) {}
+            if (conn != null) try { conn.close(); } catch (SQLException e) {}
+        }
+    }
+%>
+<script src="jquery-3.7.1.min.js"></script>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    function updateRowColors() {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const rows = $("tr"); // 모든 tr 가져오기
+        rows.each(function () {
+            const $row = $(this);
+            const expiryText = $row.find("td:eq(3)").text().replace(/[^0-9-]/g, '').trim();
+
+            if (!expiryText || !/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(expiryText)) return;
+
+            const expiryDate = new Date(expiryText);
+            expiryDate.setHours(0, 0, 0, 0);
+
+            const timeDifference = expiryDate - today;
+            const remainingDays = Math.ceil(timeDifference / (1000 * 60 * 60 * 24));
+
+            // 색상 변경 조건
+            if (remainingDays <= 30) {
+                $row.find("td:eq(3)").css("color", "red");
+            } else if (remainingDays <= 90) {
+                $row.find("td:eq(3)").css("color", "blue");
+            } else if (remainingDays <= 180) {
+                $row.find("td:eq(3)").css("color", "yellow");
+            } else {
+                $row.find("td:eq(3)").css("color", "green");
+            }
+        });
+    }
+
+    // 실행
+    updateRowColors();
+});
+</script>

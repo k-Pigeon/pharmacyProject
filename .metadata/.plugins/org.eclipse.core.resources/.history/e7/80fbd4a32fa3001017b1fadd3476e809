@@ -1,0 +1,99 @@
+<%@ page language="java" contentType="application/json; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ page import="java.io.*, java.util.*, java.sql.*, javax.servlet.*, javax.servlet.http.*, org.json.JSONArray, org.json.JSONObject"%>
+<%@ include file="sessionManager.jsp" %>
+<%@ include file="DBconnection.jsp" %>
+
+<%
+String dbName = (session != null) ? (String) session.getAttribute("dbName") : null;
+String id = (session != null) ? (String) session.getAttribute("id") : null;
+String idSortation = (session != null) ? (String) session.getAttribute("idSortation") : null;
+if (id == null || dbName == null) {
+	response.sendRedirect("login.jsp");
+	return;
+}
+
+request.setCharacterEncoding("UTF-8");
+response.setContentType("application/json; charset=UTF-8");
+conn.setAutoCommit(false);
+
+try {
+	// 1️⃣ JSON 요청 읽기
+	StringBuilder body = new StringBuilder();
+	try (BufferedReader br = request.getReader()) {
+		String line;
+		while ((line = br.readLine()) != null)
+			body.append(line);
+	}
+
+	JSONArray arr = new JSONArray(body.toString());
+	JSONObject meta = arr.getJSONObject(arr.length() - 1);
+
+	// 2️⃣ 메타데이터 추출
+	String medicinePrice = meta.optString("medicinePrice", "0");
+	String generalPrice = meta.optString("generalPrice", "0");
+	String clientName = meta.optString("discounted", "");
+	String rawDate = meta.optString("ScheduleDate", meta.optString("scheduleDate", ""));
+	if (rawDate == null || rawDate.isEmpty()) {
+		rawDate = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new java.util.Date());
+	}
+	Timestamp saleTs = Timestamp.valueOf(rawDate.replace("T", " ") + (rawDate.contains(":") ? "" : " 00:00:00"));
+
+	// 3️⃣ 매출 합계 기록
+	try (PreparedStatement ps = conn.prepareStatement(
+		"INSERT INTO priceRecord" + idSortation + " (saleDate, maxmedicinePrice, generalPrice) VALUES (?, ?, ?)")) {
+		ps.setTimestamp(1, saleTs);
+		ps.setString(2, medicinePrice);
+		ps.setString(3, generalPrice);
+		ps.executeUpdate();
+	}
+
+	// 4️⃣ 할인 정보 기록
+	try (PreparedStatement ps = conn.prepareStatement(
+		"INSERT INTO discountedDB (sale_date, discounted) VALUES (?, ?)")) {
+		ps.setTimestamp(1, saleTs);
+		ps.setString(2, clientName);
+		ps.executeUpdate();
+	}
+
+	// 5️⃣ SalesRecord에 그대로 저장 (DB 재고 참고 없음)
+	for (int i = 0; i < arr.length() - 1; i++) {
+		JSONObject it = arr.getJSONObject(i);
+
+		String medName = it.optString("medicineName", "").trim();
+		String serial = it.optString("serialNumber", "").trim();
+		String deliveryDate = it.optString("deliveryDate", "").trim();
+		String standard = it.optString("standard", "").trim();
+		String memberName = it.optString("memberName", "").trim();
+
+		double price = 0, buying = 0;
+		String inv = it.optString("inventory", "0");
+
+		try { price = Double.parseDouble(it.optString("price", "0").replaceAll("[^\\d.]", "")); } catch (Exception ignore) {}
+		try { buying = Double.parseDouble(it.optString("Buyingprice", "0").replaceAll("[^\\d.]", "")); } catch (Exception ignore) {}
+
+		try (PreparedStatement ps = conn.prepareStatement(
+			"INSERT INTO SalesRecord" + idSortation +
+			" (saleDate, medicineName, Buyingprice, price, inventory, SerialNumber, DeliveryDate, standard, memberName) " +
+			"VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")) {
+			ps.setTimestamp(1, saleTs);
+			ps.setString(2, medName);
+			ps.setDouble(3, buying);
+			ps.setDouble(4, price);
+			ps.setString(5, inv);
+			ps.setString(6, serial);
+			ps.setString(7, deliveryDate);
+			ps.setString(8, standard);
+			ps.setString(9, memberName);
+			ps.executeUpdate();
+		}
+	}
+
+	conn.commit();
+	out.print("{\"result\":\"success\"}");
+
+} catch (Exception e) {
+	if (conn != null) try { conn.rollback(); } catch (SQLException ignore) {}
+	e.printStackTrace();
+	out.print("{\"result\":\"error\",\"message\":\"" + e.getMessage().replace("\"", "'") + "\"}");
+}
+%>

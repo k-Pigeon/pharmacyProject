@@ -1,0 +1,129 @@
+<%@ page contentType="application/json; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ page import="java.io.*, java.sql.*, org.json.*, java.util.*, java.util.regex.*" %>
+<%@ include file="sessionManager.jsp" %>
+<%@ include file="DBconnection.jsp" %>
+
+<%!
+/** 날짜 문자열을 YYYY-MM-DD 형태로 변환 */
+private String formatDate(String inputDate) {
+    try {
+        if (inputDate == null || inputDate.trim().isEmpty()) return null;
+        if (inputDate.contains("-")) return inputDate; // 이미 표준형
+
+        String[] parts = inputDate.split("[/.-]");
+        if (parts.length != 3) throw new IllegalArgumentException("잘못된 날짜 형식: " + inputDate);
+
+        int year = Integer.parseInt(parts[0]);
+        if (year < 100) year += 2000; // 24 -> 2024
+
+        String month = String.format("%02d", Integer.parseInt(parts[1]));
+        String day   = String.format("%02d", Integer.parseInt(parts[2]));
+        return year + "-" + month + "-" + day;
+    } catch (Exception e) {
+        System.err.println("날짜 변환 오류: " + inputDate + " → " + e.getMessage());
+        return inputDate; // 변환 실패 시 원본 유지
+    }
+}
+%>
+
+<%
+request.setCharacterEncoding("UTF-8");
+String idSortation = (session != null) ? (String) session.getAttribute("idSortation") : null;
+
+StringBuilder sb = new StringBuilder();
+String line;
+BufferedReader reader = request.getReader();
+while ((line = reader.readLine()) != null) sb.append(line);
+
+try {
+    JSONObject data = new JSONObject(sb.toString());
+    conn.setAutoCommit(false);
+
+    for (String key : data.keySet()) {
+        JSONObject row = data.getJSONObject(key);
+
+        // key = "medicineName|DeliveryDate|standard"
+        String[] parts = key.split("\\|");
+        if (parts.length < 3) continue;
+
+        String medicineName    = parts[0];
+        String rawDeliveryDate = parts[1];                 // 원본 (예: 25/12/12)
+        String normDeliveryDate= formatDate(parts[1]);     // 표준 (예: 2025-12-12)
+        String standard        = parts[2];
+
+        // ===== inventory 계산 =====
+        if (row.has("inventory")) {
+            try {
+                double inv = Double.parseDouble(row.getString("inventory"));
+                double factor = 1.0;
+                if (standard != null && !standard.trim().isEmpty()) {
+                    Matcher m = Pattern.compile("\\d+(\\.\\d+)?").matcher(standard);
+                    int count = 0;
+                    while (m.find()) {
+                        factor *= Double.parseDouble(m.group());
+                        count++;
+                        if (count >= 2) break; // 숫자 2개까지만 곱
+                    }
+                }
+                double newInv = inv * factor;
+                row.put("inventory", String.valueOf(newInv));
+            } catch (Exception ex) {
+                ex.printStackTrace();
+            }
+        }
+
+        // ===== 컬럼명 정규화 & 날짜 값 변환(SET) =====
+        // deliveryDate(소문자)로 들어오면 DB 컬럼 DeliveryDate로 변경
+        Map<String, String> normalized = new LinkedHashMap<>();
+        for (String k : row.keySet()) {
+            String v = row.getString(k);
+            if ("deliveryDate".equals(k)) {
+                normalized.put("DeliveryDate", formatDate(v)); // 표준형으로 저장
+            } else if ("receiptDate".equals(k)) {
+                normalized.put("receiptDate", formatDate(v));  // 표준형으로 저장
+            } else {
+                normalized.put(k, v); // 그대로
+            }
+        }
+
+        // DeliveryDate를 변경하지 않았다면(사용자가 안 만졌더라도),
+        // 이번 기회에 표준 포맷으로 교정(SET에 포함)
+        if (!normalized.containsKey("DeliveryDate")) {
+            normalized.put("DeliveryDate", normDeliveryDate);
+        }
+
+        // ===== SQL 생성 (WHERE는 원본/표준 둘 다 매칭) =====
+        StringBuilder sql = new StringBuilder("UPDATE testTable" + idSortation + " SET ");
+        List<String> sets = new ArrayList<>();
+        for (String col : normalized.keySet()) sets.add(col + "=?");
+        sql.append(String.join(",", sets));
+        sql.append(" WHERE medicineName=? AND DeliveryDate IN (?, ?) AND standard=?");
+
+        PreparedStatement pstmt = conn.prepareStatement(sql.toString());
+
+        int i = 1;
+        for (String col : normalized.keySet()) {
+            pstmt.setString(i++, normalized.get(col));
+        }
+        pstmt.setString(i++, medicineName);
+        pstmt.setString(i++, normDeliveryDate); // 표준 날짜
+        pstmt.setString(i++, rawDeliveryDate);  // 원본 날짜
+        pstmt.setString(i,   standard);
+
+        int updated = pstmt.executeUpdate();
+        pstmt.close();
+
+        if (updated == 0) {
+            System.out.println("[WARN] 0 row updated: key=" + key + " / SQL=" + sql.toString());
+        }
+    }
+
+    conn.commit();
+    conn.setAutoCommit(true);
+    out.print("{\"status\":\"success\"}");
+} catch (Exception e) {
+    conn.rollback();
+    e.printStackTrace();
+    out.print("{\"status\":\"error\",\"message\":\"" + e.getMessage() + "\"}");
+}
+%>

@@ -1,0 +1,95 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8"
+	pageEncoding="UTF-8"%>
+<%@ page import="java.sql.*, javax.servlet.http.*, javax.servlet.*"%>
+<%
+request.setCharacterEncoding("UTF-8");
+String userId = request.getParameter("userId");
+String password = request.getParameter("password");
+String isAjax = request.getParameter("ajax"); // Ajax 여부 판단용
+String idSortation = "";
+String role = "";
+
+// 초기값 설정
+String jdbcDriver = "jdbc:mysql://rlawldls04171.cafe24.com:3306/rlawldls04171?useUnicode=true&characterEncoding=utf8";
+String dbUser = "rlawldls04171";
+String dbPwd = "jikim@136464790";
+
+Connection conn = null;
+PreparedStatement pstmt = null;
+ResultSet rs = null;
+String sql = "";
+
+try {
+	Class.forName("com.mysql.cj.jdbc.Driver");
+
+	// 사용자 확인을 위한 기본 데이터베이스 연결
+	conn = DriverManager.getConnection(jdbcDriver, dbUser, dbPwd);
+
+	sql = "SELECT * FROM users WHERE userId = ? AND password = ?";
+	pstmt = conn.prepareStatement(sql);
+	pstmt.setString(1, userId);
+	pstmt.setString(2, password);
+
+	rs = pstmt.executeQuery();
+
+	if (rs.next()) {
+	    String userIdInt = rs.getString("userId");
+
+	    // ✅ role 결정
+	    if ("D".equals(userIdInt)) {
+	        role = "admin";
+	    }
+	    else {
+	        role = "user";
+	    }
+
+	    // ✅ DB 분기
+	    if ("a".equals(userIdInt) || "D".equals(userIdInt)) {
+	        jdbcDriver = "jdbc:mysql://localhost:3306/tutorial?useUnicode=true&characterEncoding=utf8";
+	        dbUser = "root";
+	        dbPwd = "pharmacy@1234";
+	    }
+
+	    // ✅ 회원 구분
+	    if ("E".equals(userIdInt)) {
+	        idSortation = "2";
+	    }
+
+	    // ✅ 세션 저장 (한 번만!)
+	    session.setAttribute("dbName", jdbcDriver);
+	    session.setAttribute("id", dbUser);
+	    session.setAttribute("password", dbPwd);
+	    session.setAttribute("programID", userIdInt);
+	    session.setAttribute("idSortation", idSortation);
+	    session.setAttribute("role", role);
+
+	    // ✅ Ajax / 일반 분기
+	    if ("true".equals(isAjax)) {
+	        out.print(role);   // admin / user
+	        return;
+	    } else {
+	        response.sendRedirect("index2.jsp");
+	        return;
+	    }
+	}
+
+} catch (Exception e) {
+	e.printStackTrace();
+} finally {
+	if (rs != null)
+		try {
+	rs.close();
+		} catch (Exception e) {
+		}
+	if (pstmt != null)
+		try {
+	pstmt.close();
+		} catch (Exception e) {
+		}
+	if (conn != null)
+		try {
+	conn.close();
+		} catch (Exception e) {
+		}
+}
+%>

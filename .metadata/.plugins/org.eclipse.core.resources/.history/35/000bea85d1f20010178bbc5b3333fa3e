@@ -1,0 +1,229 @@
+@charset "UTF-8";
+
+/* =========================
+   레이아웃
+========================= */
+
+#wrap {
+    display: block;
+    overflow-x: hidden;
+}
+
+#content {
+    display: flex;
+    width: 100%;
+    height: 60vh;
+    overflow: hidden;
+}
+
+#tableContainer {
+    padding: 20px;
+    overflow-y: auto;
+    border-right: 2px solid #ddd;
+    position: relative;
+}
+
+#sidePanel {
+    flex: 2;
+    padding: 20px;
+    overflow-y: auto;
+    display: block;
+}
+
+/* =========================
+   제목 / 필터 영역
+========================= */
+
+.page-title {
+    text-align: center;
+    margin-top: 40px;
+}
+
+.filter_line {
+    width: 1200px;
+    line-height: 50px;
+    margin: 40px auto 0;
+    padding: 0;
+    display: flex;
+}
+
+.filter-left {
+    flex: 1;
+}
+
+.filter-right {
+    flex: 1;
+}
+
+.search-input {
+    position: relative;
+    display: block;
+    height: 40px;
+    float: right;
+    margin-right: 20px;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+/* =========================
+   날짜 입력
+========================= */
+
+#startDate,
+#endDate {
+    border-radius: 10px;
+    height: 30px;
+    margin-top: 5%;
+}
+
+#startDate.selectDate,
+#endDate.selectDate {
+    border: 2px solid aqua;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, .25);
+}
+
+/* =========================
+   테이블
+========================= */
+
+.table_line {
+    padding: 0;
+    margin: 0;
+    float: right;
+    width: 95%;
+    border-collapse: collapse;
+    border-radius: 10px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.25);
+    overflow: hidden;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 0;
+}
+
+th,
+td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: left;
+}
+
+thead {
+    background-color: #B0E0E6;
+    color: white;
+}
+
+th {
+    background-color: #f4f4f4;
+}
+
+#inventory_list tr:nth-child(even) td {
+    background: #E6E6FA;
+}
+
+#inventory_list tr.selected {
+    background-color: #d3d3d3;
+}
+
+#inventory_list.recordList {
+    background-color: aqua;
+}
+
+/* =========================
+   버튼
+========================= */
+
+.custom-btn {
+    width: 65px;
+    height: 40px;
+    border-radius: 5px;
+    font-family: 'Lato', sans-serif;
+    font-weight: 500;
+    background: transparent;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+    display: inline-block;
+    box-shadow:
+        inset 2px 2px 2px 0px rgba(255, 255, 255, .5),
+        7px 7px 20px 0px rgba(0, 0, 0, .1),
+        4px 4px 5px 0px rgba(0, 0, 0, .1);
+    outline: none;
+}
+
+.btn-16 {
+    border: none;
+    color: #000;
+}
+
+.btn-16:after {
+    position: absolute;
+    content: "";
+    width: 0;
+    height: 100%;
+    top: 0;
+    left: 0;
+    direction: rtl;
+    z-index: -1;
+    box-shadow:
+        -7px -7px 20px 0px #fff9,
+        -4px -4px 5px 0px #fff9,
+        7px 7px 20px 0px #0002,
+        4px 4px 5px 0px #0001;
+    transition: all 0.3s ease;
+}
+
+.btn-16:hover {
+    color: #000;
+}
+
+.btn-16:hover:after {
+    left: auto;
+    right: 0;
+    width: 100%;
+}
+
+.btn-16:active {
+    top: 2px;
+}
+
+/* =========================
+   페이지네이션
+========================= */
+
+.pagination {
+    display: flex;
+    justify-content: center;
+    list-style: none;
+    padding: 0;
+    margin: 20px 0;
+    position: fixed;
+    top: calc(100vh - 100px);
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.pagination li {
+    margin: 0 5px;
+    padding: 10px 15px;
+    cursor: pointer;
+    border: 2px solid black;
+    border-radius: 5px;
+}
+
+.pagination li.active {
+    background-color: #007fff;
+    color: white;
+    border-color: #007bff;
+}
+
+.pagination li:hover:not(.active) {
+    background-color: #f1f1f1;
+}
+#wrap .title{
+	display: block;
+    transform: translate(50%, 50%);
+    padding: 30px 0;
+}

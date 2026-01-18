@@ -1,0 +1,73 @@
+<%@page import="com.mysql.cj.x.protobuf.MysqlxPrepare.Prepare"%>
+<%@ page import="java.sql.*, java.io.*, javax.servlet.http.*, javax.servlet.*, org.json.*"%>
+<%@ page contentType="text/html;charset=UTF-8" language="java"%>
+
+<%@ include file="sessionManager.jsp"%>
+<%@ include file="DBconnection.jsp"%>
+<%
+request.setCharacterEncoding("UTF-8");
+String dbName = (session != null) ? (String) session.getAttribute("dbName") : null;
+String id = (session != null) ? (String) session.getAttribute("id") : null;
+String password = (session != null) ? (String) session.getAttribute("password") : null;
+
+String idSortation = (session != null) ? (String) session.getAttribute("idSortation") : null; if (id == null || dbName == null) {
+    response.sendRedirect("login.jsp");
+    return;
+}
+
+jdbcDriver = dbName;
+
+BufferedReader reader = request.getReader();
+StringBuilder jsonBuilder = new StringBuilder();
+String line;
+PreparedStatement stmt = null;
+
+while ((line = reader.readLine()) != null) {
+    jsonBuilder.append(line);
+}
+
+String jsonData = jsonBuilder.toString();
+System.out.println("Received JSON: " + jsonData);  // 확인용 로그
+
+try {
+    // JSONArray로 변환
+    JSONArray rows = new JSONArray(jsonData);  // 배열로 받기
+    for (int i = 0; i < rows.length(); i++) {
+        JSONObject row = rows.getJSONObject(i);
+
+        // 데이터 추출
+        String secondData = row.optString("secondData", "");
+        String eighthData = row.optString("eighthData", "");
+        String ninthData = row.optString("ninthData", "");
+
+        System.out.println("Second Data: " + secondData); // 디버깅
+        System.out.println("Eighth Data: " + eighthData);
+        System.out.println("Ninth Data: " + ninthData);
+
+        // SQL 쿼리 실행
+        String updateQuery = "DELETE FROM testTable"  + idSortation + "  WHERE medicineName = ? AND standard = ? AND deliveryDate = ?";
+        stmt = conn.prepareStatement(updateQuery);
+        stmt.setString(1, secondData);
+        stmt.setString(2, eighthData);
+        stmt.setString(3, ninthData);
+
+        int rowsUpdated = stmt.executeUpdate();
+
+        // 디버깅: 삭제된 행 수 출력
+        System.out.println("Rows deleted: " + rowsUpdated);
+    }
+
+    // 성공적인 삭제 후 응답
+    out.println("데이터 처리가 완료되었습니다.");
+
+} catch (Exception e) {
+    e.printStackTrace();
+    response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+    out.println("데이터베이스 오류 발생: " + e.getMessage());
+}finally {
+    try { if (stmt != null) stmt.close(); } catch (Exception ignored) {}
+    try { if (conn != null) conn.close(); } catch (Exception ignored) {}
+}
+
+%>
+<%@ include file="DBclose.jsp" %>

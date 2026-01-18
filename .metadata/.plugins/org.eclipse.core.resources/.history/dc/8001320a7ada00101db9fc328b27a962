@@ -1,0 +1,104 @@
+<%@ page language="java" contentType="application/json; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ page import="java.sql.*, java.util.*"%>
+<%@ include file="sessionManager.jsp"%>
+<%@ include file="DBconnection.jsp"%>
+
+<%
+response.setContentType("application/json; charset=UTF-8");
+out.clear();
+
+String idSortation = (String) session.getAttribute("idSortation");
+
+String sql =
+    "SELECT medicineName, DeliveryDate, inventory, price, standard, kind, " +
+    "companyName, receiptDate, quantity " +
+    "FROM testTable" + idSortation + " " +
+    "WHERE returnInv='0' " +
+    "ORDER BY medicineName ASC, DeliveryDate DESC";
+
+PreparedStatement ps = null;
+ResultSet rs = null;
+
+class Info {
+    double totalInv = 0;
+    double totalQty = 0;
+
+    String DeliveryDate;
+    String price;
+    String standard;
+    String kind;
+    String companyName;
+    String receiptDate;
+}
+
+Map<String, Info> map = new LinkedHashMap<>();
+
+try {
+    ps = conn.prepareStatement(sql);
+    rs = ps.executeQuery();
+
+    while (rs.next()) {
+
+        String name = rs.getString("medicineName");
+        if (name == null || name.trim().isEmpty()) continue;
+        name = name.trim();
+
+        double inventory = rs.getDouble("inventory");
+
+        double quantity = 0;
+        try {
+            String q = rs.getString("quantity");
+            quantity = (q == null || q.trim().isEmpty()) ? 0 : Double.parseDouble(q.trim());
+        } catch (Exception ignore) {}
+
+        Info data = map.getOrDefault(name, new Info());
+
+        data.totalInv += inventory;
+        data.totalQty = quantity;
+
+        if (data.DeliveryDate == null) {
+            data.DeliveryDate = rs.getString("DeliveryDate");
+            data.price = rs.getString("price");
+            data.standard = rs.getString("standard");
+            data.kind = rs.getString("kind");
+            data.companyName = rs.getString("companyName");
+            data.receiptDate = rs.getString("receiptDate");
+        }
+
+        map.put(name, data);
+    }
+
+} catch (Exception e) {
+    out.print("{\"error\":\"" + e.getMessage().replace("\"","\\\"") + "\"}");
+} finally {
+    try { if (rs != null) rs.close(); } catch (Exception ignore) {}
+    try { if (ps != null) ps.close(); } catch (Exception ignore) {}
+    try { if (conn != null && !conn.isClosed()) conn.close(); } catch (Exception ignore) {}
+}
+
+// JSON 만들기
+boolean found = false;
+StringBuilder html = new StringBuilder();
+
+for (String name : map.keySet()) {
+    Info d = map.get(name);
+
+    if (d.totalInv < d.totalQty) {
+        found = true;
+
+        html.append("<tr>");
+        html.append("<td>").append(name).append("</td>");
+        html.append("<td>").append(d.DeliveryDate).append("</td>");
+        html.append("<td>").append(d.totalInv).append("</td>");
+        html.append("<td>").append(d.price).append("</td>");
+        html.append("<td>").append(d.standard).append("</td>");
+        html.append("<td>").append(d.kind).append("</td>");
+        html.append("<td>").append(d.companyName).append("</td>");
+        html.append("<td>").append(d.receiptDate).append("</td>");
+        html.append("<td>").append(d.totalQty).append("</td>");
+        html.append("</tr>");
+    }
+}
+
+out.print("{\"found\": " + found + ", \"html\": \"" + html.toString().replace("\"", "\\\"") + "\"}");
+%>

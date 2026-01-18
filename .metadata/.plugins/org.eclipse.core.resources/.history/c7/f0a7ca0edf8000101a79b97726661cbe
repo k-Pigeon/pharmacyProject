@@ -1,0 +1,180 @@
+create table regularSet(
+	medicineName varchar(40),
+	Buyingprice varchar(10),
+	price varchar(10),
+	inventory double,
+	saleInventory double
+);
+
+drop table regularSet;
+
+insert into regularSet
+values("상수환", 2000, 7000, 1, 10);
+
+insert into regularSet
+values("연통환", 2000, 7000, 1, 10);
+
+insert into regularSet
+values("은치환", 2000, 7000, 1, 10);
+
+insert into regularSet
+values("휘니볼", 2000, 7000, 1, 10);
+
+insert into regularSet
+values("근골환", 2000, 7000, 1, 10);
+
+insert into regularSet
+values("소체환", 2000, 7000, 1, 10);
+
+
+CREATE TABLE productSet (
+    medicineName VARCHAR(255) NOT NULL,
+    medicineName_1 VARCHAR(255),
+    medicineName_2 VARCHAR(255),
+    medicineName_3 VARCHAR(255),
+    medicineName_4 VARCHAR(255),
+    buyingprice varchar(10),
+    price varchar(10),
+    inventory varchar(3)
+);
+
+insert into productSet(medicineName, medicineName_1, medicineName_2, buyingprice, price, inventory)
+values("한약총합", "상수환", "은치환", 3500, 6000, 1);
+
+CREATE TABLE members (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    memberName VARCHAR(50) DEFAULT NULL,
+    memberPhone VARCHAR(20) DEFAULT NULL,
+    jumin1 VARCHAR(6) DEFAULT NULL,
+    jumin2 VARCHAR(7) DEFAULT NULL,
+    gender TINYINT DEFAULT NULL,
+    customerNumber VARCHAR(50) DEFAULT NULL
+);
+
+
+
+INSERT INTO members (memberName, memberPhone, jumin1, jumin2, gender, customerNumber)
+VALUES ("김지인", "01055827154", "000000", "0000000", "1", "1");
+
+INSERT INTO members (memberName, memberPhone, jumin1, jumin2, gender, customerNumber)
+VALUES ("김지인", "01055827154", "999999", "9999999", "1", "2");
+
+
+drop table members;
+
+
+성함 혹은 전화번호를 통해 사람을 찾는다.
+어떤 제품을 몇개 구매했는지, 단가와 총가격을 입력한다.
+(총가격은 자동으로 입력. 날짜는 작성 날짜 기준)
+(사입가는 필요없다.)
+
+
+drop table salesdata"  + idSortation + " ;
+CREATE TABLE salesdata"  + idSortation + "  (
+    sale_date timestamp NOT NULL,
+    customer_id VARCHAR(255) NOT NULL,
+    medicine_name VARCHAR(255) NOT NULL,
+    inventory INT NOT NULL,
+    standard VARCHAR(255),
+    price DECIMAL(10, 2) NOT NULL,
+    total_price DECIMAL(10, 2) NOT NULL
+);
+alter table salesdata"  + idSortation + "  add column discounted varchar(10);
+
+alter table SalesRecord"  + idSortation + "  add column discounted varchar(24);
+
+
+create table discountedDB(
+	sale_date timestamp(3),
+	discounted varchar(25)
+);
+
+alter table testTable"  + idSortation + "  add column concurrently varchar(1);
+
+update testTable"  + idSortation + " 
+set concurrently = "1";
+
+
+alter table members add column memoInfo varchar(5000);
+
+
+create table RegistTable(
+	medicineName varchar(50),
+	standard varchar(20),
+	Buyingprice varchar(10),
+	price varchar(10),
+	countNumber varchar(10)
+);
+
+
+SET @cnt := 0;
+INSERT INTO RegistTable (medicineName, standard, Buyingprice, price, countNumber)
+SELECT 
+  medicineName,
+  standard,
+  Buyingprice,
+  price,
+  (@cnt := @cnt + 1)
+FROM testTable"  + idSortation + " ;
+
+
+
+--25/04/14
+alter table RegistTable add column lowerAndHigest varchar(40);
+
+update RegistTable
+set lowerAndHigest = concat(price , ' / ' , price);
+
+update RegistTable
+set price = SUBSTRING_INDEX(price, '.', 1);
+
+update RegistTable
+set Buyingprice = SUBSTRING_INDEX(Buyingprice, '.', 1);
+
+update RegistTable
+set lowerAndHigest = SUBSTRING_INDEX(lowerAndHigest, '.', 1);
+
+
+alter table salesdata"  + idSortation + "  add column lowerAndHigest varchar(40);
+
+ALTER TABLE salesdata"  + idSortation + "  MODIFY price varchar(12);
+ALTER TABLE salesdata"  + idSortation + "  MODIFY total_price varchar(12);
+
+update salesdata"  + idSortation + " 
+set lowerAndHigest = concat(price , ' / ' , price);
+
+update salesdata"  + idSortation + " 
+set price = SUBSTRING_INDEX(price, '.', 1);
+
+update salesdata"  + idSortation + " 
+set total_price = SUBSTRING_INDEX(total_price, '.', 1);
+
+update salesdata"  + idSortation + " 
+set lowerAndHigest = SUBSTRING_INDEX(lowerAndHigest, '.', 1);
+
+insert into users
+values("4", "D", "4", "testPhasfasdf", "manager", "2025-05-05 00:00:00");
+
+
+
+--set들 수정
+drop table productSet;
+drop table productSet_detail;
+
+CREATE TABLE productSet (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  setName VARCHAR(255),
+  buyingprice INT,
+  price INT,
+  inventory INT
+);
+
+CREATE TABLE productSet_detail (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  productSet_id INT,
+  medicineName VARCHAR(255),
+  standard VARCHAR(255),
+  FOREIGN KEY (productSet_id) REFERENCES productSet(id) ON DELETE CASCADE
+);
+
+alter table salesRecord add column memberName varchar(50);

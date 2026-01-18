@@ -1,0 +1,29 @@
+import javax.swing.*;
+
+public class jButton_Test {
+
+	public static void main(String[] args) {
+		// TODO Auto-generated method stub
+		//GUI 창(변수명 : jf)
+		JFrame jf = new JFrame();
+		//형태 좌표(x축, y축, 폭, 높이)
+		//각각 좌표만, 크기만 끼리 지정 가능
+		jf.setBounds(600, 300, 300, 300);
+		//프레임(창) 제목
+		jf.setTitle("서가종로온누리약국");
+		//X버튼을 눌러 프로그램을 종료
+		jf.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+		
+		
+		//JButton 생성 및 배치
+		JButton jb = new JButton("로그인");
+		jb.setSize(70, 40);
+		jb.setLocation(60, 40);
+		
+		jf.add(jb);		
+		
+		//jf 프레임이 보이도록 설정
+		jf.setVisible(true);
+	}
+
+}

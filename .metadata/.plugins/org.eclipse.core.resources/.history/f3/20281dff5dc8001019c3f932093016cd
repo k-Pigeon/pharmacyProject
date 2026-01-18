@@ -1,0 +1,76 @@
+<%@ page language="java" contentType="application/json; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ page import="java.sql.*, java.util.regex.*"%>
+<%@ include file="sessionManager.jsp"%>
+<%@ include file="DBconnection.jsp"%>
+<%!
+double parseStandard(String str) {
+    if (str == null) return 1;
+
+    Matcher m = Pattern.compile("\\d+(\\.\\d+)?").matcher(str);
+    double result = 1;
+    boolean matched = false;
+
+    while (m.find()) {
+        matched = true;
+        result *= Double.parseDouble(m.group());
+    }
+
+    return matched ? result : 1;
+}
+
+%>
+<%
+response.setContentType("application/json; charset=UTF-8");
+out.clear();
+
+String idSortation = (session != null) ? (String) session.getAttribute("idSortation") : null;
+
+String sql = "SELECT medicineName, DeliveryDate, inventory, price, standard, kind, companyName, receiptDate, quantity "
+           + "FROM testTable" + idSortation + " WHERE returnInv='0'";
+
+PreparedStatement ps = conn.prepareStatement(sql);
+ResultSet rs = ps.executeQuery();
+
+StringBuilder html = new StringBuilder();
+boolean found = false;
+
+/* -------------------------
+   규격 숫자 곱하는 함수
+------------------------- */
+
+while (rs.next()) {
+
+    double inventory = rs.getDouble("inventory");  // 재고 (DB 기준)
+    double quantity  = rs.getDouble("quantity");   // 주문수량 (DB 기준)
+    String standard  = rs.getString("standard");   // 규격
+
+    double std = parseStandard(standard);          // 규격 숫자곱
+    double inventoryFactor = (inventory / parseStandard(standard));
+
+    if ( inventory / parseStandard(standard) < quantity ) {
+
+        found = true;
+
+        html.append("<tr>");
+        html.append("<td>").append(rs.getString("medicineName")).append("</td>");
+        html.append("<td>").append(rs.getString("DeliveryDate")).append("</td>");
+        html.append("<td>").append(inventoryFactor).append("</td>");
+        html.append("<td>").append(rs.getString("price")).append("</td>");
+        html.append("<td>").append(standard).append("</td>");
+        html.append("<td>").append(rs.getString("kind")).append("</td>");
+        html.append("<td>").append(rs.getString("companyName")).append("</td>");
+        html.append("<td>").append(rs.getString("receiptDate")).append("</td>");
+        html.append("<td>").append(quantity).append("</td>");
+        html.append("</tr>");
+    }
+}
+
+rs.close();
+ps.close();
+conn.close();
+
+out.print("{");
+out.print("\"found\": " + (found ? "true" : "false") + ",");
+out.print("\"html\": \"" + html.toString().replace("\"", "\\\"").replace("\n", "") + "\"");
+out.print("}");
+%>

@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<session version="1.0">
+<refactoring comment="Delete resource &apos;약국/src/main/webapp/xlsx.full.min.js&apos;" deleteContents="false" description="Delete resource &apos;약국/src/main/webapp/xlsx.full.min.js&apos;" element1="/약국/src/main/webapp/xlsx.full.min.js" flags="7" id="org.eclipse.ltk.core.refactoring.delete.resources" resources="1" stamp="1752061459635"/>
+</session>

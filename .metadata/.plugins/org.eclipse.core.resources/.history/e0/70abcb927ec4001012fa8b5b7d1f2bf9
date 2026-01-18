@@ -1,0 +1,56 @@
+<%@ page language="java" contentType="application/json; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ page import="java.sql.*, java.util.regex.*"%>
+<%@ include file="sessionManager.jsp"%>
+<%@ include file="DBconnection.jsp"%>
+
+<%
+response.setContentType("application/json; charset=UTF-8");
+out.clear();
+
+String sql = "SELECT medicineName, DeliveryDate, inventory, price, standard, kind, companyName, receiptDate, quantity "
+           + "FROM testTable" + idSortation + " WHERE returnInv='0'";
+
+PreparedStatement ps = conn.prepareStatement(sql);
+ResultSet rs = ps.executeQuery();
+
+StringBuilder html = new StringBuilder();
+boolean found = false;
+
+while (rs.next()) {
+    double inventory = rs.getDouble("inventory");
+    double quantity  = rs.getDouble("quantity");
+    String standard  = rs.getString("standard");
+
+    // 규격 숫자 추출
+    double std = 1;
+    if (standard != null) {
+        Matcher m = Pattern.compile("\\d+(\\.\\d+)?").matcher(standard);
+        while (m.find()) std *= Double.parseDouble(m.group());
+    }
+
+    if (quantity > inventory * std) {
+        found = true;
+
+        html.append("<tr>");
+        html.append("<td>").append(rs.getString("medicineName")).append("</td>");
+        html.append("<td>").append(rs.getString("DeliveryDate")).append("</td>");
+        html.append("<td>").append((int)inventory).append("</td>");
+        html.append("<td>").append(rs.getString("price")).append("</td>");
+        html.append("<td>").append(standard).append("</td>");
+        html.append("<td>").append(rs.getString("kind")).append("</td>");
+        html.append("<td>").append(rs.getString("companyName")).append("</td>");
+        html.append("<td>").append(rs.getString("receiptDate")).append("</td>");
+        html.append("<td>").append((int)quantity).append("</td>");
+        html.append("</tr>");
+    }
+}
+
+rs.close();
+ps.close();
+conn.close();
+
+out.print("{");
+out.print("\"found\": " + (found ? "true" : "false") + ",");
+out.print("\"html\": \"" + html.toString().replace("\"","\\\"").replace("\n","") + "\"");
+out.print("}");
+%>

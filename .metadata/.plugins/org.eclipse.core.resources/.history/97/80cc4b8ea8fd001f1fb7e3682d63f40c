@@ -1,0 +1,174 @@
+<%@ page language="java" contentType="application/json; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ page import="java.io.*, java.util.*, javax.servlet.*"%>
+<%@ page import="javax.servlet.http.*"%>
+<%@ page import="java.sql.*"%>
+<%@ page import="org.json.JSONArray"%>
+<%@ page import="org.json.JSONObject"%>
+<%@ include file="sessionManager.jsp"%>
+<%@ include file="DBconnection.jsp"%>
+<%
+String dbName = (session != null) ? (String) session.getAttribute("dbName") : null;
+String id = (session != null) ? (String) session.getAttribute("id") : null;
+String password = (session != null) ? (String) session.getAttribute("password") : null;
+
+if (id == null || dbName == null) {
+    response.sendRedirect("login.jsp");
+    return;
+}
+
+jdbcDriver = dbName;
+%>
+<%
+request.setCharacterEncoding("UTF-8");
+
+java.util.Date today = new java.util.Date();
+java.sql.Timestamp sqlDate = new java.sql.Timestamp(today.getTime());
+
+PreparedStatement pstmt = null;
+PreparedStatement discountStmt = null;
+PreparedStatement ptement = null;
+PreparedStatement statement2 = null;
+PreparedStatement statement3 = null;
+
+try {
+    conn.setAutoCommit(false); // 트랜잭션 시작
+
+    // 받은 JSON 데이터 파싱
+    StringBuilder sb = new StringBuilder();
+    try {
+        BufferedReader reader = request.getReader();
+        String line;
+        while ((line = reader.readLine()) != null) {
+            sb.append(line);
+        }
+    } catch (Exception e) {
+        e.printStackTrace();
+    }
+
+    JSONArray jsonArray = new JSONArray(sb.toString());
+
+    // 개별 파라미터 처리
+    JSONObject paramObj = jsonArray.getJSONObject(jsonArray.length() - 1);
+    String medicinePrice = paramObj.getString("medicinePrice");
+    String generalPrice = paramObj.getString("generalPrice");
+    String clientName = paramObj.getString("discounted");
+
+    // 개별 파라미터 삽입
+    String priceSql = "INSERT INTO priceRecord (saleDate, maxmedicinePrice, generalPrice) VALUES (?, ?, ?)";
+    pstmt = conn.prepareStatement(priceSql);
+    pstmt.setTimestamp(1, sqlDate);
+    pstmt.setString(2, medicinePrice);
+    pstmt.setString(3, generalPrice);
+    pstmt.executeUpdate();
+    
+    String discountSql = "INSERT INTO discountedDB (sale_date, discounted) VALUES (?, ?)";
+    discountStmt = conn.prepareStatement(discountSql);
+    discountStmt.setTimestamp(1, sqlDate);
+    discountStmt.setString(2, clientName);
+    discountStmt.executeUpdate();
+
+    // JSON 배열을 순회하며 데이터베이스 업데이트
+    for (int i = 0; i < jsonArray.length() - 2; i++) {
+        JSONObject obj = jsonArray.getJSONObject(i);
+        double inventoryAdjustment = obj.optDouble("inventory", 0.0);
+        String standard = obj.optString("standard", "").toLowerCase(); // 소문자로 변환하여 비교
+        String serialNumber = obj.optString("serialNumber", "");
+        String medicineName = obj.optString("medicineName", "");
+
+        while (inventoryAdjustment > 0) {
+            // 가장 유통기한이 짧은 재고 찾기
+            String selectDateSQL = "SELECT DeliveryDate, inventory FROM testTable "
+                    + "WHERE SerialNumber = ? AND medicineName = ? AND returnInv = '0' AND inventory > 0 "
+                    + "ORDER BY DeliveryDate ASC LIMIT 1";
+            PreparedStatement selectDateStmt = conn.prepareStatement(selectDateSQL);
+            selectDateStmt.setString(1, serialNumber);
+            selectDateStmt.setString(2, medicineName);
+            ResultSet dateRS = selectDateStmt.executeQuery();
+
+            if (!dateRS.next()) {
+                break; // 차감할 재고가 없음
+            }
+
+            String minDeliveryDate = dateRS.getString("DeliveryDate");
+            double availableInventory = dateRS.getDouble("inventory");
+            dateRS.close();
+            selectDateStmt.close();
+
+            // ✅ standard 값에서 "ml", "g", "포" 포함 여부 확인
+            double standardFactor = 1.0;
+
+            if (standard.contains("ml") || standard.contains("g") || standard.contains("포")) {
+                // 단위가 포함된 경우 → inventory 그대로 사용
+                standardFactor = 1.0;
+            } else {
+                // 띄어쓰기로 분리하여 숫자만 추출 후 곱셈
+                String[] parts = standard.split("\\s+");
+                List<Double> numbers = new ArrayList<Double>();
+
+                for (int j = 0; j < parts.length; j++) {
+                    try {
+                        Double number = Double.parseDouble(parts[j].replaceAll("[^0-9.]", ""));
+                        numbers.add(number);
+                    } catch (NumberFormatException e) {
+                        continue;
+                    }
+                }
+
+                // 숫자가 2개 이상이면 곱셈 수행
+                if (numbers.size() >= 2) {
+                    standardFactor = 1.0;
+                    for (int j = 0; j < numbers.size(); j++) {
+                        standardFactor *= numbers.get(j);
+                    }
+                } else if (!numbers.isEmpty()) {
+                    // 숫자가 하나만 있는 경우 해당 값 사용
+                    standardFactor = numbers.get(0);
+                }
+            }
+
+            // ✅ 최종 차감량 계산
+            double deductedInventory = Math.min(inventoryAdjustment * standardFactor, availableInventory);
+
+            // 재고 업데이트 쿼리 실행
+            String updateSQL = "UPDATE testTable SET inventory = inventory - ? WHERE medicineName = ? AND DeliveryDate = ?";
+            PreparedStatement updateStmt = conn.prepareStatement(updateSQL);
+            updateStmt.setDouble(1, deductedInventory);
+            updateStmt.setString(2, medicineName);
+            updateStmt.setString(3, minDeliveryDate);
+
+            int rowsAffected = updateStmt.executeUpdate();
+            updateStmt.close();
+
+            // 차감된 재고량 업데이트
+            inventoryAdjustment -= deductedInventory;
+        }
+    }
+
+    // 트랜잭션 커밋
+    conn.commit();
+    out.println("{\"result\":\"success\"}");
+} catch (Exception e) {
+    // 오류 발생 시 롤백
+    try {
+        if (conn != null) {
+            conn.rollback();
+        }
+    } catch (SQLException rollbackEx) {
+        rollbackEx.printStackTrace();
+    }
+    e.printStackTrace();
+    out.println("{\"result\":\"error\", \"message\":\"" + e.getMessage() + "\"}");
+} finally {
+    // 자원 정리
+    try {
+        if (pstmt != null) pstmt.close();
+        if (discountStmt != null) discountStmt.close();
+        if (ptement != null) ptement.close();
+        if (statement2 != null) statement2.close();
+        if (statement3 != null) statement3.close();
+        if (conn != null) conn.close();
+    } catch (SQLException e) {
+        e.printStackTrace();
+    }
+}
+%>

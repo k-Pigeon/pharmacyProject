@@ -1,0 +1,48 @@
+<%@ page language="java" contentType="text/plain; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ page import="java.sql.*, java.util.regex.*" %>
+<%@ include file="DBconnection.jsp" %> 
+<%
+/*
+    ⚠ 매우 중요
+    - 이 파일은 include로 사용하면 안 됨
+    - AJAX로 호출하는 용도로만 사용해야 DBconnection.jsp와 변수 충돌이 없음
+*/
+
+boolean warningFound = false;
+
+String sql = "SELECT inventory, standard, quantity FROM testTable" + idSortation;
+
+try (PreparedStatement ps = conn.prepareStatement(sql);
+     ResultSet rs = ps.executeQuery()) {
+
+    while (rs.next()) {
+
+        double inventory = rs.getDouble("inventory");
+        String standardStr = rs.getString("standard");
+        double quantity = rs.getDouble("quantity");
+
+        // 규격 숫자 추출 (예: "20g 4포" → 20 * 4 = 80)
+        double standard = 1;
+        if (standardStr != null) {
+            Matcher m = Pattern.compile("\\d+(\\.\\d+)?").matcher(standardStr);
+            while (m.find()) {
+                standard *= Double.parseDouble(m.group());
+            }
+        }
+
+        // 조건 검사
+        if (quantity < inventory * standard) {
+            warningFound = true;
+            break;
+        }
+    }
+
+} catch (Exception e) {
+    e.printStackTrace();
+}
+
+conn.close();
+
+// 결과 출력: JS에서 success(result)로 받음
+out.print(warningFound ? "Y" : "N");
+%>

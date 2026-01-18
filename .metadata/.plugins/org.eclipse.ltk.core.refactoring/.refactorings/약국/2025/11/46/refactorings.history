@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<session version="1.0">
+<refactoring comment="Rename resource &apos;약국/src/main/webapp/selectUpdate.jsp&apos; to &apos;selectPrev.jsp&apos;" description="Rename resource &apos;selectUpdate.jsp&apos;" flags="7" id="org.eclipse.ltk.core.refactoring.rename.resource" input="src/main/webapp/selectUpdate.jsp" name="selectPrev.jsp" stamp="1762864126515" updateReferences="true"/>
+</session>

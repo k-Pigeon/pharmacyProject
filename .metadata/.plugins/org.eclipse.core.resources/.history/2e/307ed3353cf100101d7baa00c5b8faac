@@ -1,0 +1,758 @@
+@charset "UTF-8";
+
+* {
+	padding: 0;
+	margin: 0;
+	box-sizing: border-box;
+}
+
+a {
+	text-decoration: none;
+}
+
+ul {
+	list-style: none;
+}
+@media screen and (max-width: 800px) {
+    .table_line th,
+    .table_line td {
+        text-align: left;
+    }
+}
+#header {
+    width: 100%;
+    height: auto;
+    overflow-x: auto;
+    overflow: visible; /* 드롭다운 표시 */
+    color: white;
+    line-height: 40px;
+    position: fixed;
+    z-index: 5000; /* wrap보다 위 */
+    font-size: 20px;
+}
+.searchFocus{
+	    box-shadow: 0px 10px 10px -10px;
+}
+#header ul li a.pageShow {
+	color:red;
+	border-bottom: 2px solid black;
+}
+
+#header ul li a {
+	float: left;
+	padding: 0 10px;
+}
+
+#userInfo {
+    position: absolute;
+    width: 250px;
+    height: 150px;
+    display: none;
+    background-color: white;
+    border: 1px solid black;
+    z-index: 9999 !important; /* header 위에 떠야 표시됨 */
+}
+
+
+#wrap .table_line .dataSet{
+	border: none;
+    background: none;
+    outline: none;
+    color: black;
+}
+
+#wrap #header .btn-4 {
+  width: 200px;
+  font-size: 18px;
+  position: relative;
+  color: #000;
+  z-index: 2;
+  line-height: 40px;
+  padding: 0;
+}
+#wrap #header .btn-4:hover{
+  border: none;
+}
+#wrap #header .btn-4:before,
+#wrap #header .btn-4:after {
+  position: absolute;
+  content: "";
+  width: 0%;
+  height: 0%;
+  border: 2px solid;
+  z-index: -1;
+  transition: all 0.3s ease;
+}
+
+#wrap #header .btn-4:before {
+   top: 0;
+   left: 0;
+   border-bottom-color: transparent;
+   border-right-color: transparent;
+   border-top-color: #000;
+   border-left-color: #000;
+}
+#wrap #header .btn-4:after{
+   bottom: 0;
+   right: 0;
+   border-top-color: transparent;
+   border-left-color: transparent;
+   border-bottom-color: #000;
+   border-right-color: #000;
+}
+#wrap #header .btn-4:hover:before,
+#wrap #header .btn-4:hover:after {
+  border-color: #000;
+  height: 100%;
+  width: 100%;
+}
+
+
+.table_line th,
+.table_line td {
+    white-space: normal; /* 줄 바꿈 허용 */
+    line-height: 40px; /* 셀 높이 조정 */
+}
+#wrap {
+    position: relative;
+    width: 100%;
+    min-height: 100vh;
+    background-color: RGBA(127, 127, 127, 0.2);
+    overflow-x: auto;
+    z-index: 1; /* header보다 낮음 */
+}
+
+#wrap #data, #wrap #setData{
+	flex: 1;
+}
+
+
+
+#wrap #barcodeInput {
+	float: right;
+}
+
+#wrap #formTeg {
+    height: 25px;
+    margin: 0 auto;
+    padding: 15px;
+    max-width: 1000px;
+}
+
+#wrap #formTeg #barcodeInput {
+	float: right;
+    opacity: 0;
+    position:fixed;
+	transform: translateX(410%);
+}
+
+#wrap .table_line {
+    width: 1000px;
+    table-layout: fixed;
+    border: 1px solid black;
+    margin: 0 auto;
+    text-align: center;
+    margin-top: 5%;
+    max-width: 1200px;
+}
+
+#wrap #table_input {
+    min-width: 1000px;
+    table-layout: fixed;
+    border: 1px solid black;
+    margin: 0 auto;
+    text-align: center;
+    margin-top: 5%;
+    max-width: 1000px;
+}
+
+#wrap .table_line colgroup{
+	width: auto;
+}
+#wrap .table_line th{
+	background-color: RGBA(127,127,127,0.3);
+}
+#wrap #table_input th{
+	background-color: RGBA(127,127,127,0.3);
+}
+#wrap .indexTable th,
+#wrap #inventory_list{
+	border:1px solid white !important;
+	box-shadow: 5px 5px 10px;
+}
+#wrap #inventory_list tr.recordList td{
+    background-color: #F0F8FF;
+}
+#wrap #inventory_list .evenTR{
+	background-color: #F0F8FF !important;
+}
+#wrap .indexTable td{
+	border:1px solid white !important;
+}
+#wrap .indexTable #inventory_list tr:nth-child(even){
+	background-color: #F0F8FF;
+}
+#wrap .table_line th {
+	border: 1px solid black;
+	border-collapse: collapse;
+	height: 40px;
+	line-height:30px;
+	white-space: nowrap;
+    overflow: hidden; /* 수정: 텍스트 넘침 처리 */
+    text-align: center;
+}
+#wrap .table_line td {
+	border: 1px solid black;
+	border-collapse: collapse;
+	height: 40px;
+	line-height:40px;
+	white-space: nowrap;
+    overflow: hidden; /* 수정: 텍스트 넘침 처리 */
+    text-align: center;
+}
+
+#wrap #table_input th,
+#wrap #table_input td {
+	border: 1px solid black;
+	border-collapse: collapse;
+	height: 40px;
+	line-height:40px;
+	white-space: nowrap;
+    overflow: hidden; /* 수정: 텍스트 넘침 처리 */
+    text-align: center;
+    padding: 10px;
+}
+
+#listWrap {
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: rgba(255, 255, 255, 1);
+    padding: 20px;
+    border-radius: 10px;
+    z-index: 1000;
+    max-width: 90%;
+    overflow-x: scroll;
+}
+
+#listWrap .table_line th,
+#listWrap .table_line td {
+	border:1px solid black;
+    width: auto; /* 수정: 테이블 너비를 자동으로 조정 */
+}
+#listWrap .table_line input{
+	border: none;
+	background: transparent;
+}
+.ascendingOrder,
+.descendingOrder {
+    cursor: pointer;
+    font-size: 12px;
+}
+
+.ascendingOrder:hover,
+.descendingOrder:hover {
+    background-color: rgba(0, 0, 0, 0.1);
+}
+
+.ascendingOrder:active,
+.descendingOrder:active {
+    color: blue;
+}
+.wrap .table_line,
+.listWrap .table_line{
+	text-align: center;
+}
+.set_line td{
+	line-height:20px;
+}
+.container.addProduct {
+    width: 100%;
+    padding: 20px;
+}
+.container.addProduct #productForm input {
+    margin-bottom: 10px;
+    width: 23%;
+    padding: 10px;
+    font-size: 15px;
+    border: 1px solid #ccc;
+}
+.container.addProduct #productForm #standardPriceContainer .standardPriceGroup {
+    display: flex;
+    gap: 10px;
+    margin: 1% 0;
+}
+.container.addProduct #productForm #standardPriceContainer .standardPriceGroup input[type="text"] {
+    border: 2px solid transparent;
+    width: 15em;
+    height: 2.5em;
+    padding-left: 0.8em;
+    outline: none;
+    overflow: hidden;
+    background-color: #DCDCDC;
+    border-radius: 10px;
+    transition: all 0.5s;
+}
+
+.container.addProduct #productForm #standardPriceContainer .standardPriceGroup input[type="text"]:focus {
+    border: 2px solid #4A9DEC;
+    box-shadow: 0px 0px 0px 7px rgb(74, 157, 236, 20%);
+    background-color: white;
+}
+.container.addProduct #productForm #standardPriceContainer .standardPriceGroup .removeStandardPrice {
+    background: red;
+    color: white;
+    border: none;
+    cursor: pointer;
+    width: 35px;
+    height: 35px;
+    line-height: 35px;
+    border-radius: 100%;
+    font-size: 30px;
+}
+.container.addProduct #productForm .submitNew,
+.container.addProduct #productForm #addStandardPrice {
+    position: absolute;
+    color: #090909;
+    padding: 0.7em 1.7em;
+    font-size: 18px;
+    border-radius: 0.5em;
+    background: #e8e8e8;
+    cursor: pointer;
+    border: 1px solid #e8e8e8;
+    transition: all 0.3s;
+    box-shadow: 
+        6px 6px 12px #c5c5c5,
+       -6px -6px 12px #ffffff;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.container.addProduct #productForm .submitNew:active,
+.container.addProduct #productForm #addStandardPrice:active {
+    color: #666;
+    box-shadow:
+        0px 0px 0px #c5c5c5,
+        0px 0px 0px #ffffff,
+        inset 4px 4px 12px #c5c5c5,
+        inset -4px -4px 12px #ffffff;
+}
+.container.addProduct #productForm #addStandardPrice {
+    position: relative;
+    left: 10%;
+}
+.container.addProduct #productForm .closeAdd {
+    height: 3em;
+    width: 8em;
+    border: none;
+    border-radius: 10em;
+    background: #016DD9;
+    font-size: 17px;
+    color: #ffffff;
+    font-family: inherit;
+    font-weight: 500;
+    float: right;
+}
+
+.container.addProduct #productForm .closeAdd:hover {
+    animation: shake3856 0.3s linear infinite both;
+}
+@keyframes shake3856 {
+    0%   { transform: translate(0); }
+    20%  { transform: translate(-2px, 2px); }
+    40%  { transform: translate(-2px, -2px); }
+    60%  { transform: translate(2px, 2px); }
+    80%  { transform: translate(2px, -2px); }
+    100% { transform: translate(0); }
+}
+.container.addProduct #productForm #standardPriceContainer .standardPriceGroup .removeStandardPrice {
+    display: none;
+}
+
+/* salesRegistration.jsp */
+/* ===============================
+   기본 레이아웃
+=============================== */
+
+#wrap.salesRegistration {
+    display: block;
+}
+
+#wrap.salesRegistration h1 {
+    width: 100%;
+    height: 10px;
+    text-align: center;
+    transform: translateY(70px);
+}
+
+#wrap.salesRegistration #section {
+    display: grid;
+    grid-template-columns: 6fr 4fr;
+    width: 95%;
+    height: 60vh;
+    transform: translateY(25%);
+    margin: 0 auto;
+}
+
+/* ===============================
+   공통 테이블
+=============================== */
+
+#wrap.salesRegistration .membertable {
+    border-collapse: separate;
+    border-spacing: 0;
+    backdrop-filter: blur(12px);
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 12px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+    color: #333;
+    width: 95%;
+}
+
+#wrap.salesRegistration .membertable thead th {
+    background: rgba(255, 255, 255, 0.25);
+    color: #222;
+    font-weight: bold;
+    text-align: center;
+}
+
+#wrap.salesRegistration .membertable td {
+    text-align: center;
+}
+
+#wrap.salesRegistration .membertable tbody tr {
+    height: 42px;
+}
+
+#wrap.salesRegistration .membertable input[type="text"] {
+    width: 90%;
+    border: none;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.35);
+    backdrop-filter: blur(8px);
+    color: #111;
+    font-size: 20px;
+}
+
+/* ===============================
+   Registration UI
+=============================== */
+
+#wrap.salesRegistration .RegistrationUi .membertable,
+#wrap.salesRegistration .RegistrationUi .copyTable {
+    width: 95%;
+}
+
+#wrap.salesRegistration .RegistrationUi .registrationData input[type="text"] {
+    width: 100%;
+    height: 46px;
+    font-size: 18px;
+}
+
+#wrap.salesRegistration .RegistrationUi .searchSystem {
+    width: 40%;
+    height: 50px;
+    float: left;
+}
+
+#wrap.salesRegistration .RegistrationUi .dateSystem {
+    width: 20%;
+    height: 50px;
+    border-radius: 0px 10px 0px 0px;
+}
+
+/* ===============================
+   Search UI
+=============================== */
+
+#wrap.salesRegistration .searchUi .membertable input[type="text"] {
+    width: 60%;
+    height: 35px;
+    font-size: 25px;
+    float: right;
+    margin: 5px 0;
+    box-shadow: 0px 0px 5px 0px;
+}
+
+#wrap.salesRegistration .searchUi .membertable .jumin1,
+#wrap.salesRegistration .searchUi .membertable .jumin2 {
+    width: 39%;
+    height: 30px;
+    font-size: 25px;
+}
+
+#wrap.salesRegistration .searchUi .membertable tr {
+    height: 36px;
+}
+
+#wrap.salesRegistration .searchUi .membertable .selectFocus {
+    transition: all 0.3s;
+    border: 2px solid green;
+    box-shadow: 0px 0px 10px 5px;
+}
+
+/* ===============================
+   버튼들
+=============================== */
+
+#wrap.salesRegistration .insertSale {
+    --color: #560bad;
+    font-family: inherit;
+    display: inline-block;
+    width: 8em;
+    height: 2.6em;
+    line-height: 2.5em;
+    margin: 20px;
+    position: relative;
+    cursor: pointer;
+    overflow: hidden;
+    border: 2px solid var(--color);
+    transition: color 0.5s;
+    z-index: 1;
+    font-size: 17px;
+    border-radius: 6px;
+    font-weight: 500;
+}
+
+#wrap.salesRegistration .insertSale:hover {
+    color: #ddd !important;
+}
+
+#wrap.salesRegistration .insertSale:before {
+    content: "";
+    position: absolute;
+    z-index: -1;
+    background: var(--color);
+    height: 350px;
+    width: 350px;
+    border-radius: 50%;
+    top: 100%;
+    left: 100%;
+    transition: all 0.7s;
+}
+
+#wrap.salesRegistration .insertSale:hover:before {
+    top: -50px;
+    left: -50px;
+}
+
+#wrap.salesRegistration .removeTr {
+    display: inline-block;
+    width: 95%;
+    height: 45px;
+    position: relative;
+    left: 50%;
+    transform: translateX(-50%);
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+#wrap.salesRegistration .removeTr:hover {
+    background: rgba(255, 50, 100, 0.6);
+    width: 110%;
+}
+
+/* ===============================
+   합계 입력 필드
+=============================== */
+
+#wrap.salesRegistration .totalCalcul,
+#wrap.salesRegistration .maxTotal,
+#wrap.salesRegistration .discounted {
+    background: rgba(255, 255, 255, 0.3);
+    border: none;
+    border-radius: 8px;
+    backdrop-filter: blur(8px);
+    color: #111;
+}
+
+/* ===============================
+   resultData 테이블 (스크롤)
+=============================== */
+
+#wrap.salesRegistration .resultData {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+#wrap.salesRegistration .resultData thead {
+    position: sticky;
+    top: 0;
+    background-color: #f1f1f1;
+    z-index: 1;
+}
+
+#wrap.salesRegistration .resultData tbody {
+    display: block;
+    max-height: 300px;
+    overflow-y: auto;
+    width: 100%;
+    scrollbar-width: none;
+}
+
+#wrap.salesRegistration .resultData thead,
+#wrap.salesRegistration .resultData tbody tr {
+    display: table;
+    width: 100%;
+    table-layout: fixed;
+}
+
+#wrap.salesRegistration .resultData th,
+#wrap.salesRegistration .resultData td {
+    padding: 8px;
+    border: 1px solid #ccc;
+    text-align: center;
+}
+
+#wrap.salesRegistration .resultData th:nth-child(4),
+#wrap.salesRegistration .resultData td:nth-child(4) {
+    display: none;
+}
+
+#wrap.salesRegistration .selectRegist {
+    background-color: #e0f7fa !important;
+}
+
+/* ===============================
+   입력 포커스
+=============================== */
+
+#wrap.salesRegistration .inputCheckStyle,
+#wrap.salesRegistration .selectCheck {
+    box-shadow: 0px 0px 10px 2px;
+    border: 3px solid green;
+}
+
+/* ===============================
+   모달 / 팝업
+=============================== */
+
+#wrap.salesRegistration .standardDetail {
+    display: none;
+    width: 100px;
+    border: 1px solid black;
+    background: white;
+    font-size: 25px;
+    box-shadow: 5px 5px 10px 2px;
+    cursor: pointer;
+}
+
+#wrap.salesRegistration .standardDetail div:hover {
+    background-color: #4B0082;
+    color: white;
+}
+
+#wrap.salesRegistration #customContextMenu li:hover {
+    background-color: #eee;
+}
+
+#wrap.salesRegistration #editModalContent input {
+    max-width: 180px;
+    background-color: #f1f9f9;
+    color: #242424;
+    padding: .15rem 0.5rem;
+    min-height: 40px;
+    border-radius: 4px;
+    outline: none;
+    line-height: 1.15;
+    box-shadow: 0px 10px 20px -15px;
+    margin: 10px 5px;
+}
+
+#wrap.salesRegistration #popup .closePopup {
+    position: absolute;
+    right: 0;
+    top: 0;
+    width: 100px;
+    height: 35px;
+    line-height: 35px;
+    font-size: 25px;
+}
+#wrap.salesRegistration .edit-modal {
+    position: absolute;
+    display: none;
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    width: 800px;
+    max-height: 80vh;
+    overflow-y: auto;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    box-shadow: 5px 5px 17px 0px;
+    z-index: 1000;
+}
+#wrap.salesRegistration .edit-modal-content {
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    width: 700px;
+    max-height: 80vh;
+    overflow-y: auto;
+    margin: 0 auto;
+}
+#popup .popup-box {
+    width: 85vh;
+    height: 50vh;
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    padding: 20px;
+    background-color: white;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    box-shadow: 0px 0px 30px 0px;
+    z-index: 100;
+}
+.blackBG .modal-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    border: 1px solid #ccc;
+    box-shadow: gray 0px 0px 10px;
+    min-height: 30vh;
+    background-color: rgba(127, 127, 127, 0.6);
+    width: 100%;
+    height: 100vh;
+    display: none;
+    z-index: 100;
+}
+#wrap.salesRegistration .medicine-popup {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: white;
+    border: 1px solid #ccc;
+    z-index: 1000;
+    box-shadow: 0px 0px 10px gray;
+    width: 900px;
+    min-height: 30vh;
+}
+.popup-table {
+    display: block;
+    width: 100%;
+    height: 50vh;
+    border-collapse: collapse;
+    margin-top: 50px;
+    overflow: scroll;
+}
+.context-menu {
+    display: none;
+    position: absolute;
+    z-index: 9999;
+    list-style: none;
+    background: #fff;
+    border: 1px solid #ccc;
+    padding: 5px;
+    border-radius: 5px;
+}
+

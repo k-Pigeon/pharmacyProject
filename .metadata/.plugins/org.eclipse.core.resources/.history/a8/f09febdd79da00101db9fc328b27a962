@@ -1,0 +1,85 @@
+<%@ page contentType="application/json; charset=UTF-8"
+	pageEncoding="UTF-8"%>
+<%@ page import="java.sql.*, org.json.*, java.util.regex.*"%>
+<%@ include file="sessionManager.jsp"%>
+<%@ include file="DBconnection.jsp"%>
+
+<%
+String dbName = (session != null) ? (String) session.getAttribute("dbName") : null;
+String id = (session != null) ? (String) session.getAttribute("id") : null;
+String idSortation = (session != null) ? (String) session.getAttribute("idSortation") : null;
+if (id == null || dbName == null) {
+    response.sendRedirect("login.jsp");
+    return;
+}
+jdbcDriver = dbName;
+
+PreparedStatement countStmt = null;
+ResultSet countRs = null;
+PreparedStatement pstmt = null;
+ResultSet rs = null;
+
+
+int pages = 1;
+int limit = 100;
+if (request.getParameter("page") != null) {
+    pages = Integer.parseInt(request.getParameter("page"));
+}
+int offset = (pages - 1) * limit;
+
+try{
+	
+} finally{
+    if (countRs != null) {
+        try { countRs.close(); } catch (Exception ignore) {}
+    }
+    if (countStmt != null) {
+        try { countStmt.close(); } catch (Exception ignore) {}
+    }
+    if (rs != null) {
+        try { rs.close(); } catch (Exception ignore) {}
+    }
+    if (pstmt != null) {
+        try { pstmt.close(); } catch (Exception ignore) {}
+    }
+}
+// 전체 데이터 개수
+countStmt = conn.prepareStatement("SELECT COUNT(*) FROM testTable" + idSortation);
+countRs = countStmt.executeQuery();
+countRs.next();
+int totalRows = countRs.getInt(1);
+int totalPages = (int) Math.ceil((double) totalRows / limit);
+
+// 실제 데이터 조회
+String sql = "SELECT *, format(price, 0) AS realPrice FROM testTable" + idSortation + " ORDER BY medicineName ASC, DeliveryDate ASC LIMIT ? OFFSET ?";
+pstmt = conn.prepareStatement(sql);
+pstmt.setInt(1, limit);
+pstmt.setInt(2, offset);
+rs = pstmt.executeQuery();
+
+StringBuilder html = new StringBuilder();
+
+while (rs.next()) {
+    html.append("<tr data-key='" 
+    	    + rs.getString("medicineName") + "|" 
+    	    + rs.getString("DeliveryDate") + "|" 
+    	    + rs.getString("standard") + "'>");
+    html.append("<td><input type='text' class='editable' name='medicineName' value='" + rs.getString("medicineName") + "'></td>");
+    html.append("<td><input type='text' class='editable deliveryDate' name='DeliveryDate'  value='" + rs.getString("DeliveryDate") + "'></td>");
+    html.append("<td><input type='text' class='editable inventory' name='inventory' value='" + rs.getString("inventory") + "'></td>");
+    html.append("<td><input type='text' class='editable price' name='price' value='" + rs.getString("realPrice") + "'></td>");
+    html.append("<td><input type='text' class='editable' name='standard' value='" + rs.getString("standard") + "'></td>");
+    html.append("<td><button class='updateInfo'>수정</button><button class='deleteInfo'>삭제</button></td>");
+    html.append("<td><input type='text' class='editable' name='kind' value='" + rs.getString("kind") + "'></td>");
+    html.append("<td><input type='text' class='editable' name='companyName' value='" + rs.getString("companyName") + "'></td>");
+    html.append("<td><input type='text' class='editable' name='receiptDate' value='" + rs.getString("receiptDate") + "'></td>");
+    html.append("<td><input type='button' id='returnProduct' value='" + 
+        (rs.getInt("returnInv") == 1 ? "반품됨" : "반품하기") + "'></td>");
+    html.append("</tr>");
+}
+
+JSONObject result = new JSONObject();
+result.put("html", html.toString());
+result.put("totalPages", totalPages);
+out.print(result.toString());
+%>

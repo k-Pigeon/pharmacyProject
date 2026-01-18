@@ -1,0 +1,66 @@
+import javax.swing.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+
+@SuppressWarnings("serial")
+public class LoginFrame extends JFrame {
+    private JTextField idField;
+    private JPasswordField passwordField;
+    private JButton loginButton;
+
+    public LoginFrame() {
+        setTitle("서가종로온누리약국");
+        setBounds(600, 300, 300, 200);
+        setLayout(null);
+
+        // 아이디 입력
+        JLabel idLabel = new JLabel("아이디:");
+        idLabel.setBounds(30, 30, 80, 30);
+        add(idLabel);
+
+        idField = new JTextField();
+        idField.setBounds(110, 30, 150, 30);
+        add(idField);
+
+        // 비밀번호 입력
+        JLabel passwordLabel = new JLabel("비밀번호:");
+        passwordLabel.setBounds(30, 70, 80, 30);
+        add(passwordLabel);
+
+        passwordField = new JPasswordField();
+        passwordField.setBounds(110, 70, 150, 30);
+        add(passwordField);
+
+        // 로그인 버튼
+        loginButton = new JButton("로그인");
+        loginButton.setBounds(100, 120, 80, 30);
+        add(loginButton);
+
+        // 버튼 클릭 이벤트
+        loginButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+            	//아이디를 입력한 값을 가져옴
+                String id = idField.getText(); 
+                //보안 목적으로 new String 사용. 비밀번호 값 가져옴
+                String password = new String(passwordField.getPassword());
+                
+                boolean isValid = LoginValidator.validate(id, password);
+                if (isValid) {
+                    JOptionPane.showMessageDialog(null, "로그인 완료!", "알림", JOptionPane.INFORMATION_MESSAGE);
+                    dispose();
+                    new MainFrame();
+                } else {
+                    JOptionPane.showMessageDialog(null, "로그인 실패!", "경고", JOptionPane.ERROR_MESSAGE);
+                }
+            }
+        });
+
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setVisible(true);
+    }
+
+    public static void main(String[] args) {
+        new LoginFrame();
+    }
+}

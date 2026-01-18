@@ -1,0 +1,82 @@
+<%@ page language="java" contentType="application/json; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ page import="java.io.*" %>
+<%@ page import="org.json.JSONObject" %>
+
+<%
+    request.setCharacterEncoding("UTF-8");
+    String custnumber = request.getParameter("custnumber");
+    System.out.println("Received custnumber: " + custnumber);
+
+    String csvFilePath = getServletContext().getRealPath("/DB백업.csv");
+    System.out.println("CSV File Path: " + csvFilePath);
+
+    BufferedReader br = null;
+    JSONObject responseJson = new JSONObject();
+    boolean found = false;
+
+    try {
+        br = new BufferedReader(new InputStreamReader(new FileInputStream(csvFilePath), "UTF-8"));
+
+        String line;
+        br.readLine(); // 첫 줄(헤더) 건너뜀
+
+        while ((line = br.readLine()) != null) {
+            // CSV 셀 값 안에 쉼표가 있어도 정확히 처리
+            // "12345","고객, 메모" 이런 형태 대응
+            String[] data = parseCsvLine(line);
+
+            if (data.length >= 2) {
+                String rowNumber = data[0].trim().replaceAll("^\"|\"$", "");  // 큰따옴표 제거
+                String memo = data[1].trim().replaceAll("^\"|\"$", "");
+
+                System.out.println("Parsed rowNumber: " + rowNumber + " / memo: " + memo);
+
+                if (rowNumber.equals(custnumber)) {
+                    responseJson.put("rowNumber", rowNumber);
+                    responseJson.put("memo", memo);
+                    found = true;
+                    break;
+                }
+            }
+        }
+
+        if (!found) {
+            responseJson.put("error", "고객 번호를 찾을 수 없습니다.");
+        }
+
+    } catch (IOException e) {
+        e.printStackTrace();
+        responseJson.put("error", "파일을 읽는 도중 오류가 발생했습니다.");
+    } finally {
+        if (br != null) try { br.close(); } catch (IOException e) { e.printStackTrace(); }
+    }
+
+    response.setContentType("application/json; charset=UTF-8");
+    response.getWriter().write(responseJson.toString());
+
+
+// ====== CSV 파싱 함수 ======
+%>
+<%! 
+// 쉼표 안에 쌍따옴표 포함된 값도 안전하게 파싱
+public String[] parseCsvLine(String line) {
+    java.util.List<String> result = new java.util.ArrayList<>();
+    StringBuilder current = new StringBuilder();
+    boolean inQuotes = false;
+
+    for (int i = 0; i < line.length(); i++) {
+        char ch = line.charAt(i);
+        if (ch == '\"') {
+            inQuotes = !inQuotes;
+        } else if (ch == ',' && !inQuotes) {
+            result.add(current.toString());
+            current.setLength(0);
+        } else {
+            current.append(ch);
+        }
+    }
+    result.add(current.toString()); // 마지막 항목 추가
+
+    return result.toArray(new String[0]);
+}
+%>

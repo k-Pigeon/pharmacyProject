@@ -1,0 +1,483 @@
+@charset "UTF-8";
+
+/* =============================
+   기본 리셋
+============================= */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body.sale-body {
+    background: #efefef;
+    overflow: hidden;
+    font-family: "Noto Sans KR", sans-serif;
+}
+
+#wrap {
+    width: 100%;
+    height: 100vh;
+    text-align: center;
+    position: relative;
+}
+
+/* =============================
+   제목 영역
+============================= */
+.sale-title-area {
+    margin-top: 25px;
+    margin-bottom: 30px;
+}
+
+.sale-title-area h1 {
+    font-size: 26px;
+    margin-bottom: 6px;
+}
+
+#downloadStatement {
+    padding: 5px 10px;
+    font-size: 13px;
+}
+
+/* =============================
+   메인 레이아웃
+============================= */
+#data {
+    display: grid;
+    grid-template-columns: 65% 35%;
+    gap: 30px;
+    padding: 0 25px;
+    align-items: start;
+}
+
+/* =============================
+   고객 입력
+============================= */
+.consumerInfo {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 10px;
+}
+
+.coolinput label {
+    font-size: 12px;
+}
+
+.memberName,
+.scheduleDate {
+    height: 34px;
+    padding: 4px 8px;
+    border-radius: 6px;
+    border: 1px solid #bbb;
+}
+
+/* =============================
+   판매 테이블 공통
+============================= */
+.table_line {
+    width: 100%;
+    border-collapse: collapse;
+    background: #fff;
+    table-layout: fixed;
+    font-size: 13px;
+}
+
+.table_line th {
+    background: #b8c7da;
+    border: 1px solid #666;
+    height: 42px;
+}
+
+.table_line td {
+    border: 1px solid #666;
+    height: 42px;
+    padding: 3px;
+    text-align: center;
+}
+
+.table_line input[type="text"] {
+    width: 100%;
+    height: 26px;
+    border: 1px solid #aaa;
+    text-align: center;
+}
+
+/* =============================
+   스크롤 테이블
+============================= */
+#scrollTable {
+    max-height: 160px;
+    overflow-y: auto;
+    border: 1px solid #777;
+}
+
+/* =============================
+   하단 금액 테이블
+============================= */
+#generalMedicine td,
+#preparations td,
+#dbInsert td {
+    font-weight: bold;
+}
+
+.discount-btn {
+    height: 32px;
+    width: 100%;
+    font-size: 12px;
+}
+
+#exhaustionInv {
+    width: 100%;
+    height: 50px;
+    font-size: 18px;
+    background: #bfbfbf;
+    border: none;
+    border-radius: 5px;
+}
+
+/* =============================
+   세트 테이블
+============================= */
+.leftUI {
+    display: grid;
+    grid-template-rows: 1fr 1fr;
+    gap: 25px;
+}
+
+.regularTable {
+    width: 100%;
+    border-collapse: collapse;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.regularTable thead {
+    background: #cdeed1;
+    height: 45px;
+}
+
+.regularTable th {
+    height: 45px;
+    position: relative;
+}
+
+.regularTable td {
+    height: 48px;
+    border: 1px solid #f2b7b7;
+    background: #fffafa;
+    cursor: pointer;
+}
+
+.regularTable td:hover {
+    background: #ffeaea;
+}
+
+/* 뚜껑 애니메이션 */
+.leftLid,
+.rightLid {
+    position: absolute;
+    top: 0;
+    width: 50%;
+    height: 100%;
+    background: #c0e4c4;
+    font-weight: bold;
+    line-height: 45px;
+}
+
+.leftLid { left: 0; text-align: right; padding-right: 10px; }
+.rightLid { right: 0; text-align: left; padding-left: 10px; }
+
+.regularTable th:hover .leftLid {
+    transform: translateX(-120%);
+}
+
+.regularTable th:hover .rightLid {
+    transform: translateX(120%);
+}
+
+/* =============================
+   팝업
+============================= */
+#popup {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 85%;
+    max-width: 1500px;
+    height: 65%;
+    background: white;
+    border: 2px solid #777;
+    box-shadow: 0 0 15px rgba(0,0,0,0.4);
+    display: none;
+    z-index: 3000;
+}
+
+#popup h3 {
+    text-align: center;
+    margin: 10px 0;
+}
+
+#popup-table {
+    width: 100%;
+    height: calc(100% - 50px);
+    overflow-y: auto;
+    display: block;
+}
+
+/* =============================
+   재확인 창
+============================= */
+#checkInv {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: white;
+    width: 80%;
+    height: 70%;
+    box-shadow: 0 0 20px rgba(0,0,0,0.5);
+    display: none;
+    z-index: 4000;
+}
+
+/* =============================
+   경고창
+============================= */
+#warningBox {
+    position: fixed;
+    right: 20px;
+    bottom: -300px;
+    width: 360px;
+    background: #fff8f8;
+    border: 1px solid #ffb3b3;
+    border-radius: 10px;
+    padding: 15px;
+    opacity: 0;
+    transition: 0.5s;
+    z-index: 5000;
+}
+
+#warningBox.show {
+    bottom: 20px;
+    opacity: 1;
+}
+/* =========================
+   판매 화면 전용 UI
+========================= */
+
+body.sales-page {
+    overflow: hidden;
+}
+
+/* 메인 래퍼 */
+#wrap.sales-ui {
+    background-color: rgba(127,127,127,0.15);
+    padding-top: 70px;
+}
+
+/* 제목 영역 */
+.sales-title-box {
+    position: relative;
+    width: 100%;
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.sales-title-box h1 {
+    font-size: 26px;
+    margin-bottom: 6px;
+}
+
+#downloadStatement {
+    font-size: 13px;
+    padding: 4px 10px;
+}
+
+/* 전체 레이아웃 */
+#data.sales-layout {
+    display: grid;
+    grid-template-columns: 62% 36%;
+    gap: 2%;
+    padding: 0 25px;
+    align-items: flex-start;
+}
+
+/* =========================
+   고객 정보 입력
+========================= */
+
+.consumerInfo {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 10px;
+}
+
+.coolinput label.text {
+    font-size: 12px;
+}
+
+.memberName,
+.scheduleDate {
+    height: 34px;
+    border-radius: 6px;
+    border: 1px solid #bbb;
+    padding: 5px 8px;
+}
+
+/* =========================
+   판매 테이블 고정 레이아웃
+========================= */
+
+.table_line.sales-table {
+    width: 100%;
+    max-width: 100%;
+    table-layout: fixed;
+    border-collapse: collapse;
+    background: #fff;
+    font-size: 13px;
+}
+
+.table_line.sales-table th {
+    background-color: #b8c7da;
+    height: 42px;
+    border: 1px solid #555;
+}
+
+.table_line.sales-table td {
+    height: 42px;
+    border: 1px solid #555;
+    padding: 2px;
+}
+
+.table_line.sales-table input[type="text"] {
+    width: 100%;
+    height: 26px;
+    border: 1px solid #aaa;
+    text-align: center;
+    background: transparent;
+}
+
+/* 스크롤 영역 */
+#scrollTable.sales-scroll {
+    max-height: 180px;
+    overflow-y: auto;
+    border: 1px solid #777;
+}
+
+/* =========================
+   금액 계산 테이블
+========================= */
+
+.sales-summary td {
+    font-weight: bold;
+}
+
+.discount-btn {
+    height: 32px;
+    font-size: 12px;
+}
+
+#exhaustionInv {
+    width: 100%;
+    height: 48px;
+    font-size: 20px;
+    background: #bfbfbf;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+/* =========================
+   세트 영역
+========================= */
+
+.leftUI.sales-set {
+    display: grid;
+    grid-template-rows: 1fr 1fr;
+    gap: 22px;
+}
+
+.regularTable.sales-set-table {
+    width: 100%;
+    border-collapse: collapse;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.regularTable.sales-set-table thead {
+    background: #cdeed1;
+    height: 45px;
+}
+
+.regularTable.sales-set-table td {
+    height: 48px;
+    border: 1px solid #f2b7b7;
+    background: #fffafa;
+}
+
+.regularTable.sales-set-table td:hover {
+    background: #ffeaea;
+}
+
+/* 세트 뚜껑 */
+.regularTable.sales-set-table .leftLid,
+.regularTable.sales-set-table .rightLid {
+    height: 45px;
+    line-height: 45px;
+    background: #c0e4c4;
+}
+
+/* =========================
+   판매 재확인 창
+========================= */
+
+#checkInv.sales-check {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 82%;
+    height: 70%;
+    background: #fff;
+    box-shadow: 0 0 25px rgba(0,0,0,0.5);
+    z-index: 4000;
+    display: none;
+    padding: 20px;
+}
+
+/* =========================
+   검색 팝업
+========================= */
+
+#popup.sales-popup {
+    width: 85%;
+    height: 65%;
+    background: #fff;
+    border: 2px solid #666;
+    box-shadow: 0 0 15px rgba(0,0,0,0.4);
+}
+
+/* =========================
+   경고창
+========================= */
+
+#warningBox {
+    border-radius: 10px;
+    transition: all 0.5s ease;
+}
+
+/* =========================
+   반응형 최소화
+========================= */
+
+@media screen and (max-width: 1100px) {
+    #data.sales-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .leftUI.sales-set {
+        margin-top: 20px;
+    }
+}

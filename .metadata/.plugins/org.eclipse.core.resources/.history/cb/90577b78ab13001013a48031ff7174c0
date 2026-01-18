@@ -1,0 +1,40 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8"
+	pageEncoding="UTF-8"%>
+<%@ page import="java.sql.*"%>
+<%@ include file="sessionManager.jsp"%>
+<%@ include file="DBconnection.jsp"%>
+<%
+String dbName = (session != null) ? (String) session.getAttribute("dbName") : null;
+String id = (session != null) ? (String) session.getAttribute("id") : null;
+String password = (session != null) ? (String) session.getAttribute("password") : null;
+
+if (id == null || dbName == null) {
+	response.sendRedirect("login.jsp");
+	return;
+}
+
+jdbcDriver = dbName;
+%>
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Insert title here</title>
+</head>
+<body>
+<%
+String medicineName = request.getParameter("medicineName");
+String standard = request.getParameter("standard");
+
+String query = "SELECT * FROM testTable WHERE medicineName = ? AND standard = ?";
+PreparedStatement pstmt = conn.prepareStatement(query);
+pstmt.setString(1, medicineName);
+pstmt.setString(2, standard);
+ResultSet rs = pstmt.executeQuery();
+%>
+<% while(rs.next()) { %>
+    <div>재고: <%= rs.getInt("inventory") %>개, 가격: <%= rs.getInt("price") %>원</div>
+<% } %>
+
+</body>
+</html>

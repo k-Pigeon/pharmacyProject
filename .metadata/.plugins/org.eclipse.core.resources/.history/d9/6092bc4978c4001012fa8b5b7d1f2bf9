@@ -1,0 +1,28 @@
+<%@ page import="java.sql.*, org.json.*" %>
+<%@ include file="DBconnection.jsp" %>
+<%
+    request.setCharacterEncoding("UTF-8");
+    String medicineName = request.getParameter("medicineName");
+
+    JSONObject obj = new JSONObject();
+
+    try {
+        PreparedStatement ps = conn.prepareStatement(
+            "SELECT inventory, standard FROM testTable" + idSortation +
+            " WHERE medicineName=? AND returnInv='0' LIMIT 1"
+        );
+        ps.setString(1, medicineName);
+
+        ResultSet rs = ps.executeQuery();
+        if (rs.next()) {
+            obj.put("inventory", rs.getDouble("inventory"));
+            obj.put("standard", rs.getString("standard"));
+        }
+        rs.close();
+        ps.close();
+    } catch (Exception e) {
+        obj.put("error", e.getMessage());
+    }
+
+    out.print(obj.toString());
+%>

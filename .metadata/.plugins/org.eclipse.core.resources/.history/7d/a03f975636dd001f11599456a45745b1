@@ -1,0 +1,16 @@
+import javax.swing.JFrame;
+
+public class JFrame_Test {
+
+	public static void main(String[] args) {
+		//GUI 창(변수명 : jf)
+		JFrame jf = new JFrame();
+		//형태 좌표(x축, y축, 폭, 높이)
+		//각각 좌표만, 크기만 끼리 지정 가능
+		jf.setBounds(600, 300, 300, 300);
+		//프레임(창) 제목
+		jf.setTitle("서가종로온누리약국");
+		//
+		jf.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+	}
+}

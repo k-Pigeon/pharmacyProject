@@ -1,0 +1,78 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ page import="java.sql.*"%>
+<%@ page import="java.util.*"%>
+<%@ page import="java.text.*"%>
+<%@ include file="sessionManager.jsp"%>
+<%@ include file="DBconnection.jsp"%>
+<%
+String dbName = (session != null) ? (String) session.getAttribute("dbName") : null;
+String id = (session != null) ? (String) session.getAttribute("id") : null;
+String password = (session != null) ? (String) session.getAttribute("password") : null;
+
+if (id == null || dbName == null) {
+    response.sendRedirect("login.jsp");
+    return;
+}
+
+jdbcDriver = dbName;
+%>
+<%
+    // DB 연결 설정
+    String dbURL = "jdbc:mysql://localhost:3306/your_database"; // 데이터베이스 URL
+    String dbUser = "root"; // DB 사용자
+    String dbPass = "your_password"; // DB 비밀번호
+
+    Connection conn = null;
+    PreparedStatement ps = null;
+    ResultSet rs = null;
+
+    try {
+        // DB 연결
+        Class.forName("com.mysql.cj.jdbc.Driver");
+        conn = DriverManager.getConnection(dbURL, dbUser, dbPass);
+
+        // 파라미터 받기
+        String customerId = request.getParameter("customerId");
+        String medicinesJson = request.getParameter("medicines");
+        
+        // JSON 파싱
+        JSONArray medicines = new JSONArray(medicinesJson);
+
+        String saleDate = new java.text.SimpleDateFormat("yyyy-MM-dd").format(new java.util.Date());
+
+        // 약품별로 판매 기록을 삽입
+        for (int i = 0; i < medicines.length(); i++) {
+            JSONObject medicine = medicines.getJSONObject(i);
+            String medicineName = medicine.getString("medicineName");
+            String inventory = medicine.getString("inventory");
+            String standard = medicine.getString("standard");
+            String price = medicine.getString("price");
+            String totalPrice = medicine.getString("totalPrice");
+
+            // 판매 기록 삽입 쿼리
+            String saleInsertQuery = "INSERT INTO Sales (sale_date, customer_id, medicine_name, inventory, standard, price, total_price) VALUES (?, ?, ?, ?, ?, ?, ?)";
+            ps = conn.prepareStatement(saleInsertQuery);
+            ps.setString(1, saleDate);
+            ps.setString(2, customerId);
+            ps.setString(3, medicineName);
+            ps.setInt(4, Integer.parseInt(inventory));
+            ps.setString(5, standard);
+            ps.setDouble(6, Double.parseDouble(price));
+            ps.setDouble(7, Double.parseDouble(totalPrice));
+            ps.executeUpdate();
+        }
+
+        out.println("Data inserted successfully.");
+    } catch (Exception e) {
+        e.printStackTrace();
+        out.println("Error: " + e.getMessage());
+    } finally {
+        try {
+            if (rs != null) rs.close();
+            if (ps != null) ps.close();
+            if (conn != null) conn.close();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+%>

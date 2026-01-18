@@ -1,0 +1,26 @@
+<%@ page contentType="application/json; charset=UTF-8" %>
+<%@ page import="java.sql.*" %>
+<%@ include file="DBconnection.jsp" %>
+<%
+request.setCharacterEncoding("UTF-8");
+
+String medicineName = request.getParameter("medicineName");
+String standard = request.getParameter("standard");
+
+String query = "SELECT FORMAT(price, 0) AS price, standard FROM RegistTable WHERE medicineName = ? AND standard = ?";
+PreparedStatement pstmt = conn.prepareStatement(query);
+pstmt.setString(1, medicineName);
+pstmt.setString(2, standard);
+ResultSet rs = pstmt.executeQuery();
+
+if (rs.next()) {
+    String json = String.format(
+        "{\"1\": \"%s\", \"price\": \"%s\", \"standard\": \"%s\"}",
+        rs.getString(1),
+        rs.getString("price"),
+        rs.getString("standard")
+    );
+    out.print(json); // 🔥 JSON만 출력!
+}
+%>
+<%@ include file="DBclose.jsp" %>

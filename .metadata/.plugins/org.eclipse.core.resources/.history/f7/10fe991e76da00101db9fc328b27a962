@@ -1,0 +1,74 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ page import="java.io.*, java.sql.*, java.util.ArrayList, java.util.List" %>
+<%@ include file="sessionManager.jsp"%>
+<%@ include file="DBconnection.jsp"%>
+
+<%
+String dbName = (session != null) ? (String) session.getAttribute("dbName") : null;
+String id = (session != null) ? (String) session.getAttribute("id") : null;
+String password = (session != null) ? (String) session.getAttribute("password") : null;
+
+String idSortation = (session != null) ? (String) session.getAttribute("idSortation") : null; if (id == null || dbName == null) {
+    response.sendRedirect("login.jsp");
+    return;
+}
+
+String desktopPath = System.getProperty("user.home") + "\\Desktop"; // 바탕화면 경로
+String filePath = desktopPath + "\\database_backup.sql"; // SQL 백업 파일
+
+try (PrintWriter writer = new PrintWriter(new FileWriter(filePath))) {
+    Class.forName("com.mysql.cj.jdbc.Driver");
+    writer.println("SET FOREIGN_KEY_CHECKS=0;"); // 외래키 제약 조건 비활성화
+
+    Statement stmt = conn.createStatement();
+    List<String> tableNames = new ArrayList<>();
+    ResultSet rsTables = stmt.executeQuery("SHOW TABLES");
+
+    // 테이블 목록 저장
+    while (rsTables.next()) {
+        tableNames.add(rsTables.getString(1));
+    }
+    rsTables.close(); // 기존 ResultSet 닫기
+
+    for (String tableName : tableNames) {
+        writer.println("\n-- 테이블: " + tableName);
+        
+        // 1️⃣ 테이블 삭제 후 다시 생성 (DROP + CREATE)
+        writer.println("DROP TABLE IF EXISTS " + tableName + ";");
+        
+        Statement stmt2 = conn.createStatement();
+        ResultSet rsCreate = stmt2.executeQuery("SHOW CREATE TABLE " + tableName);
+        if (rsCreate.next()) {
+            writer.println(rsCreate.getString(2) + ";"); // CREATE TABLE 문 저장
+        }
+        rsCreate.close();
+        stmt2.close();
+
+        // 2️⃣ 테이블 데이터 백업 (INSERT INTO)
+        writer.println("\n-- 데이터 백업");
+        Statement stmt3 = conn.createStatement();
+        ResultSet rs = stmt3.executeQuery("SELECT * FROM " + tableName);
+        ResultSetMetaData metaData = rs.getMetaData();
+        int columnCount = metaData.getColumnCount();
+
+        while (rs.next()) {
+            writer.print("INSERT INTO " + tableName + " VALUES (");
+            for (int i = 1; i <= columnCount; i++) {
+                String value = rs.getString(i);
+                writer.print((value == null) ? "NULL" : "'" + value.replace("'", "''") + "'");
+                if (i < columnCount) writer.print(", ");
+            }
+            writer.println(");");
+        }
+        rs.close();
+        stmt3.close();
+    }
+
+    writer.println("SET FOREIGN_KEY_CHECKS=1;"); // 외래키 제약 조건 활성화
+    conn.close();
+} catch (Exception e) {
+    e.printStackTrace();
+}
+%>
+
+<%@ include file="DBclose.jsp" %>

@@ -1,0 +1,121 @@
+<%@ page language="java" contentType="application/json; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ page import="java.sql.*, java.util.*, java.util.regex.*"%>
+<%@ include file="sessionManager.jsp"%>
+<%@ include file="DBconnection.jsp"%>
+
+<%!
+// 표준 숫자 계산
+double parseStandard(String str) {
+    if (str == null) return 1;
+
+    Matcher m = Pattern.compile("\\d+(\\.\\d+)?").matcher(str);
+    double result = 1;
+    boolean matched = false;
+
+    while (m.find()) {
+        matched = true;
+        result *= Double.parseDouble(m.group());
+    }
+
+    return matched ? result : 1;
+}
+%>
+
+<%
+response.setContentType("application/json; charset=UTF-8");
+out.clear();
+
+String idSortation = (String) session.getAttribute("idSortation");
+
+String sql =
+    "SELECT medicineName, DeliveryDate, inventory, price, standard, kind, " +
+    "companyName, receiptDate, quantity " +
+    "FROM testTable" + idSortation + " " +
+    "WHERE returnInv='0' " +
+    "ORDER BY medicineName ASC, DeliveryDate DESC";
+
+PreparedStatement ps = conn.prepareStatement(sql);
+ResultSet rs = ps.executeQuery();
+
+// 이름별 합산 정보
+class Info {
+    double totalRealInv = 0;   // 합산된 재고
+    double totalQty = 0;       // 합산된 주문수량
+
+    // 대표값 (가장 최신 DeliveryDate)
+    String DeliveryDate;
+    String price;
+    String standard;
+    String kind;
+    String companyName;
+    String receiptDate;
+}
+
+Map<String, Info> map = new LinkedHashMap<>();
+
+while (rs.next()) {
+
+    // 이름 key를 정규화해서 공백/줄바꿈 제거
+    String name = rs.getString("medicineName");
+    if (name != null) name = name.trim();
+    else continue;
+
+    double inventory = rs.getDouble("inventory");
+
+    // quantity null-safe 처리
+    double quantity = 0;
+    try {
+        quantity = Double.parseDouble(
+                      (rs.getString("quantity") == null || rs.getString("quantity").trim().isEmpty())
+                      ? "0"
+                      : rs.getString("quantity").trim()
+                  );
+    } catch (Exception ignore) {}
+
+    String standard = rs.getString("standard");
+
+    double std = parseStandard(standard);
+    double realInv = inventory / std;
+
+    Info data = map.getOrDefault(name, new Info());
+
+    // 합산
+    data.totalRealInv += realInv;
+    data.totalQty += quantity;
+
+    // 대표 데이터 (DeliveryDate DESC 기준 → 첫 번째가 최신)
+    if (data.DeliveryDate == null) {
+        data.DeliveryDate = rs.getString("DeliveryDate");
+        data.price = rs.getString("price");
+        data.standard = standard;
+        data.kind = rs.getString("kind");
+        data.companyName = rs.getString("companyName");
+        data.receiptDate = rs.getString("receiptDate");
+    }
+
+    map.put(name, data);
+}
+
+rs.close();
+ps.close();
+conn.close();
+
+StringBuilder html = new StringBuilder();
+boolean found = false;
+
+for (String name : map.keySet()) {
+    Info d = map.get(name);
+
+    if (d.totalRealInv < d.totalQty) {
+
+        found = true;
+
+        html.append("<tr>");
+        html.append("<td>").append(name).append("</td>");
+        html.append("<td>").append(d.DeliveryDate).append("</td>");
+        html.append("<td>").append(d.totalRealInv).append("</td>");
+        html.append("<td>").append(d.price).append("</td>");
+        html.append("<td>").append(d.standard).append("</td>");
+        html.append("<td>").append(d.kind).append("</td>");
+        html.append("<td>").append(d.companyName).append("</td>");
+        html.append("<td>").append(d.receiptDa

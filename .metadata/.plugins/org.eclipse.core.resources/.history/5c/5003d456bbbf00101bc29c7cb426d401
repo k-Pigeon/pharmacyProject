@@ -1,0 +1,37 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8"
+    pageEncoding="UTF-8"%>
+<%
+String dbName = (session != null) ? (String) session.getAttribute("dbName") : null;
+String id = (session != null) ? (String) session.getAttribute("id") : null;
+String password = (session != null) ? (String) session.getAttribute("password") : null;
+
+/* out.println(password);
+out.println(dbName);
+out.println(id);
+out.println(password); */
+
+String idSortation = (session != null) ? (String) session.getAttribute("idSortation") : null; if (id == null || dbName == null) {
+    response.sendRedirect("login.jsp");
+    return;
+}
+
+jdbcDriver = dbName;
+
+int pages = Integer.parseInt(request.getParameter("page"));
+int limit = 50;
+int offset = (pages - 1) * limit;
+String sql = "SELECT * FROM medicineTable ORDER BY id DESC LIMIT ? OFFSET ?";
+PreparedStatement pstmt = conn.prepareStatement(sql);
+pstmt.setInt(1, limit);
+pstmt.setInt(2, offset);
+ResultSet rs = pstmt.executeQuery();
+
+while(rs.next()) {
+%>
+<tr data-id="<%=rs.getInt("id")%>">
+  <td><input class="editable" name="medicineName" value="<%=rs.getString("medicineName")%>"></td>
+  <td><input class="editable" name="quantity" value="<%=rs.getInt("quantity")%>"></td>
+</tr>
+<%
+}
+%>

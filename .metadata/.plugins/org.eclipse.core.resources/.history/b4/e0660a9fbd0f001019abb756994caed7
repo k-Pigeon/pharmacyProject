@@ -1,0 +1,1057 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8"
+	pageEncoding="UTF-8"%>
+<%@ page import="java.sql.*"%>
+<%@ include file="sessionManager.jsp"%>
+<%@ include file="DBconnection.jsp"%>
+<%
+String dbName = (session != null) ? (String) session.getAttribute("dbName") : null;
+String id = (session != null) ? (String) session.getAttribute("id") : null;
+String password = (session != null) ? (String) session.getAttribute("password") : null;
+
+if (id == null || dbName == null) {
+	response.sendRedirect("login.jsp");
+	return;
+}
+
+jdbcDriver = dbName;
+%>
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Insert title here</title>
+<link rel="stylesheet" href="style.css">
+<style>
+#wrap {
+	display: block;
+}
+
+#wrap h1 {
+	width: 100%;
+	height: 10px;
+	text-align: center;
+	transform: translateY(70px);
+}
+
+#wrap #section {
+	display: grid;
+	grid-template-columns: 6fr 4fr;
+	width: 95%;
+	height: 60vh;
+	transform: translateY(25%);
+	margin: 0 auto;
+}
+
+#wrap #section .searchUi .membertable, #wrap #section .searchUi .membertable th,
+	#wrap #section .searchUi .membertable td, #wrap #section .RegistrationUi .membertable,
+	#wrap #section .RegistrationUi .membertable th, #wrap #section .RegistrationUi .membertable td,
+	#wrap #section .RegistrationUi .copyTable, #wrap #section .RegistrationUi .copyTable th,
+	#wrap #section .RegistrationUi .copyTable td {
+	font-size: 25px;
+	border: 2px solid black;
+	border-collapse: collapse;
+	height: 35px;
+	line-height: 35px;
+}
+
+#wrap #section .searchUi .membertable, .resultDate {
+	width: 100%;
+}
+
+#wrap #section .RegistrationUi .membertable, #wrap #section .RegistrationUi .copyTable
+	{
+	width: 95%;
+}
+
+#wrap #section .RegistrationUi .membertable .registrationData input[type="text"],
+	#wrap #section .RegistrationUi .copyTable .registrationData input[type="text"]
+	{
+	width: 100%;
+	height: 46px;
+	margin: 0 auto;
+	padding: 0;
+	font-size: 18px;
+}
+
+#wrap #section .RegistrationUi .membertable tr {
+	height: 25px;
+}
+
+#wrap #section .searchUi .membertable input[type="text"] {
+	width: 60%;
+	height: 35px;
+	font-size: 25px;
+	float: right;
+}
+
+#wrap #section .searchUi .membertable .jumin1, #wrap #section .searchUi .membertable .jumin2
+	{
+	width: 39%;
+	height: 30px;
+	font-size: 25px;
+}
+
+#wrap #section .searchUi .membertable tr {
+	height: 36px;
+}
+
+#wrap #section .RegistrationUi .membertable .insertSale {
+	position: relative;
+	width: 250px;
+	height: 45px;
+	left: 50%;
+	transform: translateX(-50%);
+	font-size: 30px;
+}
+
+.removeTr {
+	width: 95%;
+	height: 45px;
+	position: relative;
+	left: 50%;
+	transform: translateX(-50%);
+}
+
+.copyright {
+	width: 200px;
+	height: 45px;
+	position: relative;
+	left: 50%;
+	transform: translateX(-50%);
+	font-size: 25px;
+	float: left;
+}
+
+.saleD, .saleT, .discounted, .totalCalcul, .salePrice, .maxTotal {
+	width: 60%;
+	float: right;
+	height: 40px;
+	font-size: 20px;
+}
+
+/* 테이블 본문만 스크롤되게 만들기 */
+.resultData {
+	width: 100%;
+	border-collapse: collapse;
+}
+
+.resultData thead {
+	position: sticky;
+	top: 0;
+	background-color: #f1f1f1;
+	z-index: 1;
+	/* tbody와 너비가 맞게 하기 위해 left로 밀어줌 */
+	left: -16px; /* 스크롤바 크기만큼 밀어줌 */
+}
+
+.resultData tbody {
+	display: block;
+	max-height: 300px; /* 원하는 높이 설정 */
+	overflow-y: auto;
+	width: calc(100% + 16px);
+}
+
+.resultData th, .resultData td {
+	padding: 8px;
+	border: 1px solid #ccc;
+	text-align: center;
+}
+
+.resultData thead, .resultData tbody tr {
+	display: table;
+	width: 100%;
+	table-layout: fixed;
+}
+
+.resultData tbody::-webkit-scrollbar {
+	width: 16px; /* 스크롤바 너비 */
+}
+
+.resultData tbody::-webkit-scrollbar-thumb {
+	background-color: rgba(0, 0, 0, 0.1);
+	border-radius: 10px;
+}
+
+.registDelete, .registUpdate {
+	width: 100%;
+	height: 50%;
+	font-size: 50px;
+}
+
+.selectRegist {
+	background-color: #E6E6FA;
+}
+#medicinepopup .closeMedicine:hover{
+	cursor:pointer;
+}
+</style>
+</head>
+<body>
+	<div id="wrap" style="display: block;">
+		<header>
+			<jsp:include page="header.jsp"></jsp:include>
+		</header>
+		<h1>판매등록</h1>
+		<section id="section">
+			<div class="RegistrationUi">
+				<textarea class="memoTextarea" style="width: calc(85%);height:30%;font-size:25px;">
+					
+				</textarea>
+				<input type="button" class="saveBtn" style="width: calc(10%);height: 30%;float: right;margin-right: 5%;font-size:25px" value="저장">
+				<table class="membertable" style="position: relative;">
+					<colgroup>
+						<col width="35%">
+						<col width="10%">
+						<col width="10%">
+						<col width="15%">
+						<col width="15%">
+						<col width="15%">
+					</colgroup>
+					<thead>
+						<tr>
+							<th>약품명</th>
+							<th>수량</th>
+							<th>규격</th>
+							<th>단가</th>
+							<th>총합</th>
+							<th>삭제</th>
+						</tr>
+					</thead>
+					<tbody class="registrationData">
+						<%
+						for (int i = 1; i <= 5; i++) {
+						%>
+						<tr class="insertTR">
+							<td><input type="text" name="medicineName[]"
+								class="medicineName" autocomplete="off"></td>
+							<td><input type="text" name="inventory[]" class="inventory"
+								autocomplete="off" oninput="updateTotalPrice(this)"></td>
+							<td><input type="text" name="standard[]" class="standard"
+								autocomplete="off"></td>
+							<td><input type="text" name="price[]" class="price"
+								autocomplete="off" oninput="updateTotalPrice(this)"></td>
+							<td><input type="text" name="totalPrice" class="totalPrice"
+								autocomplete="off" readonly></td>
+							<td><input type="button" value="--------" class="removeTr"></td>
+						</tr>
+						<%
+						}
+						%>
+					</tbody>
+					<tbody>
+						<tr>
+							<td colspan="3">할인가격 : <input type="text" class="discounted"
+								placeholder="할인가격"></td>
+							<td colspan="3">합계 : <input type="text" class="totalCalcul"
+								readonly></td>
+						</tr>
+					</tbody>
+					<tbody>
+						<tr>
+							<td colspan="6">총합<input type="text" class="maxTotal"
+								readonly></td>
+						</tr>
+					</tbody>
+					<tbody>
+						<tr>
+							<td colspan="6"><input type="button" value="등록 [F11]"
+								class="insertSale"></td>
+						</tr>
+					</tbody>
+				</table>
+				<!-- 				<span class="datetime"><input type="text"
+					class="saleResult" style="float: left;"></span>
+				<button type="button" value="복제[F4]" class="copyright">복제[F4]</button> -->
+			</div>
+			<div class="searchUi">
+				<div style="display: flex; width: 100%;">
+					<!-- 테이블 -->
+					<table class="membertable" style="width: 70%; margin-right: 10px;">
+						<tr>
+							<th>고객 정보</th>
+						</tr>
+						<tr>
+							<td>고객명 : <input type="text" class="memberName"></td>
+						</tr>
+						<tr>
+							<td>연락처 : <input type="text" class="memberphone"></td>
+						</tr>
+						<tr>
+							<td>고객번호 : <input type="text" class="custnumber"></td>
+						</tr>
+					</table>
+
+					<!-- 버튼들 -->
+					<div class="DorU"
+						style="display: flex; flex-direction: column; justify-content: space-between;">
+						<input type="button" class="registDelete" value="삭제[F6]"
+							style="margin-bottom: 10px;"> <input type="button"
+							class="registUpdate" value="수정[F10]">
+					</div>
+				</div>
+				<br>
+				<hr>
+				<br>
+				<table class="membertable resultData">
+					<colgroup>
+						<col width="20%">
+						<col width="30%">
+						<col width="50%">
+					</colgroup>
+					<thead>
+						<tr>
+							<th>판매일자</th>
+							<th>판매가격</th>
+							<th>대표증상</th>
+						</tr>
+					</thead>
+					<tbody class="resultTr">
+
+					</tbody>
+				</table>
+			</div>
+		</section>
+	</div>
+	<div id="popup"	style="width: 85vh; height: 50vh; display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); padding: 20px; background-color: white; border: 1px solid #ccc; border-radius: 5px; box-shadow: 0px 0px 30px 0px;">
+		<div id="popupContent"></div>
+		<button class="closePopup">닫기</button>
+	</div>
+	<div id="medicinepopup"	style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background-color: white; border: 1px solid #ccc; z-index: 1000; box-shadow: 0px 0px 10px gray; min-width: 1500px; min-height: 30vh;">
+		<div class="closeMedicine" style="position:relative;width: 100px;height: 50px;float: right;border: 1px solid black;text-align: center;z-index: 10;font-size: 30px;">닫기 X</div>
+		<h3 style="position: fixed; margin: 10px; width: 100%; text-align: center;">검색 결과</h3>
+		<table id="popup-table"	style="display: block; width: 100%; height: 50vh; border-collapse: collapse; margin-top: 50px; overflow: scroll;">
+			<colgroup>
+				<col style="width: 500px">
+				<col style="width: 100px">
+				<col style="width: 100px">
+				<col style="width: 150px">
+				<col style="width: 150px">
+				<col style="width: 150px">
+				<col style="width: 150px">
+			</colgroup>
+			<thead>
+				<tr style="background-color: #f0f0f0;">
+					<th style="border: 1px solid #ccc; padding: 5px;">제품명</th>
+					<th style="border: 1px solid #ccc; padding: 5px;">회사명</th>
+					<th style="border: 1px solid #ccc; padding: 5px;">재고</th>
+					<th style="border: 1px solid #ccc; padding: 5px;">종류</th>
+					<th style="border: 1px solid #ccc; padding: 5px;">일련번호</th>
+					<th style="border: 1px solid #ccc; padding: 5px;">입고 날짜</th>
+					<th style="border: 1px solid #ccc; padding: 5px;">유통기한</th>
+					<th style="border: 1px solid #ccc; padding: 5px;">사입가격</th>
+					<th style="border: 1px solid #ccc; padding: 5px;">판매가격</th>
+				</tr>
+			</thead>
+			<tbody id="popup-content"></tbody>
+		</table>
+	</div>
+	<script src="jquery-3.7.1.min.js"></script>
+	<script src="script.js"></script>
+	<script>
+		$(document).ready(function(){
+			$(".resultData tr.selectRegist").on("click", function() {
+	    		var custnumber = $(".custnumber").val();  // 고객 번호
+	    		var memo = $(".memoTextarea").val();  // 메모 값 (textarea 값)
+			    console.log("고객 번호:", custnumber); // 고객 번호 확인
+			    console.log("메모:", memo); // 메모 값 확인
+		
+				    // 서버로 AJAX 요청 보내기
+			    $.ajax({
+			        url: 'yourServerEndpoint.jsp',  // 서버로 요청할 JSP 엔드포인트 (위에서 작성한 JSP)
+			        method: 'GET',  // GET 요청
+			        data: { custnumber: custnumber, memo: memo },  // 고객 번호와 메모를 데이터로 전송
+			        success: function(response) {
+	  			        console.log("서버 응답: ", response);  // 서버에서 보내준 JSON 응답을 출력
+	    	        if (response.error) {
+	    	            console.error("오류: " + response.error);  // 오류 메시지 출력
+	    	        } else {
+    		            console.log("고객 번호: " + response.rowNumber);
+       			        console.log("메모: " + response.memo);  // 메모 값 출력
+       			        alert(response.message);  // 서버에서 응답한 메시지 출력
+    			    }
+       				},error: function(xhr, status, error) {
+	    	        	console.error("AJAX 요청 실패: " + error);  // AJAX 오류 처리
+       				}
+    			});
+			});
+			$(".closeMedicine").on("click", function(){
+				$("#medicinepopup").hide();
+			});
+		
+			$(".resultData").on("click","tr", function() {
+			    var selectedRow = $(".resultData tr");  // 선택된 tr (selectRegist 클래스가 추가된 tr)
+
+			    if (selectedRow.length > 0) {
+			        var custnumber = $(".custnumber").val();  // 고객 번호
+
+			        console.log("고객 번호:", custnumber); // 고객 번호 확인
+
+			        // AJAX 요청
+			        $.ajax({
+			            url: 'yourServerEndpoint.jsp',  // 서버로 요청할 JSP 엔드포인트
+			            method: 'GET',
+			            data: { custnumber: custnumber },
+			            success: function(response) {
+			                console.log("서버 응답: ", response);  // 서버에서 보내준 JSON 응답을 출력
+			                if (response.error) {
+			                    console.error("오류: " + response.error);  // 오류 메시지 출력
+			                } else {
+			                    console.log("고객 번호: " + response.rowNumber);
+			                    console.log("메모: " + response.memo);  // 메모 값 출력
+			                    $(".memoTextarea").val(response.memo);  // 텍스트에 메모 삽입
+			                }
+			            },
+			            error: function(xhr, status, error) {
+			                console.error("엑셀 검색 실패: " + error);  // AJAX 오류 처리
+			            }
+			        });
+			    } else {
+			        console.log("선택된 행이 없습니다.");
+			    }
+			});
+			document.querySelector(".saveBtn").addEventListener("click", function () {
+				const custnumber = document.querySelector(".custnumber").value;
+				const memo = document.querySelector(".memoTextarea").value;
+
+				const postData = "custnumber=" + encodeURIComponent(custnumber) + "&memo=" + encodeURIComponent(memo);
+
+				fetch("saveMemo.jsp", {
+					method: "POST",
+					headers: { "Content-Type": "application/x-www-form-urlencoded" },
+					body: postData
+				})
+				.then(res => res.json())
+				.then(data => {
+					if (data.success) {
+						alert("저장 완료!");
+					} else {
+						alert("실패: " + data.error);
+					}
+				})
+				.catch(err => {
+					alert("에러 발생: " + err);
+				});
+			});
+
+
+
+
+			$("#section .searchUi .DorU .registUpdate").on("click", function(){
+				var regiDate = $("#section .searchUi .resultData tr.selectRegist").find("td:eq(0)").text();
+		        if ($(".custnumber").val() == "" || $(".custnumber").val() == null) {
+		            return false;
+		        }
+		        var customerId = $(".custnumber").val(); // 고객번호
+		        var discounted = $(".discounted").val() || 0; // 할인가격
+
+		        var medicines = [];
+		        $(".insertTR").each(function() {
+		            var medicine = {
+		                medicineName: $(this).find(".medicineName").val(),
+		                inventory: $(this).find(".inventory").val(),
+		                standard: $(this).find(".standard").val(),
+		                price: $(this).find(".price").val(),
+		                totalPrice: $(this).find(".totalPrice").val(),
+		                customerId: customerId,
+		                discounted: discounted,
+		                regiDate : regiDate
+		            };
+		            medicines.push(medicine);
+		            console.log(medicine);
+		        });
+
+		        // Ajax 요청
+		        $.ajax({
+		            url: 'saveSalesData.jsp',  // 데이터 처리할 JSP 페이지
+		            method: 'POST',
+		            data: {
+		                customerId: customerId,
+		                discounted: discounted,
+		                regiDate: regiDate,
+		                medicines: JSON.stringify(medicines)  // JSON 형식으로 보내기
+		            },
+		            success: function(response) {
+		                alert('데이터가 저장되었습니다!');
+		                console.log(response);  // 서버 응답 확인
+		                location.href = 'salesRegistration.jsp';
+		            },
+		            error: function(xhr, status, error) {
+		                alert('데이터 저장에 실패했습니다.');
+		                console.log(error);  // 에러 확인
+		            }
+		        });
+			});
+			
+			$("#section .searchUi .DorU .registDelete").on("click", function(){
+				var regiDate = $("#section .searchUi .resultData tr.selectRegist").find("td:eq(0)").text();
+				var Judgment = "2";
+				var result = confirm("해낭 날짜의 정보를 삭제하시겠습니까?");
+				if(result){
+			        $.ajax({
+			            url: 'DorU.jsp',  // 데이터 처리할 JSP 페이지
+			            method: 'POST',
+			            data: {
+			            	regiDate: regiDate
+			            },
+			            success: function(response) {
+			                alert('데이터가 저장되었습니다!');
+			                console.log(response);  // 서버 응답 확인
+			                location.href = 'salesRegistration.jsp';
+			            },
+			            error: function(xhr, status, error) {
+			                alert('데이터 저장에 실패했습니다.');
+			                console.log(error);  // 에러 확인
+			            }
+			        });
+				} else{
+					alert("삭제가 취소되었습니다.");
+					return false;
+				}
+			});
+			$(".removeTr").on("click", function(){
+			    $(this).closest("tr").remove();
+			});
+			$(".copyright").on("click", function() {
+			    if ($(".copyTable tbody tr").length == '0') {
+			        return false;
+			    }
+			    // .copyTable의 tbody 안에 있는 모든 tr을 복제
+			    var copiedRows = $(".copyTable tbody.registrationData tr").clone();
+			    
+			    // 복제한 행을 .registrationData에 추가
+			    $(".membertable tbody.registrationData").prepend(copiedRows);
+			    
+			    // .copyTable의 tbody.registrationData의 모든 tr을 삭제
+			    $(".copyTable tbody.registrationData").empty();
+		        $(".discounted").val($(".saleD").val());
+		        $(".saleD").empty();
+			    
+			    updateTotalCalcul(); // 합계 갱신
+			});
+
+			$(document).keydown(function(e) {
+				if(e.key == "F6"){
+					e.preventDefault();
+					var regiDate = $("#section .searchUi .resultData tr.selectRegist").find("td:eq(0)").text();
+					var Judgment = "2";
+					var result = confirm("해낭 날짜의 정보를 삭제하시겠습니까?");
+					if(result){
+				        $.ajax({
+				            url: 'DorU.jsp',  // 데이터 처리할 JSP 페이지
+				            method: 'POST',
+				            data: {
+				            	regiDate: regiDate
+				            },
+				            success: function(response) {
+				                alert('데이터가 저장되었습니다!');
+				                console.log(response);  // 서버 응답 확인
+				                location.href = 'salesRegistration.jsp';
+				            },
+				            error: function(xhr, status, error) {
+				                alert('데이터 저장에 실패했습니다.');
+				                console.log(error);  // 에러 확인
+				            }
+				        });
+					} else{
+						alert("삭제가 취소되었습니다.");
+						return false;
+					}
+				}
+				if(e.key == "F10"){
+					var regiDate = $("#section .searchUi .resultData tr.selectRegist").find("td:eq(0)").text();
+			        if ($(".custnumber").val() == "" || $(".custnumber").val() == null) {
+			            return false;
+			        }
+			        var customerId = $(".custnumber").val(); // 고객번호
+			        var discounted = $(".discounted").val() || 0; // 할인가격
+
+			        var medicines = [];
+			        $(".insertTR").each(function() {
+			            var medicine = {
+			                medicineName: $(this).find(".medicineName").val(),
+			                inventory: $(this).find(".inventory").val(),
+			                standard: $(this).find(".standard").val(),
+			                price: $(this).find(".price").val(),
+			                totalPrice: $(this).find(".totalPrice").val(),
+			                customerId: customerId,
+			                discounted: discounted,
+			                regiDate : regiDate
+			            };
+			            medicines.push(medicine);
+			            console.log(medicine);
+			        });
+
+			        // Ajax 요청
+			        $.ajax({
+			            url: 'saveSalesData.jsp',  // 데이터 처리할 JSP 페이지
+			            method: 'POST',
+			            data: {
+			                customerId: customerId,
+			                discounted: discounted,
+			                regiDate: regiDate,
+			                medicines: JSON.stringify(medicines)  // JSON 형식으로 보내기
+			            },
+			            success: function(response) {
+			                alert('데이터가 저장되었습니다!');
+			                console.log(response);  // 서버 응답 확인
+			                location.href = 'salesRegistration.jsp';
+			            },
+			            error: function(xhr, status, error) {
+			                alert('데이터 저장에 실패했습니다.');
+			                console.log(error);  // 에러 확인
+			            }
+			        });
+				}
+			    if (e.key == "F4") {
+			    	e.preventDefault();
+			        // .copyTable의 tbody 안에 있는 모든 tr을 복제
+			        if ($(".copyTable tbody tr").length == '0') {
+			            return false;
+			        }
+
+			        // .copyTable의 tbody 안에 있는 모든 tr을 복제
+			        var copiedRows = $(".copyTable tbody.registrationData tr").clone();
+
+			        // .copyTable의 tbody.registrationData의 모든 tr을 삭제
+			        $(".copyTable tbody.registrationData").empty();
+
+			        // 복제한 행을 .registrationData에 추가
+			        $(".membertable tbody.registrationData").prepend(copiedRows);
+			        
+			        $(".discounted").val($(".saleD").val());
+			        $(".saleD").empty();
+				    
+				    updateTotalCalcul(); // 합계 갱신
+			    }
+
+			    if (e.key === "+" || e.key === "Add") { // 키보드 + 버튼 감지
+			        var lastRow = $(".membertable .registrationData tr:first").clone(); // 마지막 tr 복사
+			        lastRow.find("input").val(""); // 복사된 tr의 input 값 초기화
+			        $(".membertable .registrationData").append(lastRow); // 테이블에 추가
+
+			        // 복사된 행에 이벤트 다시 적용
+			        applyEventHandlers();
+			    }
+
+			    if (e.key === "F11") {
+			        e.preventDefault();
+			        if ($(".custnumber").val() == "" || $(".custnumber").val() == null) {
+			            return false;
+			        }
+			        var regiDate = "";
+			        var customerId = $(".custnumber").val(); // 고객번호
+			        var discounted = $(".discounted").val() || 0; // 할인가격
+
+			        var medicines = [];
+			        $(".insertTR").each(function() {
+			            var medicine = {
+			                medicineName: $(this).find(".medicineName").val(),
+			                inventory: $(this).find(".inventory").val(),
+			                standard: $(this).find(".standard").val(),
+			                price: $(this).find(".price").val(),
+			                totalPrice: $(this).find(".totalPrice").val(),
+			                customerId: customerId,
+			                discounted: discounted,
+			                regiDate: regiDate
+			            };
+			            medicines.push(medicine);
+			            console.log(medicine);
+			        });
+
+			        // Ajax 요청
+			        $.ajax({
+			            url: 'saveSalesData.jsp',  // 데이터 처리할 JSP 페이지
+			            method: 'POST',
+			            data: {
+			                customerId: customerId,
+			                discounted: discounted,
+			                medicines: JSON.stringify(medicines)  // JSON 형식으로 보내기
+			            },
+			            success: function(response) {
+			                alert('데이터가 저장되었습니다!');
+			                console.log(response);  // 서버 응답 확인
+			                location.href = 'salesRegistration.jsp';
+			            },
+			            error: function(xhr, status, error) {
+			                alert('데이터 저장에 실패했습니다.');
+			                console.log(error);  // 에러 확인
+			            }
+			        });
+			    }
+			    if(e.key == "F8"){
+			    	location.href="salesRegistration.jsp";
+			    }
+			});
+
+			// 이벤트 핸들러를 다시 적용하는 함수
+			function applyEventHandlers() {
+			    $(".removeTr").off("click").on("click", function() {
+			        var rowCount = $("#section .RegistrationUi .membertable .registrationData tr").length;
+			        
+			        if (rowCount <= 2) {  // 숫자로 비교
+			            return false;  // 마지막 행이면 삭제하지 않음
+			        }
+			        
+			        $(this).closest("tr").remove();
+			    });
+			}
+
+			$(".resultData").on("click", "tr", function() {
+			    var saleDate = $(this).find("td:nth-child(1)").text(); // 클릭한 행의 날짜를 가져옴
+			    $(".saleResult").val(saleDate);
+			    $(".resultData tr").removeClass("selectRegist");
+			    $(this).addClass("selectRegist");
+
+			    // AJAX로 서버에 날짜를 전송
+			    $.ajax({
+			        url: "getSaleData.jsp", // 서버에서 데이터를 받는 JSP 파일
+			        type: "GET",
+			        data: { saleDate: saleDate }, // 선택한 날짜를 전달
+			        success: function(response) {
+			            var data = JSON.parse(response); // JSON으로 변환
+			            let rows = $(".membertable tbody.registrationData tr"); // 기존 테이블의 행들 가져오기
+
+			            // 기존 테이블 행 개수와 받아온 데이터 개수를 비교하여 입력
+			            for (let i = 0; i < rows.length; i++) {
+			                let row = $(rows[i]); // 현재 행
+
+			                if (i < data.length) {
+			                    row.find(".medicineName").val(data[i].medicine_name);
+			                    row.find(".inventory").val(data[i].inventory);
+			                    row.find(".standard").val(data[i].standard);
+			                    row.find(".price").val(data[i].price);
+			                    row.find(".totalPrice").val(data[i].total_price);
+			                } else {
+			                    // 남은 행들은 빈값으로 설정
+			                    row.find("input").val("");
+			                }
+			            }
+
+			            // 할인가격 입력
+			            $(".discounted").val(data.length > 0 ? data[0].discounted : 0);
+
+			            // 총합 계산
+			            let total = 0;
+			            $(".membertable tbody.registrationData .totalPrice").each(function() {
+			                let value = parseFloat($(this).val());
+			                if (!isNaN(value)) {
+			                    total += value;
+			                }
+			            });
+
+			            $(".totalCalcul").val(total); // 합계 반영
+			            $(".maxTotal").val(total - $(".discounted").val()); // 총합 반영
+
+			        },
+			        error: function(xhr, status, error) {
+			            console.log("Error: " + error);
+			        }
+			    });
+			});
+
+			// 할인가격 변경 시 총합 업데이트
+			$(".discounted").on("input", function() {
+			    let total = parseFloat($(".totalCalcul").val()) || 0;
+			    let discount = parseFloat($(this).val()) || 0;
+			    $(".maxTotal").val(total - discount);
+			});
+
+
+		    function updateTotalPrice(row) {
+		        let inventory = parseFloat($(row).find(".inventory").val()) || 0;
+		        let price = parseFloat($(row).find(".price").val()) || 0;
+		        let totalPrice = inventory * price;
+		        $(row).find(".totalPrice").val(totalPrice); // totalPrice 계산 후 입력
+		        updateTotalCalcul(); // 합계 자동 갱신
+		    }
+
+		    // 전체 합계 계산
+		    function updateTotalCalcul() {
+		        let total = 0;
+		        $(".totalPrice").each(function() {
+		            let value = parseFloat($(this).val());
+		            if (!isNaN(value)) {
+		                total += value;
+		            }
+		        });
+		        $(".totalCalcul").val(total); // totalCalcul에 합계 업데이트
+		        $(".maxTotal").val($(".totalCalcul").val() - $(".discounted").val());
+		    }
+
+		    // 수량과 단가가 변경될 때마다 totalPrice와 totalCalcul 갱신
+		    $(".registrationData").on("input", ".inventory, .price", function() {
+		        var row = $(this).closest('tr');
+		        updateTotalPrice(row);  // 해당 행에서 가격 업데이트
+		    });
+
+		    // 행 삭제 후 합계 다시 계산
+		    $(".registrationData").on("click", ".removeTr", function() {
+		        $(this).closest('tr').remove();  // 행 삭제
+		        updateTotalCalcul(); // 삭제 후 합계 재계산
+		    });
+
+		    // 처음 페이지가 로드될 때마다 각 행의 totalPrice 계산
+		    $(".registrationData tr").each(function() {
+		        updateTotalPrice(this);  // 각 행의 totalPrice 자동 계산
+		    });
+
+    // 가격 또는 수량이 변경될 때마다 updateTotalPrice 호출
+    $("#table_body").on("input", ".price, .inventory", function() {
+        var row = $(this).closest('tr');
+        updateTotalPrice(row);  // 해당 행에서 가격 업데이트
+    });
+
+    // removeTr 버튼 클릭 시 해당 row 삭제 후 합계 재계산
+    $("#table_body").on("click", ".removeTr", function() {
+        $(this).closest('tr').remove();
+        updateTotalCalcul(); // 삭제 후 합계 재계산
+    });
+		    
+		    $("input[value='등록 [F11]']").click(function() {
+		    	if($(".custnumber").val() == "" || $(".custnumber").val() == null){
+		    		return false;
+		    	}
+		        var customerId = $(".custnumber").val(); // 고객번호
+		        var discounted = $(".discounted").val() || 0; // 고객번호
+
+		        var medicines = [];
+		        $(".insertTR").each(function() {
+		            var medicine = {
+		                medicineName: $(this).find(".medicineName").val(),
+		                inventory: $(this).find(".inventory").val(),
+		                standard: $(this).find(".standard").val(),
+		                price: $(this).find(".price").val(),
+		                totalPrice: $(this).find(".totalPrice").val(),
+		                customerId : customerId,
+		                discounted : discounted
+		            };
+		            medicines.push(medicine);
+		            console.log(medicine);
+		        });
+
+		        // Ajax 요청
+		        $.ajax({
+		            url: 'saveSalesData.jsp',  // 데이터 처리할 JSP 페이지
+		            method: 'POST',
+		            data: {
+		                customerId: customerId,
+		                discounted: discounted,
+		                medicines: JSON.stringify(medicines)  // JSON 형식으로 보내기
+		            },
+		            success: function(response) {
+		                alert('데이터가 저장되었습니다!');
+		                console.log(response);  // 서버 응답 확인
+		                location.href='salesRegistration.jsp';
+		            },
+		            error: function(xhr, status, error) {
+		                alert('데이터 저장에 실패했습니다.');
+		                console.log(error);  // 에러 확인
+		            }
+		        });
+		    });
+
+		    // input 값이 변경될 때마다 totalPrice 업데이트
+		    $(document).on('input', '.inventory, .price', function() {
+		        var row = $(this).closest('tr');  // 현재 입력된 행의 tr을 찾기
+		        updateTotalPrice(row);  // 해당 행의 totalPrice 계산
+		    });
+		    let currentRowIndex = -1; // 현재 선택된 행의 인덱스 초기화
+		    let currentRow; // 현재 선택된 행을 추적할 변수 추가
+		    // 검색 입력 시 Ajax 요청
+		    $("#section .RegistrationUi .membertable .registrationData").on("keydown", ".insertTR .medicineName", function (e) {
+		        if (e.key === "Enter") { // Enter 키 감지
+		            e.preventDefault(); // 폼 제출 방지
+		            let medicineName = $(this).val();
+
+		            // 현재 포커스가 있는 행을 추적
+		            currentRow = $(this).closest('tr'); // 현재 입력 필드가 속한 행
+
+		            if (medicineName.trim() !== "") {
+		                // Ajax 요청
+		                $.ajax({
+		                    url: "searchMedicine.jsp", // 데이터 검색 JSP
+		                    method: "POST",
+		                    data: { medicineName: medicineName }, // LIKE 검색 조건
+		                    success: function (response) {
+		                        $("#popup-content").html(response); // 결과를 테이블에 표시
+		                        $("#medicinepopup").show(); // 팝업 표시
+		                        currentRowIndex = -1;
+		                    },
+		                    error: function () {
+		                        return false;
+		                    }
+		                });
+		            }
+		        }
+		    });
+		    $(".closePopup").on("click", function(){
+		        $('#popup').hide();  // 팝업 숨기기
+		    });
+		    
+		    $("#wrap #section .searchUi .membertable .memberName").on("keydown", function(e){
+		    	var Sortation = "2";
+		        if (e.key === "Enter") {  // Enter 키를 눌렀을 때
+		            var memberName = $(this).val();  // 입력한 회원 이름 값 가져오기
+
+		            if (memberName) {
+		                $.ajax({
+		                    url: 'searchMember.jsp',  // 백엔드 처리할 JSP 파일
+		                    type: 'GET',
+		                    data: { 
+		                    	memberName: memberName,
+		                    	Sortation : Sortation
+		                    },  // 입력 값 보내기
+		                    success: function(response) {
+		                        $('#popupContent').html(response);  // 서버에서 받은 테이블 HTML을 팝업에 삽입
+		                        $('#popup').show();  // 팝업 보이기
+		                    },
+		                    error: function(xhr, status, error) {
+		                        alert("서버와의 통신 오류가 발생했습니다.");
+		                    }
+		                });
+		            } else {
+		                $('#popup').hide();  // 입력이 비어 있으면 팝업 숨기기
+		            }
+		        }
+		    });
+		    $("#wrap #section .searchUi .membertable .memberphone").on("keydown", function(e){
+		    	var Sortation = "1";
+		        if (e.key === "Enter") {  // Enter 키를 눌렀을 때
+		            var memberphone = $(this).val();  // 입력한 회원 이름 값 가져오기
+
+		            if (memberphone) {
+		                $.ajax({
+		                    url: 'searchMember.jsp',  // 백엔드 처리할 JSP 파일
+		                    type: 'GET',
+		                    data: { 
+		                    	memberphone: memberphone,
+		                    	Sortation : Sortation
+		                    },  // 입력 값 보내기
+		                    success: function(response) {
+		                        $('#popupContent').html(response);  // 서버에서 받은 테이블 HTML을 팝업에 삽입
+		                        $('#popup').show();  // 팝업 보이기
+		                    },
+		                    error: function(xhr, status, error) {
+		                        alert("서버와의 통신 오류가 발생했습니다.");
+		                    }
+		                });
+		            } else {
+		                $('#popup').hide();  // 입력이 비어 있으면 팝업 숨기기
+		            }
+		        }
+		    });
+		    
+		 // 테이블에서 행 클릭 시, 해당 데이터를 폼에 채우는 코드
+		    $("#popup #popupContent").on("click", ".table_line tbody tr", function() {
+		        // 클릭한 tr의 각 td 값을 변수에 저장
+		        var memberName = $(this).find("td:nth-child(1)").text();  // 회원 이름
+		        var memberPhone = $(this).find("td:nth-child(2)").text();  // 전화번호
+		        var jumin = $(this).find("td:nth-child(3)").text().split("-");  // 주민등록번호
+		        var custnumber = $(this).find("td:nth-child(5)").text();  // 고객 번호
+
+		        // 값을 #updatesection 내의 입력 필드에 설정
+		        $(".searchUi .membertable .memberName").val(memberName);
+		        $(".searchUi .membertable .memberphone").val(memberPhone);
+		        $(".searchUi .membertable .jumin1").val(jumin[0]);
+		        $(".searchUi .membertable .jumin2").val(jumin[1]);
+		        $(".searchUi .membertable .custnumber").val(custnumber);
+		        
+		        $.ajax({
+		            url: "fetchSalesData.jsp",  // 판매 데이터를 조회할 서버 페이지
+		            type: "GET",
+		            data: { custnumber: custnumber },  // 고객 번호를 서버로 전달
+		            success: function(response) {
+		                $(".resultData").html(response);  // 서버에서 받은 HTML 테이블을 resultData 요소에 삽입
+		            },
+		            error: function() {
+		                alert("판매 데이터를 불러오는 데 실패했습니다.");
+		            }
+		        });
+		        
+		        // 팝업 닫기
+		        $("#popup").hide();
+		    });
+
+		    $(document).on("click", function (e) {
+		    	if (!$(e.target).closest("#popup, .medicineName").length) {
+		            $("#popup").hide();
+		        }
+		    	if (!$(e.target).closest("#medicinepopup, .medicineName").length) {
+		            $("#medicinepopup").hide();
+		        }
+		    });
+
+		    // 테이블 행 클릭 시 데이터 입력
+		    $(document).on("click", ".result-row", function () {
+		        let data = $(this).data(); // 선택된 데이터 가져오기
+
+		        // 입력 필드에 값 채우기
+		        populateFields(data);
+		        $("#medicinepopup").hide();
+		    });
+
+		    // 키보드 이벤트 처리 (방향키 및 Enter 키)
+		    $(document).on("keydown", function (e) {
+		        if ($("#popup").is(":visible")) { // 팝업이 열려 있을 때만 동작
+		            const rows = $("#popup-content .result-row");
+
+		            if (e.key === "ArrowDown") { // ↓ 키
+		                e.preventDefault();
+		                if (currentRowIndex < rows.length - 1) {
+		                    currentRowIndex++;
+		                }
+		            } else if (e.key === "ArrowUp") { // ↑ 키
+		                e.preventDefault();
+		                if (currentRowIndex > 0) {
+		                    currentRowIndex--;
+		                }
+		            } else if (e.key === "Enter" && currentRowIndex >= 0) { // Enter 키로 선택된 행 처리
+		                e.preventDefault();
+		                const selectedRow = $(rows[currentRowIndex]); // 현재 강조된 행
+		                populateFields(selectedRow.data()); // 선택된 데이터 채우기
+		            }
+
+		            // 강조 효과 업데이트
+		            rows.removeClass("highlight"); // 모든 행의 강조 제거
+		            if (currentRowIndex >= 0) {
+		                $(rows[currentRowIndex]).addClass("highlight"); // 현재 선택된 행에 강조 추가
+		            }
+		        }
+		    });
+
+		 // 입력 필드에 데이터 채우기
+		    function populateFields(data) {
+		        // 현재 선택된 행에만 값 채우기
+		        currentRow.find(".medicineName").val(data.medicinename);
+		        currentRow.find(".companyName").val(data.companyname);
+		        currentRow.find(".standard").val(data.standard);
+		        currentRow.find(".kind").val(data.kind);
+		        currentRow.find(".inventory").val("1"); // 기본 수량 1
+		        currentRow.find(".SerialNumber").val(data.serialnumber);
+		        currentRow.find(".DeliveryDate").val(data.deliverydate);
+		        currentRow.find(".Buyingprice").val(data.buyingprice);
+		        currentRow.find(".price").val(data.price);
+
+		        // 🔹 totalPrice 자동 계산 추가
+		        let inventory = parseFloat(currentRow.find(".inventory").val()) || 0;
+		        let price = parseFloat(currentRow.find(".price").val()) || 0;
+		        currentRow.find(".totalPrice").val((inventory * price)); // 계산 후 입력
+
+		        updateTotalCalcul();
+		        
+		        $("#popup").hide(); // 팝업 숨기기
+		        currentRow.find(".DeliveryDate").focus(); // 입력 필드에 포커스 이동
+		    }
+
+		 // inventory와 price가 변경될 때마다 totalPrice 업데이트
+		    $(document).on("input", ".inventory, .price", function () {
+		        let row = $(this).closest('tr'); // 현재 행 찾기
+		        let inventory = parseFloat(row.find(".inventory").val()) || 0;
+		        let price = parseFloat(row.find(".price").val()) || 0;
+		        row.find(".totalPrice").val((inventory * price)); // totalPrice 계산
+		    });
+
+		});
+	</script>
+</body>
+</html>

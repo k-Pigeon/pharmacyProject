@@ -1,0 +1,769 @@
+@charset "UTF-8";
+
+* {
+	padding: 0;
+	margin: 0;
+	box-sizing: border-box;
+}
+
+a {
+	text-decoration: none;
+}
+
+ul {
+	list-style: none;
+}
+@media screen and (max-width: 800px) {
+    .table_line th,
+    .table_line td {
+        text-align: left;
+    }
+}
+#header {
+    width: 100%;
+    height: auto;
+    overflow-x: auto;
+    overflow: visible; /* 드롭다운 표시 */
+    color: white;
+    line-height: 40px;
+    position: fixed;
+    z-index: 5000; /* wrap보다 위 */
+    font-size: 20px;
+}
+.searchFocus{
+	    box-shadow: 0px 10px 10px -10px;
+}
+#header ul li a.pageShow {
+	color:red;
+	border-bottom: 2px solid black;
+}
+
+#header ul li a {
+	float: left;
+	padding: 0 10px;
+}
+
+#userInfo {
+    position: absolute;
+    width: 250px;
+    height: 150px;
+    display: none;
+    background-color: white;
+    border: 1px solid black;
+    z-index: 9999 !important; /* header 위에 떠야 표시됨 */
+}
+
+
+#wrap .table_line .dataSet{
+	border: none;
+    background: none;
+    outline: none;
+    color: black;
+}
+
+#wrap #header .btn-4 {
+  width: 200px;
+  font-size: 18px;
+  position: relative;
+  color: #000;
+  z-index: 2;
+  line-height: 40px;
+  padding: 0;
+}
+#wrap #header .btn-4:hover{
+  border: none;
+}
+#wrap #header .btn-4:before,
+#wrap #header .btn-4:after {
+  position: absolute;
+  content: "";
+  width: 0%;
+  height: 0%;
+  border: 2px solid;
+  z-index: -1;
+  transition: all 0.3s ease;
+}
+
+#wrap #header .btn-4:before {
+   top: 0;
+   left: 0;
+   border-bottom-color: transparent;
+   border-right-color: transparent;
+   border-top-color: #000;
+   border-left-color: #000;
+}
+#wrap #header .btn-4:after{
+   bottom: 0;
+   right: 0;
+   border-top-color: transparent;
+   border-left-color: transparent;
+   border-bottom-color: #000;
+   border-right-color: #000;
+}
+#wrap #header .btn-4:hover:before,
+#wrap #header .btn-4:hover:after {
+  border-color: #000;
+  height: 100%;
+  width: 100%;
+}
+
+
+.table_line th,
+.table_line td {
+    white-space: normal; /* 줄 바꿈 허용 */
+    line-height: 40px; /* 셀 높이 조정 */
+}
+#wrap {
+    position: relative;
+    width: 100%;
+    min-height: 100vh;
+    background-color: RGBA(127, 127, 127, 0.2);
+    overflow-x: auto;
+    z-index: 1; /* header보다 낮음 */
+}
+
+#wrap #data, #wrap #setData{
+	flex: 1;
+}
+
+
+
+#wrap #barcodeInput {
+	float: right;
+}
+
+#wrap #formTeg {
+    height: 25px;
+    margin: 0 auto;
+    padding: 15px;
+    max-width: 1000px;
+}
+
+#wrap #formTeg #barcodeInput {
+	float: right;
+    opacity: 0;
+    position:fixed;
+	transform: translateX(410%);
+}
+
+#wrap .table_line {
+    width: 1000px;
+    table-layout: fixed;
+    border: 1px solid black;
+    margin: 0 auto;
+    text-align: center;
+    margin-top: 5%;
+    max-width: 1200px;
+}
+
+#wrap #table_input {
+    min-width: 1000px;
+    table-layout: fixed;
+    border: 1px solid black;
+    margin: 0 auto;
+    text-align: center;
+    margin-top: 5%;
+    max-width: 1000px;
+}
+
+#wrap .table_line colgroup{
+	width: auto;
+}
+#wrap .table_line th{
+	background-color: RGBA(127,127,127,0.3);
+}
+#wrap #table_input th{
+	background-color: RGBA(127,127,127,0.3);
+}
+#wrap .indexTable th,
+#wrap #inventory_list{
+	border:1px solid white !important;
+	box-shadow: 5px 5px 10px;
+}
+#wrap #inventory_list tr.recordList td{
+    background-color: #F0F8FF;
+}
+#wrap #inventory_list .evenTR{
+	background-color: #F0F8FF !important;
+}
+#wrap .indexTable td{
+	border:1px solid white !important;
+}
+#wrap .indexTable #inventory_list tr:nth-child(even){
+	background-color: #F0F8FF;
+}
+#wrap .table_line th {
+	border: 1px solid black;
+	border-collapse: collapse;
+	height: 40px;
+	line-height:30px;
+	white-space: nowrap;
+    overflow: hidden; /* 수정: 텍스트 넘침 처리 */
+    text-align: center;
+}
+#wrap .table_line td {
+	border: 1px solid black;
+	border-collapse: collapse;
+	height: 40px;
+	line-height:40px;
+	white-space: nowrap;
+    overflow: hidden; /* 수정: 텍스트 넘침 처리 */
+    text-align: center;
+}
+
+#wrap #table_input th,
+#wrap #table_input td {
+	border: 1px solid black;
+	border-collapse: collapse;
+	height: 40px;
+	line-height:40px;
+	white-space: nowrap;
+    overflow: hidden; /* 수정: 텍스트 넘침 처리 */
+    text-align: center;
+    padding: 10px;
+}
+
+#listWrap {
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: rgba(255, 255, 255, 1);
+    padding: 20px;
+    border-radius: 10px;
+    z-index: 1000;
+    max-width: 90%;
+    overflow-x: scroll;
+}
+
+#listWrap .table_line th,
+#listWrap .table_line td {
+	border:1px solid black;
+    width: auto; /* 수정: 테이블 너비를 자동으로 조정 */
+}
+#listWrap .table_line input{
+	border: none;
+	background: transparent;
+}
+.ascendingOrder,
+.descendingOrder {
+    cursor: pointer;
+    font-size: 12px;
+}
+
+.ascendingOrder:hover,
+.descendingOrder:hover {
+    background-color: rgba(0, 0, 0, 0.1);
+}
+
+.ascendingOrder:active,
+.descendingOrder:active {
+    color: blue;
+}
+.wrap .table_line,
+.listWrap .table_line{
+	text-align: center;
+}
+.set_line td{
+	line-height:20px;
+}
+.container.addProduct {
+    width: 100%;
+    padding: 20px;
+}
+.container.addProduct #productForm input {
+    margin-bottom: 10px;
+    width: 23%;
+    padding: 10px;
+    font-size: 15px;
+    border: 1px solid #ccc;
+}
+.container.addProduct #productForm #standardPriceContainer .standardPriceGroup {
+    display: flex;
+    gap: 10px;
+    margin: 1% 0;
+}
+.container.addProduct #productForm #standardPriceContainer .standardPriceGroup input[type="text"] {
+    border: 2px solid transparent;
+    width: 15em;
+    height: 2.5em;
+    padding-left: 0.8em;
+    outline: none;
+    overflow: hidden;
+    background-color: #DCDCDC;
+    border-radius: 10px;
+    transition: all 0.5s;
+}
+
+.container.addProduct #productForm #standardPriceContainer .standardPriceGroup input[type="text"]:focus {
+    border: 2px solid #4A9DEC;
+    box-shadow: 0px 0px 0px 7px rgb(74, 157, 236, 20%);
+    background-color: white;
+}
+.container.addProduct #productForm #standardPriceContainer .standardPriceGroup .removeStandardPrice {
+    background: red;
+    color: white;
+    border: none;
+    cursor: pointer;
+    width: 35px;
+    height: 35px;
+    line-height: 35px;
+    border-radius: 100%;
+    font-size: 30px;
+}
+.container.addProduct #productForm .submitNew,
+.container.addProduct #productForm #addStandardPrice {
+    position: absolute;
+    color: #090909;
+    padding: 0.7em 1.7em;
+    font-size: 18px;
+    border-radius: 0.5em;
+    background: #e8e8e8;
+    cursor: pointer;
+    border: 1px solid #e8e8e8;
+    transition: all 0.3s;
+    box-shadow: 
+        6px 6px 12px #c5c5c5,
+       -6px -6px 12px #ffffff;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.container.addProduct #productForm .submitNew:active,
+.container.addProduct #productForm #addStandardPrice:active {
+    color: #666;
+    box-shadow:
+        0px 0px 0px #c5c5c5,
+        0px 0px 0px #ffffff,
+        inset 4px 4px 12px #c5c5c5,
+        inset -4px -4px 12px #ffffff;
+}
+.container.addProduct #productForm #addStandardPrice {
+    position: relative;
+    left: 10%;
+}
+.container.addProduct #productForm .closeAdd {
+    height: 3em;
+    width: 8em;
+    border: none;
+    border-radius: 10em;
+    background: #016DD9;
+    font-size: 17px;
+    color: #ffffff;
+    font-family: inherit;
+    font-weight: 500;
+    float: right;
+}
+
+.container.addProduct #productForm .closeAdd:hover {
+    animation: shake3856 0.3s linear infinite both;
+}
+@keyframes shake3856 {
+    0%   { transform: translate(0); }
+    20%  { transform: translate(-2px, 2px); }
+    40%  { transform: translate(-2px, -2px); }
+    60%  { transform: translate(2px, 2px); }
+    80%  { transform: translate(2px, -2px); }
+    100% { transform: translate(0); }
+}
+.container.addProduct #productForm #standardPriceContainer .standardPriceGroup .removeStandardPrice {
+    display: none;
+}
+
+/* salesRegistration.jsp */
+/* =========================
+   기본 레이아웃
+========================= */
+
+#wrap.salesRegistration {
+    display: block;
+}
+
+#wrap.salesRegistration > h1 {
+    width: 100%;
+    height: 10px;
+    text-align: center;
+    transform: translateY(70px);
+}
+
+#wrap.salesRegistration > #section {
+    display: grid;
+    grid-template-columns: 6fr 4fr;
+    width: 95%;
+    height: 60vh;
+    transform: translateY(25%);
+    margin: 0 auto;
+}
+
+/* =========================
+   공통 테이블
+========================= */
+
+#wrap.salesRegistration #section .RegistrationUi .membertable,
+#wrap.salesRegistration #section .searchUi .membertable,
+#wrap.salesRegistration #section .RegistrationUi .copyTable {
+    font-size: 25px;
+    border: 2px solid black;
+    border-collapse: collapse;
+    height: 35px;
+    line-height: 35px;
+    width: 95%;
+    border-spacing: 0;
+    backdrop-filter: blur(12px);
+    background: rgba(255,255,255,0.15);
+    border-radius: 12px;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.1);
+    color: #333;
+    overflow: hidden;
+}
+
+#wrap.salesRegistration #section .RegistrationUi .membertable thead th,
+#wrap.salesRegistration #section .searchUi .membertable thead th {
+    background: rgba(255,255,255,0.25);
+    color: #222;
+    font-weight: bold;
+    text-align: center;
+}
+
+#wrap.salesRegistration #section .RegistrationUi .membertable td,
+#wrap.salesRegistration #section .searchUi .membertable td {
+    text-align: center;
+}
+
+#wrap.salesRegistration #section .RegistrationUi .membertable tbody tr {
+    height: 42px;
+}
+
+/* =========================
+   입력 필드
+========================= */
+
+#wrap.salesRegistration #section .RegistrationUi input[type="text"],
+#wrap.salesRegistration #section .searchUi input[type="text"] {
+    width: 60%;
+    border: none;
+    border-radius: 8px;
+    background: rgba(255,255,255,0.35);
+    backdrop-filter: blur(8px);
+    color: #111;
+    font-size: 20px;
+}
+
+#wrap.salesRegistration #section .RegistrationUi .discounted,
+#wrap.salesRegistration #section .RegistrationUi .totalCalcul,
+#wrap.salesRegistration #section .RegistrationUi .maxTotal {
+    background: rgba(255,255,255,0.3);
+    border-radius: 8px;
+    border: none;
+}
+
+/* =========================
+   버튼
+========================= */
+
+#wrap.salesRegistration #section .RegistrationUi .memberDel {
+    position: absolute;
+    top: -50px;
+    left: 0;
+    border: none;
+    background-color: #DC143C;
+    padding: 10px 20px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #fff;
+    border-radius: 5px;
+    box-shadow: 0px 5px 0px 0px #A52A2A;
+    cursor: pointer;
+}
+
+#wrap.salesRegistration #section .RegistrationUi .memberDel:active {
+    transform: translateY(5px);
+    box-shadow: none;
+}
+
+#wrap.salesRegistration #section .RegistrationUi .saveBtn {
+    width: 10%;
+    height: 30%;
+    float: right;
+    margin-right: 5%;
+    font-size: 25px;
+}
+
+/* =========================
+   메모 textarea
+========================= */
+
+#wrap.salesRegistration #section .RegistrationUi .memoTextarea {
+    width: 85%;
+    height: 30%;
+    font-size: 25px;
+}
+
+/* =========================
+   resultData 테이블 스크롤
+========================= */
+
+#wrap.salesRegistration #section .searchUi .resultData tbody {
+    display: block;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+#wrap.salesRegistration #section .searchUi .resultData thead,
+#wrap.salesRegistration #section .searchUi .resultData tbody tr {
+    display: table;
+    width: 100%;
+    table-layout: fixed;
+}
+
+.selectRegist {
+    background-color: #e0f7fa !important;
+}
+
+/* =========================
+   editModal (wrap 밖)
+========================= */
+
+body > #editModal {
+    position: absolute;
+    display: none;
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    width: 800px;
+    max-height: 80vh;
+    overflow-y: auto;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    box-shadow: 5px 5px 17px 0px;
+    z-index: 1000;
+}
+
+body > #editModal > div {
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    width: 700px;
+    max-height: 80vh;
+    overflow-y: auto;
+    margin: 0 auto;
+}
+
+body > #editModal .updateMedicineName {
+    width: 250px;
+    height: 35px;
+}
+
+#editModalContent input {
+    max-width: 180px;
+    background-color: #f1f9f9;
+    padding: .15rem .5rem;
+    min-height: 40px;
+    border-radius: 4px;
+    margin: 10px 5px;
+}
+
+/* =========================
+   popup (wrap 밖)
+========================= */
+
+body > #popup.selectMember {
+    width: 85vh;
+    height: 50vh;
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    padding: 20px;
+    background-color: white;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    box-shadow: 0px 0px 30px 0px;
+    z-index: 100;
+}
+
+body > #popup.selectMember #popupContent {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    margin-top: 40px;
+}
+
+body > #popup.selectMember .closePopup {
+    position: absolute;
+    right: 0;
+    top: 0;
+    width: 100px;
+    height: 35px;
+    line-height: 35px;
+    font-size: 25px;
+}
+
+/* =========================
+   blackBG + medicinepopup
+========================= */
+
+body > .blackBG {
+    position: fixed;
+    inset: 0;
+    background-color: rgba(127,127,127,0.6);
+    display: none;
+    z-index: 100;
+}
+
+body > .blackBG > #medicinepopup {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%,-50%);
+    background: white;
+    border: 1px solid #ccc;
+    width: 900px;
+    min-height: 30vh;
+    box-shadow: 0 0 10px gray;
+}
+
+body > .blackBG > #medicinepopup .closeMedicine {
+    width: 100px;
+    height: 50px;
+    float: right;
+    border: 1px solid black;
+    text-align: center;
+    font-size: 30px;
+    cursor: pointer;
+}
+
+body > .blackBG > #medicinepopup h3 {
+    position: fixed;
+    width: 100%;
+    text-align: center;
+    margin: 10px;
+}
+
+body > .blackBG > #medicinepopup #popup-table {
+    display: block;
+    width: 100%;
+    height: 50vh;
+    border-collapse: collapse;
+    margin-top: 50px;
+    overflow: auto;
+}
+
+/* =========================
+   addMedicine 모달
+========================= */
+
+body > .blackBG .addMedicine {
+    display: none;
+    position: fixed;
+    inset: 0;
+    width: 60%;
+    height: 60%;
+    margin: auto;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 9999;
+}
+
+body > .blackBG .addMedicine .modal-content {
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    height: 100%;
+    overflow: auto;
+    border: 1px solid black;
+    box-shadow: 0 0 15px 5px;
+}
+
+/* =========================
+   context menu
+========================= */
+
+body > #customContextMenu {
+    display: none;
+    position: absolute;
+    z-index: 9999;
+    list-style: none;
+    background: #fff;
+    border: 1px solid #ccc;
+    padding: 5px;
+    border-radius: 5px;
+}
+
+body > #customContextMenu li {
+    padding: 5px 10px;
+    cursor: pointer;
+}
+
+body > #customContextMenu li:hover {
+    background: #eee;
+}
+
+/* =========================
+   standardDetail
+========================= */
+
+body > .standardDetail {
+    display: none;
+    width: 100px;
+    border: 1px solid black;
+    background: white;
+    font-size: 25px;
+    box-shadow: 5px 5px 10px 2px;
+    cursor: pointer;
+}
+
+body > .standardDetail div:hover {
+    background: #4B0082;
+    color: white;
+}
+
+/* =========================
+   포커스 스타일
+========================= */
+
+.inputCheckStyle,
+.selectCheck {
+    box-shadow: 0 0 10px 2px;
+    border: 3px solid green;
+}
+#popup #popupContent  .table-container {
+    position: absolute;
+    height: 80%;
+    overflow-y: auto;
+    border: 1px solid #ccc;
+}
+
+/* 전체 테이블 스타일 */
+#popup #popupContent  .sticky-header-table {
+	width: 100%;
+	border-collapse: collapse;
+	table-layout: fixed;
+}
+
+/* 테이블 셀 공통 스타일 */
+#popup #popupContent  .sticky-header-table th, .sticky-header-table td {
+	border: 1px solid #ccc;
+	padding: 8px;
+	text-align: center;
+}
+
+/* 헤더 고정 */
+#popup #popupContent  .sticky-header-table thead th {
+	position: sticky;
+    top: 0;
+    background-color: #D8BFD8;
+    z-index: 1;
+    color: #141145;
+}
+#popup #popupContent  .sticky-header-table tbody tr:nth-child(even){
+	background-color:#EFFFFF;
+}
+
+#popup #popupContent p{
+	margin-top: 40px;
+	text-align: center;
+}

@@ -1,0 +1,124 @@
+<%@ page contentType="application/json; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ page import="java.io.*, java.sql.*, org.json.*, java.util.*, java.util.regex.*" %>
+<%@ include file="sessionManager.jsp" %>
+<%@ include file="DBconnection.jsp" %>
+
+<%!
+/** 날짜 문자열을 YYYY-MM-DD 형태로 변환 */
+private String formatDate(String inputDate) {
+    try {
+        if (inputDate == null || inputDate.trim().isEmpty()) {
+            return null;
+        }
+
+        // 이미 yyyy-MM-dd 형태면 그대로 반환
+        if (inputDate.contains("-")) {
+            return inputDate;
+        }
+
+        // 24/11/12 → 2024-11-12 형태로 변환
+        String[] parts = inputDate.split("[/.-]");
+        if (parts.length != 3) {
+            throw new IllegalArgumentException("잘못된 날짜 형식: " + inputDate);
+        }
+
+        int year = Integer.parseInt(parts[0]);
+        if (year < 100) year += 2000; // 24 → 2024
+
+        String month = String.format("%02d", Integer.parseInt(parts[1]));
+        String day = String.format("%02d", Integer.parseInt(parts[2]));
+
+        return year + "-" + month + "-" + day;
+    } catch (Exception e) {
+        System.err.println("날짜 변환 오류: " + inputDate + " → " + e.getMessage());
+        return inputDate; // 변환 실패 시 원본 유지
+    }
+}
+%>
+
+<%
+request.setCharacterEncoding("UTF-8");
+String idSortation = (session != null) ? (String) session.getAttribute("idSortation") : null;
+
+StringBuilder sb = new StringBuilder();
+String line;
+BufferedReader reader = request.getReader();
+while ((line = reader.readLine()) != null) sb.append(line);
+
+try {
+    JSONObject data = new JSONObject(sb.toString());
+    conn.setAutoCommit(false);
+
+    for (String key : data.keySet()) {
+        JSONObject row = data.getJSONObject(key);
+
+        // key = "medicineName|DeliveryDate|standard"
+        String[] parts = key.split("\\|");
+        if (parts.length < 3) continue;
+        String medicineName = parts[0];
+        String deliveryDate = parts[1];
+        String standard = parts[2];
+
+        // ======== ✅ inventory 계산 처리 ========
+        if (row.has("inventory")) {
+            try {
+                double inv = Double.parseDouble(row.getString("inventory"));
+                double factor = 1.0;
+
+                if (standard != null && !standard.trim().isEmpty()) {
+                    Matcher m = Pattern.compile("\\d+(\\.\\d+)?").matcher(standard);
+                    int count = 0;
+                    while (m.find()) {
+                        factor *= Double.parseDouble(m.group());
+                        count++;
+                        if (count >= 2) break; // 숫자 2개까지만 곱셈
+                    }
+                }
+
+                double newInv = inv * factor;
+                row.put("inventory", String.valueOf(newInv));
+            } catch (Exception ex) {
+                ex.printStackTrace();
+            }
+        }
+
+        // ======== ✅ 날짜 형식 변환 처리 ========
+        if (row.has("deliveryDate")) {
+            String formatted = formatDate(row.getString("deliveryDate"));
+            row.put("deliveryDate", formatted);
+        }
+        if (row.has("receiptDate")) {
+            String formatted = formatDate(row.getString("receiptDate"));
+            row.put("receiptDate", formatted);
+        }
+        // ======================================
+
+        // ======== ✅ SQL 생성 및 실행 ========
+        StringBuilder sql = new StringBuilder("UPDATE testTable" + idSortation + " SET ");
+        List<String> cols = new ArrayList<>();
+        for (String col : row.keySet()) cols.add(col + "=?");
+        sql.append(String.join(",", cols));
+        sql.append(" WHERE medicineName=? AND DeliveryDate=? AND standard=?");
+
+        PreparedStatement pstmt = conn.prepareStatement(sql.toString());
+        int i = 1;
+        for (String col : row.keySet()) {
+            pstmt.setString(i++, row.getString(col));
+        }
+        pstmt.setString(i++, medicineName);
+        pstmt.setString(i++, deliveryDate);
+        pstmt.setString(i, standard);
+
+        pstmt.executeUpdate();
+        pstmt.close();
+    }
+
+    conn.commit();
+    conn.setAutoCommit(true);
+    out.print("{\"status\":\"success\"}");
+} catch (Exception e) {
+    conn.rollback();
+    e.printStackTrace();
+    out.print("{\"status\":\"error\",\"message\":\"" + e.getMessage() + "\"}");
+}
+%>

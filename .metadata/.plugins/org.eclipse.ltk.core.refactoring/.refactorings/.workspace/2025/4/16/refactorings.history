@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<session version="1.0">
+<refactoring comment="Delete resource &apos;여기임/src/main/webapp/DB백업.csv&apos;" deleteContents="false" description="Delete resource &apos;여기임/src/main/webapp/DB백업.csv&apos;" element1="/여기임/src/main/webapp/DB백업.csv" flags="7" id="org.eclipse.ltk.core.refactoring.delete.resources" resources="1" stamp="1744881983021"/>
+</session>

@@ -1,0 +1,61 @@
+<%@ page language="java" contentType="application/json; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ page import="java.sql.*, org.json.*" %>
+<%@ include file="sessionManager.jsp"%>
+<%@ include file="DBconnection.jsp"%>
+
+<%
+response.setContentType("application/json; charset=UTF-8");
+request.setCharacterEncoding("UTF-8");
+
+String idSortation = (session != null) ? (String) session.getAttribute("idSortation") : null;
+String tableName = "SalesRecord";
+if (idSortation != null && !idSortation.isEmpty()) tableName += idSortation;
+
+String saleDate = request.getParameter("saleDate"); // yyyy-mm-dd
+JSONObject result = new JSONObject();
+JSONArray rows = new JSONArray();
+
+if (saleDate == null || !saleDate.matches("^\\d{4}-\\d{2}-\\d{2}$")) {
+    result.put("error","invalid date").write(response.getWriter());
+    return;
+}
+
+PreparedStatement pstmt = null;
+ResultSet rs = null;
+
+try {
+    String sql = "SELECT medicineName, " +
+                 " CAST(Buyingprice AS DECIMAL) AS Buyingprice, " +
+                 " CAST(price AS DECIMAL) AS price, " +
+                 " CAST(inventory AS DECIMAL) AS inventory, " +
+                 " (CAST(price AS DECIMAL) - CAST(Buyingprice AS DECIMAL)) AS margin, " +
+                 " ROUND(((CAST(price AS DECIMAL) - CAST(Buyingprice AS DECIMAL)) / NULLIF(CAST(price AS DECIMAL),0)) * 100, 2) AS marginRate " +
+                 " FROM " + tableName +
+                 " WHERE saleDate = ?";
+    pstmt = conn.prepareStatement(sql);
+    pstmt.setString(1, saleDate);
+    rs = pstmt.executeQuery();
+
+    while (rs.next()) {
+        JSONObject o = new JSONObject();
+        o.put("medicineName", rs.getString("medicineName"));
+        o.put("buyingPrice", rs.getBigDecimal("Buyingprice"));  // 숫자 그대로
+        o.put("price", rs.getBigDecimal("price"));              // 숫자 그대로
+        o.put("inventory", rs.getBigDecimal("inventory"));      // 숫자 그대로
+        o.put("margin", rs.getBigDecimal("margin"));            // 숫자 그대로
+        o.put("marginRate", rs.getBigDecimal("marginRate"));    // 숫자 그대로
+        rows.put(o);
+    }
+
+    result.put("saleDate", saleDate);
+    result.put("rows", rows);
+    result.write(response.getWriter());
+
+} catch(Exception e){
+    result.put("error", e.getMessage()).write(response.getWriter());
+} finally {
+    if (rs != null) try { rs.close(); } catch(Exception ig){}
+    if (pstmt != null) try { pstmt.close(); } catch(Exception ig){}
+    if (conn != null) try { conn.setAutoCommit(true);} catch(Exception ig){}
+}
+%>

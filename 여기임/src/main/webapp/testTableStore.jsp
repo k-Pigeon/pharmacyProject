@@ -1,0 +1,242 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ page import="java.sql.*"%>
+<%@ page import="java.util.*"%>
+<%@ page import="java.text.*"%>
+<%@ include file="sessionManager.jsp"%>
+<%@ include file="DBconnection.jsp"%>
+<%
+String dbName = (session != null) ? (String) session.getAttribute("dbName") : null;
+String id = (session != null) ? (String) session.getAttribute("id") : null;
+String password = (session != null) ? (String) session.getAttribute("password") : null;
+
+if (id == null || dbName == null) {
+    response.sendRedirect("login.jsp");
+    return;
+}
+
+jdbcDriver = dbName;
+%>
+<%! 
+// 문자열을 숫자로 변환, 빈 값이면 기본값 반환
+private Double parseIntOrDefault(String value, Double defaultValue) {
+    if (value != null && !value.trim().isEmpty()) {
+        try {
+            return Double.parseDouble(value.trim());
+        } catch (NumberFormatException e) {
+            System.err.println("숫자 변환 오류: " + value);
+        }
+    }
+    return defaultValue; // 기본값 반환
+}
+
+// 문자열에서 숫자만 추출하여 Double로 반환, 추출할 수 없으면 기본값 반환
+private Double parseDoubleOrExtractNumbers(String value, Double defaultValue) {
+    if (value != null && !value.trim().isEmpty()) {
+        try {
+            String numericValue = value.replaceAll("[^0-9.]", ""); // 숫자와 점(.)만 남기고 제거
+            return numericValue.isEmpty() ? defaultValue : Double.parseDouble(numericValue);
+        } catch (NumberFormatException e) {
+            System.err.println("숫자 변환 오류: " + value);
+        }
+    }
+    return defaultValue;
+}
+
+private Double parseStandardOrMultiply(String standard, Double inventory) {
+    if (standard != null && !standard.trim().isEmpty()) {
+        // 단위 포함 여부 확인 (g, ml, l, cm)
+        boolean hasUnit = standard.matches(".*\\b(g|ml|l|cm)\\b.*");
+
+        // 띄어쓰기로 나누기 (예: "20g 4포" → ["20g", "4포"])
+        String[] parts = standard.split("\\s+");
+
+        // 숫자 목록 생성
+        List<Double> numbers = new ArrayList<Double>();
+        for (int i = 0; i < parts.length; i++) {
+            Double number = parseDoubleOrExtractNumbers(parts[i], null);
+            if (number != null) {
+                numbers.add(number);
+            }
+        }
+
+        // 숫자가 2개 이상이면 곱한 후 inventory와 곱함
+        if (numbers.size() >= 2) {
+            Double multipliedValue = 1.0;
+            for (int i = 0; i < numbers.size(); i++) {
+                multipliedValue *= numbers.get(i);
+            }
+            return inventory * multipliedValue;
+        }
+
+        // 단위가 포함된 경우 inventory 값 그대로 사용
+        if (hasUnit) {
+            return inventory;
+        }
+
+        // 숫자가 하나만 있으면 그것과 inventory 곱하기
+        if (!numbers.isEmpty()) {
+            return inventory * numbers.get(0);
+        }
+    }
+
+    return inventory;
+}
+
+// 날짜 형식을 YYYY-MM-DD로 변환
+private String formatDate(String inputDate) {
+    try {
+        if (inputDate == null || inputDate.trim().isEmpty()) {
+            return null;
+        }
+
+        if (inputDate.contains("-")) {
+            return inputDate;
+        }
+
+        String[] parts = inputDate.split("/");
+        if (parts.length != 3) {
+            throw new IllegalArgumentException("잘못된 날짜 형식: " + inputDate);
+        }
+
+        int year = Integer.parseInt(parts[0]);
+        if (year < 100) {
+            year += (year < 50 ? 2000 : 1900);
+        }
+
+        String month = String.format("%02d", Integer.parseInt(parts[1]));
+        String day = String.format("%02d", Integer.parseInt(parts[2]));
+
+        return year + "-" + month + "-" + day;
+    } catch (Exception e) {
+        System.err.println("날짜 변환 오류: " + inputDate + ", 오류 메시지: " + e.getMessage());
+        return null;
+    }
+}
+%>
+
+<%
+request.setCharacterEncoding("UTF-8");
+
+// 배열 형태로 데이터 수신
+String[] serialNumbers = request.getParameterValues("SerialNumber[]");
+String[] medicineNames = request.getParameterValues("medicineName[]");
+String[] buyingPrices = request.getParameterValues("Buyingprice[]");
+String[] prices = request.getParameterValues("price[]");
+String[] inventories = request.getParameterValues("inventory[]");
+String[] companyNames = request.getParameterValues("companyName[]");
+String[] standards = request.getParameterValues("standard[]");
+String[] receiptDates = request.getParameterValues("receiptDate[]");
+String[] deliveryDates = request.getParameterValues("DeliveryDate[]");
+String[] kinds = request.getParameterValues("kind[]");
+
+// 배열 중 가장 짧은 길이를 기준으로 처리
+int rowCount = Math.min(
+    serialNumbers != null ? serialNumbers.length : 0,
+    Math.min(
+        medicineNames != null ? medicineNames.length : 0,
+        Math.min(
+            prices != null ? prices.length : 0,
+            Math.min(
+                inventories != null ? inventories.length : 0,
+                Math.min(
+                    companyNames != null ? companyNames.length : 0,
+                    Math.min(
+                        standards != null ? standards.length : 0,
+                        Math.min(receiptDates != null ? receiptDates.length : 0,
+                            Math.min(kinds != null ? kinds.length : 0,
+                                deliveryDates != null ? deliveryDates.length : 0
+                            )
+                        )
+                    )
+                )
+            )
+        )
+    )
+);
+
+PreparedStatement pstmt = null;
+ResultSet rs = null;
+
+try {
+    Class.forName("com.mysql.cj.jdbc.Driver");
+    conn = DriverManager.getConnection(jdbcDriver, dbUser, dbPwd);
+
+    for (int i = 0; i < rowCount; i++) {
+        String serialNumber = serialNumbers != null && serialNumbers.length > i ? serialNumbers[i].trim() : "";
+        String medicineName = medicineNames != null && medicineNames.length > i ? medicineNames[i].trim() : "";
+        String buyingPrice = buyingPrices != null && buyingPrices.length > i ? buyingPrices[i].trim() : "0";
+        String price = prices != null && prices.length > i ? prices[i].trim() : "0";
+        String inventory = inventories != null && inventories.length > i ? inventories[i].trim() : "0";
+        String companyName = companyNames != null && companyNames.length > i ? companyNames[i].trim() : "";
+        String kind = kinds != null && kinds.length > i ? kinds[i].trim() : "";
+        String standard = standards != null && standards.length > i ? standards[i].trim() : "";
+        String receiptDate = receiptDates != null && receiptDates.length > i ? receiptDates[i].trim() : null;
+        String deliveryDate = (deliveryDates != null && deliveryDates.length > i) ? formatDate(deliveryDates[i].trim()) : null;
+
+        Double inventoryValue = parseIntOrDefault(inventory, 0.00);
+        inventoryValue = parseStandardOrMultiply(standard, inventoryValue);
+
+        // 데이터 존재 여부 확인
+        String checkIfExistsSQL = "SELECT inventory FROM testTable WHERE SerialNumber = ? AND DeliveryDate = ?";
+        pstmt = conn.prepareStatement(checkIfExistsSQL);
+        pstmt.setString(1, serialNumber);
+        pstmt.setString(2, deliveryDate);
+        rs = pstmt.executeQuery();
+
+        if (rs.next()) {
+            String updateSQL = "UPDATE testTable SET inventory = inventory + ? WHERE SerialNumber = ? AND DeliveryDate = ?";
+            pstmt.close();
+            pstmt = conn.prepareStatement(updateSQL);
+            pstmt.setDouble(1, inventoryValue);
+            pstmt.setString(2, serialNumber);
+            pstmt.setString(3, deliveryDate);
+            pstmt.executeUpdate();
+        } else {
+            String insertSQL = " INSERT INTO testTable (SerialNumber, medicineName, price, inventory, Buyingprice, "
+        					 + " companyName, kind, standard, receiptDate, DeliveryDate, returnInv) " 
+                             + " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            pstmt.close();
+            pstmt = conn.prepareStatement(insertSQL);
+            pstmt.setString(1, serialNumber);
+            pstmt.setString(2, medicineName);
+            pstmt.setString(3, price);
+            pstmt.setDouble(4, inventoryValue);
+            pstmt.setString(5, buyingPrice);
+            pstmt.setString(6, companyName);
+            pstmt.setString(7, kind);
+            pstmt.setString(8, standard);
+            pstmt.setString(9, receiptDate);
+            pstmt.setString(10, deliveryDate);
+            pstmt.setString(11, "0");
+            pstmt.executeUpdate();
+            
+            String CountSQL = "SELECT MAX(CAST(countNumber AS UNSIGNED)) FROM RegistTable";
+            PreparedStatement countStmt = conn.prepareStatement(CountSQL);
+            ResultSet countRs = countStmt.executeQuery();
+
+            int nextCount = 1;
+            if (countRs.next()) {
+                nextCount = countRs.getInt(1) + 1;
+            }
+            countRs.close();
+            countStmt.close();
+
+            String RegistSQL = "INSERT INTO RegistTable (medicineName, standard, Buyingprice, price, countNumber) VALUES (?, ?, ?, ?, ?)";
+            PreparedStatement registStmt = conn.prepareStatement(RegistSQL);
+            registStmt.setString(1, medicineName);
+            registStmt.setString(2, standard);
+            registStmt.setString(3, buyingPrice);
+            registStmt.setString(4, price);
+            registStmt.setString(5, String.valueOf(nextCount));
+            registStmt.executeUpdate();
+            registStmt.close();           
+        }
+    }
+
+    out.println("모든 데이터가 처리되었습니다.");
+} catch (Exception e) {
+    e.printStackTrace();
+    out.println("데이터 처리 중 오류가 발생했습니다: " + e.getMessage());
+}
+%>
+<jsp:forward page="Product_Registration.jsp"></jsp:forward>

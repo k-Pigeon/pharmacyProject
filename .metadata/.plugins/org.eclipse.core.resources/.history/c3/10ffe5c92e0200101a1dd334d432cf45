@@ -1,0 +1,112 @@
+<%@ page import="java.sql.*, javax.servlet.http.*, javax.servlet.*" %>
+<%@ page contentType="text/html;charset=UTF-8" language="java" %>
+<%@ include file="sessionManager.jsp"%>
+<%@ include file="DBconnection.jsp"%>
+<%
+String dbName = (session != null) ? (String) session.getAttribute("dbName") : null;
+String id = (session != null) ? (String) session.getAttribute("id") : null;
+String password = (session != null) ? (String) session.getAttribute("password") : null;
+
+if (id == null || dbName == null) {
+    response.sendRedirect("login.jsp");
+    return;
+}
+
+jdbcDriver = dbName;
+%>
+<%
+    // 요청 파라미터 읽기
+    String secondData = request.getParameter("secondData");
+    String eighthData = request.getParameter("eighthData");
+    String ninthData = request.getParameter("ninthData");
+
+    // DB 쿼리 실행
+    PreparedStatement pstmt = null;
+    ResultSet rs = null;
+
+    try {
+        Class.forName("com.mysql.cj.jdbc.Driver"); // JDBC 드라이버 로드
+        String query = "SELECT * FROM testTable WHERE medicineName = ? AND standard = ? AND DeliveryDate = ?";
+        pstmt = conn.prepareStatement(query);
+        pstmt.setString(1, secondData);
+        pstmt.setString(2, eighthData);
+        pstmt.setString(3, ninthData);
+        
+        rs = pstmt.executeQuery();
+
+        // 결과를 세션에 저장
+        if (rs.next()) {
+            HttpSession userSession = request.getSession();
+
+            // 기본 데이터 저장
+            userSession.setAttribute("SerialNumber", rs.getString("SerialNumber"));
+            userSession.setAttribute("medicineName", rs.getString("medicineName"));
+            userSession.setAttribute("Buyingprice", rs.getString("Buyingprice"));
+            userSession.setAttribute("price", rs.getString("price"));
+            userSession.setAttribute("kind", rs.getString("kind"));
+            userSession.setAttribute("companyName", rs.getString("companyName"));
+            userSession.setAttribute("standard", rs.getString("standard"));
+            userSession.setAttribute("receiptDate", rs.getString("receiptDate"));
+            userSession.setAttribute("DeliveryDate", rs.getString("DeliveryDate"));
+            userSession.setAttribute("countNumber", rs.getString("countNumber"));
+            userSession.setAttribute("Bookmark", rs.getString("Bookmark"));
+            userSession.setAttribute("returnInv", rs.getString("returnInv"));
+
+            // inventory 값 조정
+            double inventory = rs.getDouble("inventory");
+            String standard = rs.getString("standard");
+            double calculatedInventory = inventory; // 기본적으로 inventory 값을 유지
+
+            System.out.println("standard 원본 값: " + standard); // 🔹 디버깅 로그 추가
+
+            // standard 값이 존재하는지 체크
+            if (standard != null && !standard.trim().isEmpty()) {
+                if (standard.contains("ml") || standard.contains("g") || standard.contains("포")) {
+                    // 🔹 ml, g, 포가 포함된 경우 inventory 그대로 유지
+                    calculatedInventory = inventory;
+                } else {
+                    String[] parts = standard.split(" "); // 공백으로 나누기
+                    double standardValue = 1.0; // 기본값
+
+                    try {
+                        if (parts.length == 2) { 
+                            // 예: "20g 4포" -> 20 * 4
+                            double num1 = Double.parseDouble(parts[0].replaceAll("[^0-9]", ""));
+                            double num2 = Double.parseDouble(parts[1].replaceAll("[^0-9]", ""));
+                            standardValue = num1 * num2;
+                        } else if (parts.length == 1) {
+                            // 숫자 하나만 있는 경우
+                            standardValue = Double.parseDouble(standard.replaceAll("[^0-9]", ""));
+                        }
+
+                        System.out.println("standardValue: " + standardValue); // 🔹 디버깅 로그 추가
+                        if (standardValue > 0) {
+                            calculatedInventory = inventory / standardValue;
+                        }
+                    } catch (NumberFormatException e) {
+                        System.err.println("NumberFormatException 발생: " + e.getMessage());
+                        calculatedInventory = inventory; // 변환 실패 시 원래 값 유지
+                    }
+                }
+            }
+
+            System.out.println("최종 calculatedInventory: " + calculatedInventory); // 🔹 디버깅 로그 추가
+
+            // 조정된 inventory 값 세션에 저장
+            userSession.setAttribute("inventory", calculatedInventory);
+
+            // 수정 페이지로 리디렉션
+            response.sendRedirect("editPage.jsp");
+        } else {
+            out.println("No data found.");
+        }
+    } catch (Exception e) {
+        e.printStackTrace();
+        response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+    } finally {
+        // 자원 해제
+        if (rs != null) try { rs.close(); } catch (SQLException e) { e.printStackTrace(); }
+        if (pstmt != null) try { pstmt.close(); } catch (SQLException e) { e.printStackTrace(); }
+        if (conn != null) try { conn.close(); } catch (SQLException e) { e.printStackTrace(); }
+    }
+%>

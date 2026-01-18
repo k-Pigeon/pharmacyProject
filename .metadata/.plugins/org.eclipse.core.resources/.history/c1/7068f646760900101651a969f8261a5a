@@ -1,0 +1,50 @@
+<%@ page contentType="application/json; charset=UTF-8" %>
+<%@ page import="java.io.*" %>
+<%@ page import="org.json.JSONObject" %>
+
+<%
+    request.setCharacterEncoding("UTF-8");
+    String custnumber = request.getParameter("custnumber");
+    System.out.println("요청 받은 고객번호: " + custnumber);
+
+    String csvPath = application.getRealPath("/DB백업.csv");
+    BufferedReader br = null;
+    JSONObject responseJson = new JSONObject();
+
+    try {
+        br = new BufferedReader(new InputStreamReader(new FileInputStream(csvPath), "UTF-8"));
+
+        String headerLine = br.readLine();  // 첫 번째 줄 (고객번호들)
+        String memoLine = br.readLine();    // 두 번째 줄 (메모들)
+
+        if (headerLine != null && memoLine != null) {
+            String[] numbers = headerLine.split("[,;\t]");  // 쉼표 또는 세미콜론 또는 탭
+            String[] memos = memoLine.split("[,;\t]");
+
+            for (int i = 0; i < numbers.length; i++) {
+                String num = numbers[i].trim();
+                if (num.equals(custnumber)) {
+                    String memo = (i < memos.length) ? memos[i].trim() : "";
+                    responseJson.put("rowNumber", num);
+                    responseJson.put("memo", memo);
+                    break;
+                }
+            }
+
+            if (!responseJson.has("memo")) {
+                responseJson.put("error", "해당 고객번호에 대한 메모가 없습니다.");
+            }
+
+        } else {
+            responseJson.put("error", "CSV에 데이터가 충분하지 않습니다.");
+        }
+
+    } catch (Exception e) {
+        e.printStackTrace();
+        responseJson.put("error", "CSV 읽기 실패: " + e.getMessage());
+    } finally {
+        if (br != null) try { br.close(); } catch (IOException e) {}
+    }
+
+    response.getWriter().write(responseJson.toString());
+%>

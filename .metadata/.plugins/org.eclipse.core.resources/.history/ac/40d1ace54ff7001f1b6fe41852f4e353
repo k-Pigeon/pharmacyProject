@@ -1,0 +1,82 @@
+create table regularSet(
+	medicineName varchar(40),
+	Buyingprice varchar(10),
+	price varchar(10),
+	inventory double,
+	saleInventory double
+);
+
+drop table regularSet;
+
+insert into regularSet
+values("상수환", 2000, 7000, 1, 10);
+
+insert into regularSet
+values("연통환", 2000, 7000, 1, 10);
+
+insert into regularSet
+values("은치환", 2000, 7000, 1, 10);
+
+insert into regularSet
+values("휘니볼", 2000, 7000, 1, 10);
+
+insert into regularSet
+values("근골환", 2000, 7000, 1, 10);
+
+insert into regularSet
+values("소체환", 2000, 7000, 1, 10);
+
+
+CREATE TABLE productSet (
+    medicineName VARCHAR(255) NOT NULL,
+    medicineName_1 VARCHAR(255),
+    medicineName_2 VARCHAR(255),
+    medicineName_3 VARCHAR(255),
+    medicineName_4 VARCHAR(255),
+    buyingprice varchar(10),
+    price varchar(10),
+    inventory varchar(3)
+);
+
+insert into productSet(medicineName, medicineName_1, medicineName_2, buyingprice, price, inventory)
+values("한약총합", "상수환", "은치환", 3500, 6000, 1);
+
+CREATE TABLE members (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    memberName VARCHAR(50) DEFAULT NULL,
+    memberPhone VARCHAR(20) DEFAULT NULL,
+    jumin1 VARCHAR(6) DEFAULT NULL,
+    jumin2 VARCHAR(7) DEFAULT NULL,
+    gender TINYINT DEFAULT NULL,
+    customerNumber VARCHAR(50) DEFAULT NULL
+);
+
+
+
+INSERT INTO members (memberName, memberPhone, jumin1, jumin2, gender, customerNumber)
+VALUES ("김지인", "01055827154", "000000", "0000000", "1", "1");
+
+INSERT INTO members (memberName, memberPhone, jumin1, jumin2, gender, customerNumber)
+VALUES ("김지인", "01055827154", "999999", "9999999", "1", "2");
+
+
+drop table members;
+
+
+성함 혹은 전화번호를 통해 사람을 찾는다.
+어떤 제품을 몇개 구매했는지, 단가와 총가격을 입력한다.
+(총가격은 자동으로 입력. 날짜는 작성 날짜 기준)
+(사입가는 필요없다.)
+
+
+drop table SalesData;
+CREATE TABLE SalesData (
+    sale_date timestamp(1) NOT NULL,
+    customer_id VARCHAR(255) NOT NULL,
+    medicine_name VARCHAR(255) NOT NULL,
+    inventory INT NOT NULL,
+    standard VARCHAR(255),
+    price DECIMAL(10, 2) NOT NULL,
+    total_price DECIMAL(10, 2) NOT NULL
+);
+

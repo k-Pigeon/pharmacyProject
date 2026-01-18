@@ -1,0 +1,57 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ page import="java.sql.*" %>
+<%@ page import="org.json.JSONArray" %>
+<%@ page import="org.json.JSONObject" %>
+<%@ include file="sessionManager.jsp"%>
+<%@ include file="DBconnection.jsp"%>
+<%
+String dbName = (session != null) ? (String) session.getAttribute("dbName") : null;
+String id = (session != null) ? (String) session.getAttribute("id") : null;
+String password = (session != null) ? (String) session.getAttribute("password") : null;
+
+String idSortation = (session != null) ? (String) session.getAttribute("idSortation") : null; if (id == null || dbName == null) {
+    response.sendRedirect("login.jsp");
+    return;
+}
+
+jdbcDriver = dbName;
+request.setCharacterEncoding("UTF-8");
+String saleDate = request.getParameter("saleDate");  // 클라이언트에서 전달된 날짜
+JSONArray resultArray = new JSONArray();
+
+PreparedStatement ps = null;
+ResultSet rs = null;
+
+try {
+    // DB 연결
+    String query = " SELECT medicine_name, discounted ,inventory, standard, price, total_price, lowerAndHigest "
+    			 + " FROM salesdata"  + idSortation + "  WHERE sale_date = ?";
+    ps = conn.prepareStatement(query);
+    ps.setString(1, saleDate); // 클라이언트에서 받은 날짜를 쿼리에 설정
+    rs = ps.executeQuery();
+
+    // 결과를 JSON 배열로 변환
+    while (rs.next()) {
+        JSONObject saleData = new JSONObject();
+        saleData.put("medicine_name", rs.getString("medicine_name"));
+        saleData.put("inventory", rs.getString("inventory"));
+        saleData.put("standard", rs.getString("standard"));
+        saleData.put("price", rs.getDouble("price"));
+        saleData.put("total_price", rs.getDouble("total_price"));
+        saleData.put("discounted", rs.getDouble("discounted"));
+        saleData.put("lowerAndHigest", rs.getString("lowerAndHigest"));
+        resultArray.put(saleData);
+    }
+
+    // JSON 배열을 문자열로 변환하여 응답
+    response.getWriter().write(resultArray.toString());  // 객체를 바로 문자열로 변환하여 응답
+
+} catch (Exception e) {
+    e.printStackTrace();
+    response.getWriter().write("{\"error\": \"" + e.getMessage() + "\"}");  // 오류 처리
+} finally {
+        try { if (ps != null) ps.close(); } catch (Exception ignored) {}
+        try { if (rs != null) rs.close(); } catch (Exception ignored) {}
+}
+%>
+<%@ include file="DBclose.jsp" %>

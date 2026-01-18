@@ -1,0 +1,252 @@
+<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ include file="sessionManager.jsp"%>
+<%
+String dbName = (session != null) ? (String) session.getAttribute("dbName") : null;
+String id = (session != null) ? (String) session.getAttribute("id") : null;
+String password = (session != null) ? (String) session.getAttribute("password") : null;
+String idSortation = (session != null) ? (String) session.getAttribute("idSortation") : null; if (id == null || dbName == null) {
+	response.sendRedirect("login.jsp");
+	return;
+}
+%>
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>제품 등록</title>
+<style>
+.container.addProduct {
+	width: 100%;
+	padding: 20px;
+}
+
+.container.addProduct input {
+	margin-bottom: 10px;
+	width: 23%;
+	padding: 10px;
+	font-size: 15px;
+	border: 1px solid #ccc;
+}
+
+.container.addProduct #standardPriceContainer .standardPriceGroup {
+	display: flex;
+	gap: 10px;
+	margin: 1% 0;
+}
+
+.container.addProduct .removeStandardPrice {
+    background: red;
+    color: white;
+    border: none;
+    cursor: pointer;
+    width: 35px;
+    height: 35px;
+    line-height: 35px;
+    border-radius: 100%;
+    font-size: 30px;
+}
+
+.submitNew, #addStandardPrice {
+    position: absolute;
+    color: #090909;
+    padding: 0.7em 1.7em;
+    font-size: 18px;
+    border-radius: 0.5em;
+    background: #e8e8e8;
+    cursor: pointer;
+    border: 1px solid #e8e8e8;
+    transition: all 0.3s;
+    box-shadow: 6px 6px 12px #c5c5c5, -6px -6px 12px #ffffff;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.submitNew:active, #addStandardPrice:active {
+	color: #666;
+	box-shadow: 0px 0px 0px #c5c5c5, 0px 0px 0px #ffffff, inset 4px 4px 12px
+		#c5c5c5, inset -4px -4px 12px #ffffff;
+}
+
+.standardPriceGroup input[type="text"] {
+	border: 2px solid transparent;
+	width: 15em;
+	height: 2.5em;
+	padding-left: 0.8em;
+	outline: none;
+	overflow: hidden;
+	background-color: #DCDCDC;
+	border-radius: 10px;
+	transition: all 0.5s;
+}
+
+.standardPriceGroup input[type="text"]:focus {
+	border: 2px solid #4A9DEC;
+	box-shadow: 0px 0px 0px 7px rgb(74, 157, 236, 20%);
+	background-color: white;
+}
+
+.closeAdd {
+	height: 3em;
+	width: 8em;
+	border: none;
+	border-radius: 10em;
+	background: #016DD9;
+	font-size: 17px;
+	color: #ffffff;
+	font-family: inherit;
+	font-weight: 500;
+	float: right;
+}
+
+.closeAdd:hover {
+	animation: shake3856 0.3s linear infinite both;
+}
+
+@keyframes shake3856 {
+ 0% {
+  -webkit-transform: translate(0);
+  transform: translate(0);
+ }
+
+ 20% {
+  -webkit-transform: translate(-2px, 2px);
+  transform: translate(-2px, 2px);
+ }
+
+ 40% {
+  -webkit-transform: translate(-2px, -2px);
+  transform: translate(-2px, -2px);
+ }
+
+ 60% {
+  -webkit-transform: translate(2px, 2px);
+  transform: translate(2px, 2px);
+ }
+
+ 80% {
+  -webkit-transform: translate(2px, -2px);
+  transform: translate(2px, -2px);
+ }
+
+ 100% {
+  -webkit-transform: translate(0);
+  transform: translate(0);
+ }
+}
+
+</style>
+</head>
+<body>
+	<%
+String medicineName = request.getParameter("medicineName") != null ? request.getParameter("medicineName") : "";
+%>
+	<div class="container addProduct">
+		<h3>제품 등록</h3>
+		<form id="productForm">
+			<label>제품명: <input type="text" name="medicineName"
+				id="medicineName" value="<%= medicineName %>" required></label>
+			<button type="button" class="closeAdd">닫기 X</button>
+			<div id="standardPriceContainer">
+				<div class="standardPriceGroup">
+					<input type="text" class="standard" placeholder="규격">
+					<input type="text" class="price" placeholder="판매가">
+					<input type="text" class="buyingPrice" placeholder="사입가">
+					<button type="button" class="removeStandardPrice" style="display: none;">X</button>
+				</div>
+			</div>
+			<button type="button" id="addStandardPrice" style="position: relative;left: 10%;">+ 추가</button>
+			<br>
+			<button type="submit" class="submitNew">등록</button>
+		</form>
+	</div>
+
+	<script src="jquery-3.7.1.min.js"></script>
+	<script>
+$(document).ready(function() {
+	$(".container #productForm .closeAdd").on("click", function(){
+		// 1. 모달 닫기
+		$(".addMedicine").hide();
+
+		// 2. form 초기화
+		$("#productForm")[0].reset();
+
+		// 3. 추가된 .standardPriceGroup 제거 (첫 번째 제외하고 모두 삭제)
+		$("#standardPriceContainer .standardPriceGroup").not(":first").remove();
+
+		// 4. 첫 번째 그룹의 값도 비우기
+		const $firstGroup = $("#standardPriceContainer .standardPriceGroup:first");
+		$firstGroup.find("input").val("");
+
+		// 5. 삭제 버튼 숨기기 (기본 1개만 있을 때)
+		$firstGroup.find(".removeStandardPrice").hide();
+	});
+
+	$("#addStandardPrice").on("click", function() {
+		const group = `
+			<div class="standardPriceGroup">
+				<input type="text" class="standard" placeholder="규격">
+				<input type="text" class="price" placeholder="판매가">
+				<input type="text" class="buyingPrice" placeholder="사입가">
+				<button type="button" class="removeStandardPrice">X</button>
+			</div>`;
+		$("#standardPriceContainer").append(group);
+		$(".removeStandardPrice").show();
+	});
+
+	$(document).on("click", ".removeStandardPrice", function() {
+		$(this).closest(".standardPriceGroup").remove();
+		if ($(".standardPriceGroup").length === 1) {
+			$(".removeStandardPrice").hide();
+		}
+	});
+
+	// 가격 입력 시 숫자만 + 쉼표 표시
+	$(document).on("input", ".price, .buyingPrice", function () {
+		let val = $(this).val().replace(/[^0-9]/g, "");
+		let formatted = val.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+		$(this).val(formatted);
+	});
+
+	// 등록 버튼 클릭
+	$("#productForm").on("submit", function(e) {
+	    e.preventDefault();
+
+	    const medicineName = $("#medicineName").val();
+	    let standardList = [], priceList = [], buyingPriceList = [];
+
+	    // ✅ 모달 내부 요소만 선택
+	    $(this).find(".standard").each(function() {
+	        standardList.push($(this).val().trim());
+	    });
+	    $(this).find(".price").each(function() {
+	        priceList.push($(this).val().replace(/[^0-9]/g, ""));
+	    });
+	    $(this).find(".buyingPrice").each(function() {
+	        buyingPriceList.push($(this).val().replace(/[^0-9]/g, ""));
+	    });
+
+	    $.ajax({
+	        url: "registerProduct.jsp",
+	        method: "POST",
+	        data: {
+	            submitted: "true",
+	            medicineName: medicineName,
+	            standardList: standardList.join(","),
+	            priceList: priceList.join(","),
+	            buyingPriceList: buyingPriceList.join(","),
+	        },
+	        success: function(res) {
+	            alert("제품이 등록되었습니다.");
+	            $(".addMedicine").hide();
+	            $(document).find(".blackBG").hide();
+	            $(document).find("#section .RegistrationUi .membertable").find(".inputCheckStyle").focus()
+	        },
+	        error: function() {
+	            alert("등록 중 오류가 발생했습니다.");
+	        }
+	    });
+	});
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,27 @@
+import java.sql.*;
+
+public class LoginValidator {
+	// MySQL 연결 정보
+	private static final String URL = "jdbc:mysql://rlawldls04171.cafe24.com:3306/rlawldls04171?useUnicode=true&characterEncoding=utf8";
+	private static final String USER = "rlawldls04171"; // MySQL 사용자명
+	private static final String PASSWORD = "jikim@136464790"; // MySQL 비밀번호
+
+	public static boolean validate(String id, String password) {
+		// 아이디 정보 확인
+		String sql = "SELECT * FROM users WHERE userId = ? AND password = ?";
+		// 시도
+		try (Connection conn = DriverManager.getConnection(URL, USER, PASSWORD);
+				PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+			pstmt.setString(1, id);
+			pstmt.setString(2, password);
+
+			try (ResultSet rs = pstmt.executeQuery()) {
+				return rs.next(); // 결과가 있으면 로그인 성공 (true 반환)
+			}
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+		return false; // 예외 발생 시 로그인 실패
+	}
+}

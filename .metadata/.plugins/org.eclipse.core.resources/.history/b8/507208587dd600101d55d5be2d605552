@@ -1,0 +1,111 @@
+<%@ page contentType="application/json; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ page import="java.sql.*, org.json.*, java.io.*, java.util.regex.*" %>
+<%@ include file="sessionManager.jsp" %>
+<%@ include file="DBconnection.jsp" %>
+
+<%!
+// 숫자 정리
+String clean(String v) {
+    if (v == null) return null;
+    return v.replaceAll("[^0-9.]", "");
+}
+
+// 날짜 변환
+String normalize(String date) {
+    if (date == null || date.trim().isEmpty()) return null;
+    date = date.trim().replace("/", "-");
+
+    if (date.matches("^20\\d{2}-\\d{2}-\\d{2}$"))
+        return date;
+
+    if (date.matches("^\\d{2}-\\d{2}-\\d{2}$")) {
+        String[] p = date.split("-");
+        return "20" + p[0] + "-" + p[1] + "-" + p[2];
+    }
+
+    return date;
+}
+%>
+
+<%
+String idSortation = (String) session.getAttribute("idSortation");
+jdbcDriver = (String) session.getAttribute("dbName");
+
+BufferedReader br = request.getReader();
+StringBuilder sb = new StringBuilder();
+String line;
+while ((line = br.readLine()) != null) sb.append(line);
+
+JSONArray arr = new JSONArray(sb.toString());
+
+if (arr.length() == 0) {
+    out.print("{\"result\":\"error\",\"msg\":\"empty list\"}");
+    return;
+}
+
+String medicineName = arr.getJSONObject(0).getString("medicineName");
+
+try {
+    conn.setAutoCommit(false);
+
+    /* -------------------------------------
+       STEP 1) 기존 데이터 전체 삭제
+    -------------------------------------- */
+    String delSql = "DELETE FROM testTable" + idSortation + " WHERE medicineName=?";
+    PreparedStatement delP = conn.prepareStatement(delSql);
+    delP.setString(1, medicineName);
+    delP.executeUpdate();
+    delP.close();
+
+    /* -------------------------------------
+       STEP 2) JSON 데이터 전체 INSERT
+    -------------------------------------- */
+    String insSql =
+        "INSERT INTO testTable" + idSortation +
+        " (SerialNumber, medicineName, inventory, quantity, DeliveryDate, receiptDate, kind, Buyingprice, price, companyName, standard) " +
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+
+    PreparedStatement insP = conn.prepareStatement(insSql);
+
+    for (int i = 0; i < arr.length(); i++) {
+        JSONObject row = arr.getJSONObject(i);
+
+        String sn = row.getString("SerialNumber");
+        String name = row.getString("medicineName");
+        String std = row.getString("standard");
+
+        // 날짜정리
+        String dDate = normalize(row.getString("DeliveryDate"));
+        String rDate = normalize(row.getString("receiptDate"));
+
+        // 숫자정리
+        String buying = clean(row.getString("Buyingprice"));
+        String price = clean(row.getString("price"));
+
+        insP.setString(1, sn);
+        insP.setString(2, name);
+        insP.setString(3, row.getString("inventory"));
+        insP.setString(4, clean(row.getString("quantity")));
+        insP.setString(5, dDate);
+        insP.setString(6, rDate);
+        insP.setString(7, row.getString("kind"));
+        insP.setString(8, buying);
+        insP.setString(9, price);
+        insP.setString(10, row.getString("companyName"));
+        insP.setString(11, std);
+
+        insP.addBatch();
+    }
+
+    insP.executeBatch();
+    insP.close();
+
+    conn.commit();
+
+    out.print("{\"result\":\"ok\"}");
+
+} catch (Exception e) {
+    conn.rollback();
+    out.print("{\"result\":\"error\", \"msg\":\"" + e.getMessage() + "\"}");
+}
+%>

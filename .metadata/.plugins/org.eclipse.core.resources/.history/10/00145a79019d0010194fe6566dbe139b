@@ -1,0 +1,265 @@
+<%@ page contentType="application/json; charset=UTF-8"%>
+<%@ page import="java.sql.*, org.json.JSONObject"%>
+<%@ page import="java.util.*"%>
+<%@ include file="sessionManager.jsp"%>
+<%@ include file="DBconnection.jsp"%>
+<%!
+private Double parseIntOrDefault(String value, Double defaultValue) {
+    if (value != null && !value.trim().isEmpty()) {
+        try {
+            return Double.parseDouble(value.trim());
+        } catch (NumberFormatException e) {
+            System.err.println("숫자 변환 오류: " + value);
+        }
+    }
+    return defaultValue; // 기본값 반환
+}
+
+// 문자열에서 숫자만 추출하여 Double로 반환, 추출할 수 없으면 기본값 반환
+private Double parseDoubleOrExtractNumbers(String value, Double defaultValue) {
+    if (value != null && !value.trim().isEmpty()) {
+        try {
+            String numericValue = value.replaceAll("[^0-9.]", ""); // 숫자와 점(.)만 남기고 제거
+            return numericValue.isEmpty() ? defaultValue : Double.parseDouble(numericValue);
+        } catch (NumberFormatException e) {
+            System.err.println("숫자 변환 오류: " + value);
+        }
+    }
+    return defaultValue;
+}
+
+private Double parseStandardOrMultiply(String standard, Double inventory) {
+    if (standard != null && !standard.trim().isEmpty()) {
+        // 단위 포함 여부 확인 (g, ml, l, cm)
+        boolean hasUnit = standard.matches(".*\\b(g|ml|l|cm)\\b.*");
+
+        // 띄어쓰기로 나누기 (예: "20g 4포" → ["20g", "4포"])
+        String[] parts = standard.split("\\s+");
+
+        // 숫자 목록 생성
+        List<Double> numbers = new ArrayList<Double>();
+        for (int i = 0; i < parts.length; i++) {
+            Double number = parseDoubleOrExtractNumbers(parts[i], null);
+            if (number != null) {
+                numbers.add(number);
+            }
+        }
+
+        // 숫자가 2개 이상이면 곱한 후 inventory와 곱함
+        if (numbers.size() >= 2) {
+            Double multipliedValue = 1.0;
+            for (int i = 0; i < numbers.size(); i++) {
+                multipliedValue *= numbers.get(i);
+            }
+            return inventory * multipliedValue;
+        }
+
+        // 단위가 포함된 경우 inventory 값 그대로 사용
+        if (hasUnit) {
+            return inventory;
+        }
+
+        // 숫자가 하나만 있으면 그것과 inventory 곱하기
+        if (!numbers.isEmpty()) {
+            return inventory * numbers.get(0);
+        }
+    }
+    return inventory;
+}
+%>
+<%
+String dbName = (session != null) ? (String) session.getAttribute("dbName") : null;
+String id = (session != null) ? (String) session.getAttribute("id") : null;
+String password = (session != null) ? (String) session.getAttribute("password") : null;
+
+/* out.println(password);
+out.println(dbName);
+out.println(id);
+out.println(password); */
+
+String idSortation = (session != null) ? (String) session.getAttribute("idSortation") : null;
+if (id == null || dbName == null) {
+	response.sendRedirect("login.jsp");
+	return;
+}
+
+jdbcDriver = dbName;
+response.setCharacterEncoding("UTF-8");
+
+JSONObject result = new JSONObject();
+PreparedStatement ps = null;
+ResultSet rs = null;
+
+try {
+    String sql = "SELECT medicineName, quantity, inventory, standard " +
+                 "FROM testTable" + idSortation +
+                 " WHERE inventory < quantity ORDER BY (quantity - inventory) DESC";
+
+    ps = conn.prepareStatement(sql);
+    rs = ps.executeQuery();
+
+    if (rs.next()) {
+        String firstName = rs.getString("medicineName");
+        int inventoryValue = rs.getInt("inventory");
+        String standard = rs.getString("standard");
+        <%@ page contentType="application/json; charset=UTF-8"%>
+        <%@ page import="java.sql.*, org.json.JSONObject"%>
+        <%@ page import="java.util.*"%>
+        <%@ include file="sessionManager.jsp"%>
+        <%@ include file="DBconnection.jsp"%>
+        <%!
+        private Double parseIntOrDefault(String value, Double defaultValue) {
+            if (value != null && !value.trim().isEmpty()) {
+                try {
+                    return Double.parseDouble(value.trim());
+                } catch (NumberFormatException e) {
+                    System.err.println("숫자 변환 오류: " + value);
+                }
+            }
+            return defaultValue; // 기본값 반환
+        }
+
+        // 문자열에서 숫자만 추출하여 Double로 반환, 추출할 수 없으면 기본값 반환
+        private Double parseDoubleOrExtractNumbers(String value, Double defaultValue) {
+            if (value != null && !value.trim().isEmpty()) {
+                try {
+                    String numericValue = value.replaceAll("[^0-9.]", ""); // 숫자와 점(.)만 남기고 제거
+                    return numericValue.isEmpty() ? defaultValue : Double.parseDouble(numericValue);
+                } catch (NumberFormatException e) {
+                    System.err.println("숫자 변환 오류: " + value);
+                }
+            }
+            return defaultValue;
+        }
+
+        private Double parseStandardOrMultiply(String standard, Double inventory) {
+            if (standard != null && !standard.trim().isEmpty()) {
+                // 단위 포함 여부 확인 (g, ml, l, cm)
+                boolean hasUnit = standard.matches(".*\\b(g|ml|l|cm)\\b.*");
+
+                // 띄어쓰기로 나누기 (예: "20g 4포" → ["20g", "4포"])
+                String[] parts = standard.split("\\s+");
+
+                // 숫자 목록 생성
+                List<Double> numbers = new ArrayList<Double>();
+                for (int i = 0; i < parts.length; i++) {
+                    Double number = parseDoubleOrExtractNumbers(parts[i], null);
+                    if (number != null) {
+                        numbers.add(number);
+                    }
+                }
+
+                // 숫자가 2개 이상이면 곱한 후 inventory와 곱함
+                if (numbers.size() >= 2) {
+                    Double multipliedValue = 1.0;
+                    for (int i = 0; i < numbers.size(); i++) {
+                        multipliedValue *= numbers.get(i);
+                    }
+                    return inventory * multipliedValue;
+                }
+
+                // 단위가 포함된 경우 inventory 값 그대로 사용
+                if (hasUnit) {
+                    return inventory;
+                }
+
+                // 숫자가 하나만 있으면 그것과 inventory 곱하기
+                if (!numbers.isEmpty()) {
+                    return inventory * numbers.get(0);
+                }
+            }
+            return inventory;
+        }
+        %>
+        <%
+        String dbName = (session != null) ? (String) session.getAttribute("dbName") : null;
+        String id = (session != null) ? (String) session.getAttribute("id") : null;
+        String password = (session != null) ? (String) session.getAttribute("password") : null;
+
+        /* out.println(password);
+        out.println(dbName);
+        out.println(id);
+        out.println(password); */
+
+        String idSortation = (session != null) ? (String) session.getAttribute("idSortation") : null;
+        if (id == null || dbName == null) {
+        	response.sendRedirect("login.jsp");
+        	return;
+        }
+
+        jdbcDriver = dbName;
+        response.setCharacterEncoding("UTF-8");
+
+        JSONObject result = new JSONObject();
+        PreparedStatement ps = null;
+        ResultSet rs = null;
+
+        try {
+            String sql = "SELECT medicineName, quantity, inventory, standard " +
+                         "FROM testTable" + idSortation +
+                         " WHERE inventory < quantity ORDER BY (quantity - inventory) DESC";
+
+            ps = conn.prepareStatement(sql);
+            rs = ps.executeQuery();
+
+            if (rs.next()) {
+                String firstName = rs.getString("medicineName");
+                int inventoryValue = rs.getInt("inventory");
+                Double inventoryValue = rs.getDouble("inventory");
+                inventoryValue = parseStandardOrMultiply(standard, inventoryValue);
+                int qty = rs.getInt("quantity");
+
+                int qty = rs.getInt("quantity");
+
+                // 대표 메시지
+                String rep = firstName + " : 재고 " + inventoryValue + ", 필요 " + qty;
+
+                // 나머지 개수
+                rs.last();
+                int total = rs.getRow();
+                int others = total - 1;
+
+                result.put("representative", rep);
+                result.put("others", others);
+            } else {
+                result.put("representative", "");
+                result.put("others", 0);
+            }
+
+        } catch (Exception e) {
+            result.put("error", e.getMessage());
+        } finally {
+            if (rs != null) try { rs.close(); } catch (SQLException ignore) {}
+            if (ps != null) try { ps.close(); } catch (SQLException ignore) {}
+            if (conn != null) try { conn.close(); } catch (SQLException ignore) {}
+        }
+
+        out.print(result.toString());
+        %>
+
+
+        // 대표 메시지
+        String rep = firstName + " : 재고 " + inventoryValue + ", 필요 " + qty;
+
+        // 나머지 개수
+        rs.last();
+        int total = rs.getRow();
+        int others = total - 1;
+
+        result.put("representative", rep);
+        result.put("others", others);
+    } else {
+        result.put("representative", "");
+        result.put("others", 0);
+    }
+
+} catch (Exception e) {
+    result.put("error", e.getMessage());
+} finally {
+    if (rs != null) try { rs.close(); } catch (SQLException ignore) {}
+    if (ps != null) try { ps.close(); } catch (SQLException ignore) {}
+    if (conn != null) try { conn.close(); } catch (SQLException ignore) {}
+}
+
+out.print(result.toString());
+%>

@@ -1,0 +1,30 @@
+<%@ page language="java" pageEncoding="UTF-8" %>
+<%@ page import="java.sql.*" %>
+
+<%
+request.setCharacterEncoding("UTF-8");
+
+String dbUser = (String) session.getAttribute("id");
+String jdbcDriver = (String) session.getAttribute("dbName");
+String dbPwd = (String) session.getAttribute("password");
+pageContext.setAttribute("conn", conn);
+
+
+if (dbUser == null || jdbcDriver == null || dbPwd == null) {
+    // 세션 만료 또는 비정상 접근
+    response.sendRedirect("login.jsp");
+    return;
+}
+Connection conn = null;
+
+try {
+    Class.forName("com.mysql.cj.jdbc.Driver");
+    conn = DriverManager.getConnection(jdbcDriver, dbUser, dbPwd);
+
+    // 명시적으로 scope에 올려줌 (안전)
+    pageContext.setAttribute("conn", conn);
+
+} catch (Exception e) {
+    e.printStackTrace();
+}
+%>

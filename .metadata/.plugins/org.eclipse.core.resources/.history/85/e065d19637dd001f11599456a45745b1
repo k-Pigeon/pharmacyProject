@@ -1,0 +1,27 @@
+import javax.swing.*;
+public class JLabelText01 {
+
+	public static void main(String[] args) {
+		// TODO Auto-generated method stub
+		JFrame jf = new JFrame();
+		jf.setBounds(600, 300, 300, 300);
+		jf.setTitle("서가종로온누리약국");
+		jf.setLayout(null);
+		
+		JLabel jl = new JLabel("아이디 : ");//입력 필드 제목
+		jl.setSize(100, 40);//크기
+		jl.setLocation(30, 30);//위치
+		jl.setHorizontalAlignment(JLabel.CENTER);//정렬
+		
+		jf.add(jl);//프레임에 추가
+		
+		JTextField jt = new JTextField();//입력 박스
+		jt.setSize(130, 40);//크기
+		jt.setLocation(110, 30);//위치
+		
+		jf.add(jt);
+				
+		jf.setVisible(true);
+	}
+
+}

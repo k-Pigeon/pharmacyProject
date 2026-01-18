@@ -1,0 +1,384 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8"
+	pageEncoding="UTF-8"%>
+<%@ page import="java.sql.*"%>
+<%@ include file="sessionManager.jsp"%>
+<%@ include file="DBconnection.jsp"%>
+<%
+String dbName = (session != null) ? (String) session.getAttribute("dbName") : null;
+String id = (session != null) ? (String) session.getAttribute("id") : null;
+String password = (session != null) ? (String) session.getAttribute("password") : null;
+
+/* out.println(password);
+out.println(dbName);
+out.println(id);
+out.println(password); */
+
+String idSortation = (session != null) ? (String) session.getAttribute("idSortation") : null;
+if (id == null || dbName == null) {
+	response.sendRedirect("login.jsp");
+	return;
+}
+
+jdbcDriver = dbName;
+%>
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Insert title here</title>
+</head>
+<body>
+	<div id="content"></div>
+	<div class="settingPage">
+		<jsp:include page="settingPage.jsp"></jsp:include>
+	</div>
+	<div class="informationUI">
+		<jsp:include page="informationUI.jsp"></jsp:include>
+	</div>
+	<div id="wrap">
+		<header>
+			<jsp:include page="header.jsp"></jsp:include>
+		</header>
+		<form action="index.jsp" name="data" method="post" id="formTeg"	style="min-width: 90%;">
+			<h1 style="text-align: center; margin-top: 40px;">재고 목록</h1>
+			<div class="filterLine">
+				<div id="pageControl">
+					<button id="prevPage">이전</button>
+					<span id="pageInfo">1 / 1</span>
+					<button id="nextPage">다음</button>
+				</div>
+				<div class="filter"	style='display: flex;width: auto;height: 40px;float: left;margin-right: auto;'>
+					<input type="text" id="nameSearch"
+						style="position: relative; top: 5%; height: 40px;"
+						placeholder="제품명을 입력하세요"><input type="month"
+						id="deliveryDateCh"
+						style="position: relative; align-content: center; right: 0%; top: 5%; height: 40px;">
+					<div class="alert-container">
+						<div class="alert-ring"></div>
+						<div class="alert-ring"></div>
+						<div class="alert-ring"></div>
+						<div class="alert-center">⚠</div>
+					</div>
+				</div>
+				
+				<input type="button" id="saveAll" value="💾 전체 저장">
+			</div>
+			<input id="barcodeInput" type='text' name="barcodeInput"
+				autofocus="autofocus" autocomplete="off" />
+			<table class="table_line"
+				style="min-width: 100%; max-width: 100%; height: calc(70vh); display: block; overflow: auto; padding: 0; margin: 0 auto; border-radius: 20px; box-shadow: 5px 5px 5px -5px #333;">
+				<thead
+					style="width: 960px; color: black; z-index: 2; border-bottom: 5px solid #5F9EA0;">
+					<tr>
+						<th>이름<span class="ascendingOrder nameAscendingOrder">↑</span><span
+							class="descendingOrder nameDescendingOrder">↓</span></th>
+						<th>유통기한<br>(유효기간)
+						<th>실제 수량<span class="ascendingOrder invAscendingOrder">↑</span><span
+							class="ascendingOrder invDescendingOrder">↓</span></th>
+						<th>가격<span class="ascendingOrder priceAscendingOrder">↑</span><span
+							class="descendingOrder priceDescendingOrder">↓</span></th>
+						<th>규격</th>
+						<th>수정 / 삭제<br> <!-- 
+						<th>즐겨찾기</th> -->
+						<th>종류 <br> <select id="kindValue">
+								<option value="전체" selected>전체</option>
+								<option value="건강기능식품">건강기능식품</option>
+								<option value="일반의약품">일반의약품</option>
+								<option value="파스류">파스류</option>
+								<option value="연고류">연고류</option>
+								<option value="드링크류">드링크류</option>
+								<option value="비타민류">비타민류</option>
+								<option value="한약류">한약류</option>
+								<option value="기타">기타</option>
+						</select>
+						</th>
+						<th>회사명</th>
+						<th>입고 날짜</th>
+						<th>반품개시<br>
+					</tr>
+				</thead>
+				<tbody id="inventory_list"
+					style="background-color: RGBA(255, 255, 255, 0.8); min-width: 960px;">
+				</tbody>
+			</table>
+			<div id="pagination" style="text-align: center; margin-top: 20px;"></div>
+		</form>
+	</div>
+	<!-- 우클릭 했을 때 정보 확인 -->
+	<div id="coordinates">
+		<span class="Respectively_saleRecord">판매기록 보기</span> <span
+			class="Respectively_payment">재품정보 상세보기</span>
+	</div>
+	<!-- 판매기록 보기의 팝업창 -->
+	<div id="detailInfo_popup"></div>
+	<!-- 재품 상세정보 보기의 팝업창 -->
+	<div id="paymentInto_popup"></div>
+	<script src="jquery-3.7.1.min.js"></script>
+	<script src="script.js"></script>
+	<!-- xlsx 라이브러리 로드 (CDN 사용) -->
+	<script type="text/javascript">
+let currentPage = 1;
+let totalPages = 0;
+let changedData = {};
+let showReturnHidden = false;
+let toggleStates = {};
+
+// 페이지 로드 후 실행
+$(document).ready(function () {
+    initLoad();
+    bindEvents();
+});
+
+/** 첫 로드시 1페이지 불러오기 **/
+function initLoad() {
+    loadPage(1, true);
+}
+
+/** ======================== 이벤트 바인딩 ======================== **/
+function bindEvents() {
+
+    /** 숫자 3자리 콤마 */
+    $("#wrap").on("input", ".price, .Buyingprice, .inventory", function () {
+        const val = $(this).val().replace(/[^0-9]/g, "");
+        $(this).val(val.replace(/\B(?=(\d{3})+(?!\d))/g, ","));
+    });
+
+    /** 수정 데이터 수집 */
+    $(document).on("input", ".editable", function () {
+        const key = $(this).closest("tr").data("key");
+        const field = $(this).attr("name");
+        const value = $(this).val();
+
+        if (!changedData[key]) changedData[key] = {};
+        changedData[key][field] = value;
+    });
+
+    /** 엔터 입력 시 바코드 submit */
+    $(document).keydown(function (event) {
+        if (event.key === "Enter" && $("#barcodeInput").val()) {
+            event.preventDefault();
+            $('#formTeg').submit();
+        }
+    });
+
+    /** 저장 버튼 */
+    $("#saveAll").click(function () {
+        if (!Object.keys(changedData).length) {
+            alert("변경된 데이터가 없습니다.");
+            return;
+        }
+
+        $.ajax({
+            url: "saveAll.jsp",
+            type: "POST",
+            contentType: "application/json",
+            data: JSON.stringify(changedData),
+            success: () => {
+                alert("저장 완료!");
+                loadPage(currentPage, false);
+            }
+        });
+    });
+
+    /** 포커스 기반 행/열 강조 */
+    $("#wrap").on("focus", ".table_line input", handleFocus);
+
+    /** 방향키 이동 */
+    $("#wrap .table_line").on("keydown", "input", arrowMove);
+
+    /** 마우스 hover 효과 */
+    $("#wrap .table_line").on("mouseover", "tr", hoverRow)
+                          .on("mouseout", "tr", hoverRow);
+
+    /** 우클릭 상세메뉴 */
+    $("#wrap .table_line").on("contextmenu", "tr", showContextMenu);
+
+    /** ESC → 설정창 토글 */
+    $(document).keydown((e) => {
+        if (e.key === "Escape") $("#coordinates").hide();
+    });
+
+    /** 페이지네이션 */
+    $("#nextPage").click(() => { if (currentPage < totalPages) loadPage(currentPage + 1); });
+    $("#prevPage").click(() => { if (currentPage > 1) loadPage(currentPage - 1); });
+
+    /** 검색 필터 */
+    $("#nameSearch").on("input", filterByName);
+    $("#kindValue").on("change", filterByKind);
+
+    /** 반품 토글 */
+    $('#toggleButton').click(toggleReturnRows);
+
+    /** 상세 팝업 닫기 */
+    $("#detailInfo_popup, #paymentInto_popup").on("click", ".popupDown, .close-button", hidePopup);
+    $("#wrap .table_line #inventory_list").on("click", "tr td input", function(){
+    	(this).select();
+    });
+    
+    $("#wrap").on("input",".table_line .deliveryDate, .table_line .receipDate", function () {
+        $(this).val(formatDateInput($(this).val()));
+    });
+
+}
+
+/** ======================== 기능 함수 ======================== **/
+function formatDateInput(value) {
+    // 숫자만 추출
+    let v = value.replace(/[^0-9]/g, "");
+
+    // 자리수 제한 (6자리)
+    v = v.substring(0, 6);
+
+    // 자동 슬래시 삽입
+    if (v.length >= 5) {
+        v = v.replace(/(\d{2})(\d{2})(\d{1,2})/, "$1/$2/$3");
+    } else if (v.length >= 3) {
+        v = v.replace(/(\d{2})(\d{1,2})/, "$1/$2");
+    }
+
+    return v;
+}
+
+
+function loadPage(page, updatePageInfo = true) {
+    $.ajax({
+        url: "getDatas.jsp",
+        type: "GET",
+        data: { page },
+        dataType: "json",
+        success: function (res) {
+            $("#inventory_list").html(res.html);
+            currentPage = page;
+            totalPages = res.totalPages;
+            if (updatePageInfo) $("#pageInfo").text(page + " / " + totalPages);
+
+            showFirstToggleButton(); // 재고 그룹 초기화
+        }
+    });
+}
+
+function handleFocus() {
+    $(".focusRow, .focusCol, .focusCell").removeClass("focusRow focusCol focusCell");
+
+    const $tr = $(this).closest("tr");
+    const col = $(this).closest("td").index();
+
+    $tr.addClass("focusRow");
+    $(".table_line tbody tr").each(function () {
+        $(this).children("td").eq(col).addClass("focusCol");
+    });
+    $(this).closest("td").addClass("focusCell");
+}
+
+function arrowMove(e) {
+    const dir = { ArrowUp: -1, ArrowDown: 1 };
+    const key = e.key;
+    if (!["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(key)) return;
+
+    const td = $(this).closest("td");
+    const tr = $(this).closest("tr");
+    const col = td.index();
+    let nextInput;
+
+    if (key === "ArrowUp" || key === "ArrowDown") {
+        const nextTr = key === "ArrowUp" ? tr.prev() : tr.next();
+        nextInput = nextTr.children("td").eq(col).find("input");
+    } else {
+        const add = key === "ArrowLeft" ? -1 : 1;
+        nextInput = tr.children("td").eq(col + add).find("input");
+    }
+
+    if (nextInput?.length) {
+        e.preventDefault();
+        nextInput.focus().select();
+    }
+}
+
+function hoverRow() {
+    if (!$("#coordinates").is(":visible")) $(this).toggleClass("selectDetail");
+}
+
+function showContextMenu(e) {
+    e.preventDefault();
+    const x = e.pageX, y = e.pageY;
+    $("#coordinates").css({ top: y + 10, left: x + 10 }).show();
+    $(this).addClass("selectDetail");
+}
+
+function hidePopup() {
+    $(".selectDetail").removeClass("selectDetail");
+    $("#coordinates").hide();
+    $(this).hide();
+}
+
+function filterByName() {
+    const search = $(this).val().toLowerCase();
+    $(".table_line tbody tr").each(function () {
+        $(this).toggle($(this).find("td:eq(1)").text().toLowerCase().includes(search));
+    });
+}
+
+function filterByKind() {
+    const val = $(this).val();
+    if (val === "전체") return location.reload();
+
+    $(".table_line tbody tr").hide().filter(function () {
+        return $(this).find("td:eq(5)").text() === val;
+    }).show();
+}
+
+function toggleReturnRows() {
+    showReturnHidden = !showReturnHidden;
+    $("#inventory_list tr").each(function () {
+        const txt = $(this).find("td:nth-child(11) button").text();
+        if (txt === "반품됨") $(this).toggle(!showReturnHidden);
+    });
+    $("#toggleText").text(showReturnHidden ? "반품 ON" : "반품 OFF");
+}
+
+function keyDetailAction(e) {
+    const selected = $("#inventory_list tr.selectDetail");
+    if (!selected.length) return;
+    if (e.key.toUpperCase() === "D") requestSaleRecord();
+    if (e.key.toUpperCase() === "E") requestPaymentRecord();
+}
+
+function requestSaleRecord() {
+    const val = $(".selectDetail td:eq(1)").text();
+    $.post("Respectively_saleRecord.jsp", { value: val }, function (res) {
+        $("#detailInfo_popup").html(res).show();
+    });
+}
+
+function requestPaymentRecord() {
+    const val = $(".selectDetail td:eq(1)").text();
+    $.post("Respectively_payment.jsp", { value: val }, function (res) {
+        $("#paymentInto_popup").html(res).show();
+    });
+}
+
+/** 동일 제품 접기 기능 초기 적용 */
+function showFirstToggleButton() {
+    const rows = $("#inventory_list tr").toArray();
+    const group = {};
+
+    rows.forEach(row => {
+        const name = row.cells[1].textContent;
+        if (!group[name]) group[name] = [];
+        group[name].push(row);
+    });
+
+    // 첫 row에만 토글 버튼
+    for (const name in group) {
+        const arr = group[name];
+        arr.forEach((r, i) => {
+            const btn = $(r).find(".toggle-details");
+            btn.toggle(i === 0);
+        });
+    }
+}
+</script>
+
+</body>
+</html>

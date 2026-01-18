@@ -1,0 +1,429 @@
+<%@ page import="javax.servlet.http.*, javax.servlet.*"%>
+<%@ page contentType="text/html;charset=UTF-8" language="java"%>
+<%@ include file="sessionManager.jsp"%>
+<%@ include file="DBconnection.jsp"%>
+
+<%
+String dbName     = (session != null) ? (String) session.getAttribute("dbName") : null;
+String id         = (session != null) ? (String) session.getAttribute("id") : null;
+String idSortation = (session != null) ? (String) session.getAttribute("idSortation") : null;
+
+if (id == null || dbName == null) {
+    response.sendRedirect("login.jsp");
+    return;
+}
+
+jdbcDriver = dbName;
+
+// 세션에서 검색 약품명
+HttpSession userSession = request.getSession();
+String medicineName = (String) userSession.getAttribute("medicineName");
+
+PreparedStatement pstmt = null;
+ResultSet rs = null;
+%>
+
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>약품 수정 페이지</title>
+
+<link rel="stylesheet" href="style.css">
+
+<style>
+/* ========= 공통 레이아웃 ========= */
+body { font-family: Arial, sans-serif; }
+
+.container {
+    display: block;
+    max-width: 600px;
+    min-width: 600px;
+    height: 65vh;
+    margin: auto;
+    padding: 20px;
+    border: 1px solid #D3C6EC;
+    border-radius: 10px;
+    background-color: #f9f9f9;
+    overflow: scroll;
+}
+
+.table-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+}
+
+/* ========= 테이블 ========= */
+.table_line {
+    border-collapse: collapse;
+    width: 90%;
+    margin-bottom: 20px;
+    text-align: center;
+}
+.table_line th, .table_line td {
+    border: 1px solid #D3C6EC;
+    padding: 10px;
+}
+.table_line thead {
+    background-color: #7E57C2;
+    color: #F4EDFB;
+    font-weight: bold;
+}
+
+.updateList td { padding: 0; height: 60px; }
+
+.updateList input, .updateList select {
+    width: 100%; height: 105%;
+    margin: 0; padding: 0;
+    text-align: center;
+    border: 1px solid #D3C6EC;
+    background-color: #FAF8FF;
+    color: #7E57C2;
+    font-size: 18px;
+}
+
+.focusRow td input, .focusRow td select,
+.focusCol input, .focusCol select {
+    background-color: #E6E6FA !important;
+}
+.focusCell input, .focusCell select {
+    background-color: #9370DB !important;
+    color: white !important;
+    font-weight: bold !important;
+}
+
+/* ========= 좌우 이동 버튼 ========= */
+.prevArrow, .nextArrow {
+    position: fixed;
+    font-size: 131px;
+    cursor: pointer;
+}
+.prevArrow { transform: translateX(-90vh); }
+.nextArrow { transform: translateX(90vh); }
+</style>
+
+</head>
+<body>
+
+<header><jsp:include page="header.jsp"></jsp:include></header>
+
+<div id="wrap" class="table-container">
+
+    <h1 style="transform: translateY(-30vh);">약품 수정</h1>
+    <span class="prevArrow">《</span>
+    <span class="nextArrow">》</span>
+
+    <!-- ========== 수정 테이블 ========== -->
+    <div class="widthScroll" style="min-width: 85%; height: 40%; position: fixed; transform: translateY(-40%); overflow-x: auto;">
+        <table class="container table_line" id="tableScript" style="width: 130%; height: 35vh;">
+            <thead>
+                <tr>
+                    <th>일련번호</th><th style="width: 350px;">약품명</th>
+                    <th>주문최소수량</th><th>재고</th><th>유통기한</th>
+                    <th>입고 날짜</th><th>종류</th><th>구매가</th>
+                    <th>판매가</th><th>제조사</th><th>규격</th><th>삭제</th>
+                </tr>
+            </thead>
+
+            <tbody>
+            <%
+            try {
+                String sql =
+                    "SELECT SerialNumber, medicineName, inventory, DeliveryDate, receiptDate, kind, " +
+                    "Buyingprice, price, companyName, standard, quantity " +
+                    "FROM testTable" + idSortation + " WHERE medicineName LIKE ?";
+
+                pstmt = conn.prepareStatement(sql);
+                pstmt.setString(1, "%" + medicineName + "%");
+                rs = pstmt.executeQuery();
+
+                while (rs.next()) {
+
+                    // ========== 재고 계산 (standard 기반) ==========
+                    String standard = rs.getString("standard");
+                    double inventory = rs.getDouble("inventory");
+                    double calcInv = inventory;
+
+                    if (standard != null && !standard.trim().isEmpty()) {
+
+                        if (!(standard.contains("g") || standard.contains("포"))) {
+
+                            String[] parts = standard.split(" ");
+                            double factor = 1.0;
+
+                            try {
+                                if (parts.length == 2) {
+                                    factor =
+                                        Double.parseDouble(parts[0].replaceAll("[^0-9]", "")) *
+                                        Double.parseDouble(parts[1].replaceAll("[^0-9]", ""));
+                                } else {
+                                    factor = Double.parseDouble(standard.replaceAll("[^0-9]", ""));
+                                }
+
+                                if (factor > 0) calcInv = inventory / factor;
+
+                            } catch (Exception ex) { calcInv = inventory; }
+                        }
+                    }
+            %>
+
+                <tr class="updateList">
+                    <td><input class="serialNumber" value="<%= rs.getString("SerialNumber") %>" readonly></td>
+                    <td><input class="medicineName" value="<%= rs.getString("medicineName") %>"></td>
+                    <td><input class="quantity" value="<%= rs.getString("quantity") %>"></td>
+                    <td><input class="inventory" value="<%= calcInv %>"></td>
+                    <td><input class="DeliveryDate" value="<%= rs.getString("DeliveryDate") %>"></td>
+                    <td><input class="receiptDate" value="<%= rs.getString("receiptDate") %>"></td>
+
+                    <td>
+                        <select class="kindValue">
+                            <% String kind = rs.getString("kind"); %>
+                            <option value="건강기능식품" <%= "건강기능식품".equals(kind)?"selected":"" %>>건강기능식품</option>
+                            <option value="일반의약품" <%= "일반의약품".equals(kind)?"selected":"" %>>일반의약품</option>
+                            <option value="파스류" <%= "파스류".equals(kind)?"selected":"" %>>파스류</option>
+                            <option value="연고류" <%= "연고류".equals(kind)?"selected":"" %>>연고류</option>
+                            <option value="드링크류" <%= "드링크류".equals(kind)?"selected":"" %>>드링크류</option>
+                            <option value="비타민류" <%= "비타민류".equals(kind)?"selected":"" %>>비타민류</option>
+                            <option value="한약류" <%= "한약류".equals(kind)?"selected":"" %>>한약류</option>
+                            <option value="기타" <%= "기타".equals(kind)?"selected":"" %>>기타</option>
+                        </select>
+                    </td>
+
+                    <td><input class="buyingPrice" value="<%= rs.getString("Buyingprice") %>"></td>
+                    <td><input class="price" value="<%= rs.getString("price") %>"></td>
+                    <td><input class="companyName" value="<%= rs.getString("companyName") %>"></td>
+                    <td><input class="standard" value="<%= standard %>"></td>
+
+                    <td><button class="removeTR">🗑️</button></td>
+                </tr>
+
+            <% } // while end
+
+            } catch (Exception e) {
+                out.println("<tr><td colspan='12'>오류: "+ e.getMessage() +"</td></tr>");
+            } finally {
+                try { if(rs!=null) rs.close(); } catch(Exception e){}
+                try { if(pstmt!=null)pstmt.close(); } catch(Exception e){}
+                try { if(conn!=null) conn.close(); } catch(Exception e){}
+            }
+            %>
+            </tbody>
+        </table>
+    </div>
+
+
+    <!-- ========== 추가 테이블 ========== -->
+    <h1 style="transform: translateY(150%);">약품 추가</h1>
+
+    <div class="widthScroll"
+         style="min-width: 85%; height: 40%; position: fixed; transform: translateY(70%); overflow-x: auto;">
+
+        <table class="container table_line" id="tableScript2" style="width:130%; height: 35vh;">
+            <thead>
+                <tr>
+                    <th>일련번호</th><th style="width: 350px;">약품명</th>
+                    <th>주문최소수량</th><th>재고</th><th>유통기한</th>
+                    <th>입고날짜</th><th>종류</th><th>구매가</th>
+                    <th>판매가</th><th>제조사</th><th>규격</th><th>삭제</th>
+                </tr>
+            </thead>
+            <tbody class="InsertTbody"></tbody>
+        </table>
+    </div>
+
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+<script>
+/* ==========================================================
+   1) 테이블 행 포커스 강조
+========================================================== */
+$("#wrap").on("focus", ".container input, .container select", function () {
+    $(".container tbody tr").removeClass("focusRow");
+    $(".container tbody td").removeClass("focusCol focusCell");
+
+    const $tr = $(this).closest("tr");
+    const $td = $(this).closest("td");
+    const col = $td.index();
+
+    $tr.addClass("focusRow");
+    $(".container tbody tr").each(function () {
+        $(this).children().eq(col).addClass("focusCol");
+    });
+    $td.addClass("focusCell");
+});
+
+/* ==========================================================
+   2) 행 삭제 버튼
+========================================================== */
+$("#tableScript, #tableScript2").on("click", ".removeTR", function () {
+    const $table = $(this).closest("table");
+
+    if ($table.attr("id") === "tableScript" && $table.find(".updateList").length < 2) {
+        alert("더 이상 삭제할 수 없습니다.");
+        return;
+    }
+    $(this).closest("tr").remove();
+});
+
+/* ==========================================================
+   3) 좌우 이전/다음 이동 버튼
+========================================================== */
+$(".prevArrow, .nextArrow").on("click", function () {
+    const isPrev = $(this).hasClass("prevArrow");
+    const current = $(".medicineName").first().val();
+
+    $.post(isPrev ? "selectPrev.jsp" : "selectNext.jsp", {medicineName: current}, function (res) {
+
+        if (res === "first" || res === "not_found" || res.startsWith("error")) {
+            alert("이동할 약품이 없습니다.");
+            return;
+        }
+
+        $.post("saveSession.jsp", {medicineName: res}, function (r) {
+            if (r.trim() === "ok") location.href = "editPage.jsp";
+        });
+    });
+});
+
+/* ==========================================================
+   4) 키보드 이벤트 (정리된 switch 구조)
+========================================================== */
+document.addEventListener("keydown", function (e) {
+
+    const t = e.target;
+
+    switch (e.key) {
+
+        case "PageUp":
+            e.preventDefault();
+            history.back();
+            break;
+
+        case "Enter":
+            e.preventDefault();
+            moveHorizontal(t, true);
+            break;
+
+        case "PageDown":
+            e.preventDefault();
+            moveHorizontal(t, false);
+            break;
+
+        case "ArrowDown":
+        case "ArrowUp":
+            e.preventDefault();
+            moveVertical(t, e.key === "ArrowDown");
+            break;
+
+        default:
+            break;
+    }
+
+    // '+' = Keypad Add
+    if (e.keyCode === 107) addRow();
+    // '-' = Keypad Sub
+    if (e.keyCode === 109) removeLastRow();
+    // '*' = Keypad Multiply — 저장 처리
+    if (e.keyCode === 106) submitAll();
+});
+
+/* -------- 좌/우 이동 -------- */
+function moveHorizontal(el, isNext) {
+    const td = el.closest("td");
+    const next = isNext ? td.nextElementSibling : td.previousElementSibling;
+    if (!next) return;
+
+    const target = next.querySelector("input, select");
+    if (target) target.focus();
+}
+
+/* -------- 위/아래 이동 -------- */
+function moveVertical(el, isDown) {
+
+    const td = el.closest("td");
+    const tr = td.closest("tr");
+    const table = tr.closest("table");
+    const idx = Array.from(tr.children).indexOf(td);
+
+    let targetTr = isDown ? tr.nextElementSibling : tr.previousElementSibling;
+
+    if (!targetTr) {
+        if (isDown && table.id === "tableScript")
+            targetTr = document.querySelector("#tableScript2 tbody tr:first-child");
+        else if (!isDown && table.id === "tableScript2")
+            targetTr = document.querySelector("#tableScript tbody tr:last-child");
+    }
+
+    if (targetTr) {
+        const target = targetTr.children[idx].querySelector("input");
+        if (target) target.focus();
+    }
+}
+
+/* ==========================================================
+   5) 행 추가 / 삭제 / 저장 AJAX
+========================================================== */
+
+function addRow() {
+    const first = $("#tableScript .updateList").first();
+    $("#tableScript2 tbody").append(first.clone());
+}
+function removeLastRow() {
+    const rows = $("#tableScript2 .updateList");
+    if (rows.length > 0) rows.last().remove();
+}
+
+/* -------- 전체 저장 처리 -------- */
+function submitAll() {
+
+    let updateRows = [];
+    $("#tableScript .updateList").each(function () {
+        updateRows.push(collectRowData($(this)));
+    });
+
+    $.ajax({
+        url: 'updateData.jsp',
+        type: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify(updateRows),
+        success: function () {
+            alert("변경이 완료되었습니다.");
+            location.href = "editPage.jsp";
+        }
+    });
+
+    let insertRows = [];
+    $("#tableScript2 .updateList").each(function () {
+        insertRows.push(collectRowData($(this)));
+    });
+
+    $.ajax({
+        url: 'updateData2.jsp',
+        type: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify(insertRows)
+    });
+}
+
+function collectRowData($row) {
+    return {
+        serialNumber: $row.find('.serialNumber').val() || "",
+        medicineName: $row.find('.medicineName').val() || "",
+        quantity: $row.find('.quantity').val() || "0",
+        buyingPrice: $row.find('.buyingPrice').val() || "0",
+        price: $row.find('.price').val() || "0",
+        kind: $row.find('.kindValue').val() || "",
+        inventory: $row.find('.inventory').val() || "0",
+        companyName: $row.find('.companyName').val() || "",
+        standard: $row.find('.standard').val() || "",
+        receiptDate: $row.find('.receiptDate').val() || "",
+        deliveryDate: $row.find('.DeliveryDate').val() || ""
+    };
+}
+</script>
+</body>
+</html>

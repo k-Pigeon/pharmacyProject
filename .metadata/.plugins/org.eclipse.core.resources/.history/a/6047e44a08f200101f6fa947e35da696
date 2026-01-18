@@ -1,0 +1,547 @@
+@charset "UTF-8";/* ================================
+   테이블 기본 스타일
+================================ */
+* {
+    box-sizing: border-box;
+}
+.table_line {
+    width: 100%;
+    max-width: 750px;
+    margin: 0 auto;
+    border-collapse: collapse;
+    background-color: #f9f9f9;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.table_line th {
+    background-color: #4CAF50;
+    color: black;
+    padding: 12px;
+    text-align: center;
+    border-bottom: 2px solid #ddd;
+}
+
+.table_line td {
+    padding: 10px;
+    text-align: center;
+    border-bottom: 1px solid #ddd;
+}
+
+.table_line input[type="text"] {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-shadow: inset 0 5px 10px rgba(0, 0, 0, 0.1);
+    transition: border-color 0.3s ease;
+}
+
+.table_line input[type="text"]:focus {
+    border-color: #4CAF50;
+    outline: none;
+    box-shadow: 0 0 5px rgba(76, 175, 80, 0.3);
+}
+
+.table_line button {
+    padding: 10px 15px;
+    background-color: rgba(0, 0, 0, 0.3);
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.table_line button:hover {
+    background-color: #388E3C;
+}
+
+/* ================================
+   아이콘
+================================ */
+
+.icons {
+    display: grid;
+    justify-content: center;
+    margin-bottom: 20px;
+}
+
+.icons i {
+    font-size: 24px;
+    margin-bottom: 20px;
+    cursor: pointer;
+}
+
+/* ================================
+   버튼 애니메이션 UI
+================================ */
+
+.button {
+    background: #3D4C53;
+    margin: 20px auto;
+    width: 200px;
+    height: 50px;
+    overflow: hidden;
+    text-align: center;
+    transition: .2s;
+    cursor: pointer;
+    border-radius: 3px;
+    box-shadow: 0px 1px 2px rgba(0, 0, 0, .2);
+}
+
+.btnTwo {
+    position: relative;
+    width: 200px;
+    height: 100px;
+    margin-top: -100px;
+    padding-top: 2px;
+    background: #26A69A;
+    left: -250px;
+    transition: .3s;
+}
+
+.btnText {
+    color: white;
+    transition: .3s;
+    line-height: 50px;
+}
+
+.btnText2 {
+    margin-top: 63px;
+    margin-right: -130px;
+    color: #FFF;
+}
+
+.button:hover .btnTwo {
+    left: -130px;
+}
+
+.button:hover .btnText {
+    margin-left: 65px;
+}
+
+.button:active {
+    box-shadow: 0px 5px 6px rgba(0, 0, 0, 0.3);
+}
+
+/* ================================
+   재확인 테이블 영역
+================================ */
+
+#checkInv {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 5px;
+    background-color: white;
+    transform: translate(-50%, -50%);
+    box-shadow: 10px 10px 40px 0px, -10px -10px 40px 0px #FAAAAA;
+    z-index: 100;
+}
+
+#checkInv .copyTable {
+    display: block;
+    max-width: 100%;
+    max-height: 65vh;
+    overflow-y: scroll;
+}
+
+#checkInv .copyTable .checkList {
+    background-color: #e5fff2;
+}
+
+#checkInv h2 {
+    pointer-events: none;
+}
+
+#checkInv .checkList:hover,
+#checkInv .table_line:hover,
+#checkInv .table_line input:hover {
+    cursor: pointer;
+}
+
+/* ================================
+   세트 선택 테이블
+================================ */
+
+.regularTable {
+    width: 80%;
+    margin: 10px auto;
+    border-collapse: separate;
+    border-spacing: 0;
+    border: 1px solid #F6C7C3;
+    border-radius: 12px;
+    overflow: hidden;
+    font-family: 'Noto Sans KR', sans-serif;
+}
+
+.regularTable thead {
+    background-color: #FFE4C4;
+    color: black;
+    height: 50px;
+}
+
+.regularTable th {
+    font-size: 18px;
+    text-align: center;
+}
+
+.regularTable td {
+    border: 1px solid #F6C7C3;
+    padding: 14px;
+    height: 70px;
+    font-size: 16px;
+    text-align: center;
+    color: #333;
+    background-color: #FFF9F9;
+    transition: all 0.3s ease-in-out;
+}
+
+.regularTable td:hover {
+    background-color: #ffeceb;
+    transform: scale(1.05);
+    z-index: 2;
+    position: relative;
+    box-shadow: inset 0 0 3px;
+    cursor: pointer;
+}
+
+.regularTable td:active {
+    box-shadow: inset 0 0 10px;
+    transform: scale(1.01);
+}
+
+/* ================================
+   뚜껑 애니메이션
+================================ */
+
+.leftLid,
+.rightLid {
+    position: absolute;
+    width: 50%;
+    height: 50px;
+    background-color: #C0E4C4;
+    line-height: 50px;
+    transition: all 0.4s ease;
+    z-index: 1;
+    font-weight: bold;
+}
+
+.leftLid {
+    top: 0;
+    left: 0;
+    border-radius: 10px 0 0 0;
+    text-align: right;
+    padding-right: 10px;
+}
+
+.rightLid {
+    top: 0;
+    right: 0;
+    border-radius: 0 10px 0 0;
+    text-align: left;
+    padding-left: 10px;
+}
+
+.regularTable thead tr th:hover .leftLid {
+    transform: translateX(-120%);
+    background-color: white;
+}
+
+.regularTable thead tr th:hover .rightLid {
+    transform: translateX(120%);
+    background-color: white;
+}
+
+/* ================================
+   고객 정보 입력 UI
+================================ */
+
+.consumerInfo {
+    width: 100%;
+    height: 100px;
+    display: flex;
+}
+
+.coolinput {
+    display: flex;
+    flex-direction: column;
+    width: fit-content;
+    max-width: 480px;
+    float: left;
+}
+
+.coolinput label.text {
+    font-size: 0.75rem;
+    color: #818CF8;
+    font-weight: 700;
+    position: relative;
+    top: 0.5rem;
+    margin: 0 0 0 7px;
+    padding: 0 3px;
+    background: #e8e8e8;
+    width: fit-content;
+}
+
+.coolinput input[type=text].memberName {
+    padding: 11px 10px;
+    font-size: 0.75rem;
+    border: 2px #818CF8 solid;
+    border-radius: 5px;
+    background: #e8e8e8;
+}
+
+.coolinput input[type=text].memberName:focus {
+    outline: none;
+    box-shadow: 5px 20px 20px -15px;
+}
+
+.scheduleDate {
+    max-width: 190px;
+    padding: 12px;
+    border: none;
+    border-radius: 4px;
+    box-shadow: 2px 2px 7px rgba(0,0,0,0.2);
+    outline: none;
+    transform: translateY(18px);
+    height: 38px;
+}
+
+/* ================================
+   경고 박스
+================================ */
+
+#warningBox {
+    position: fixed;
+    right: 20px;
+    bottom: -400px;
+    background: #fff8f8;
+    border: 1px solid #ffb3b3;
+    border-radius: 12px;
+    width: 360px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    padding: 20px;
+    opacity: 0;
+    transition: all 0.6s ease;
+    z-index: 9999;
+}
+
+#warningBox.show {
+    bottom: 20px;
+    opacity: 1;
+}
+
+#warningList div {
+    background: #fff;
+    border-left: 4px solid #ff6666;
+    border-radius: 6px;
+    margin-bottom: 10px;
+    padding: 8px;
+}
+
+#closeWarning {
+    background: #d60000;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 6px 10px;
+    cursor: pointer;
+}
+
+#closeWarning:hover {
+    background: #b30000;
+}
+
+/* ================================
+   팝업 / 선택 테이블
+================================ */
+
+.medicineTable {
+    display: none;
+    width: 70%;
+    height: 60%;
+    background-color: white;
+}
+
+.statementTable {
+    display: none;
+    position: absolute;
+    width: 45%;
+    height: 60%;
+    background-color: white;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+#selTable {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 60%;
+    background: white;
+    text-align: center;
+    z-index: 1000;
+}
+
+#selTable .medicineHover {
+    cursor: pointer;
+    background-color: black;
+    color: white;
+    transform: scale(1.05);
+    transition: all 0.1s ease-in-out;
+}
+/* ================================
+   페이지 레이아웃 UI
+================================ */
+
+.sale-body {
+    overflow: hidden;
+}
+
+.wrap-container {
+    overflow-y: hidden;
+    text-align: center;
+}
+
+.sale-title-area {
+    display: block;
+    position: absolute;
+    width: 100%;
+    height: 10%;
+    text-align: center;
+    margin-top: 3%;
+}
+
+.layout-grid {
+    display: grid;
+    align-items: center;
+    grid-template-columns: 48% 48% 4%;
+    margin: 10px;
+}
+
+.right-ui-area {
+    margin-top: -30%;
+}
+
+.left-ui-area {
+    margin-top: 20%;
+    display: grid;
+    grid-template-rows: 50% 50%;
+    height: 100vh;
+}
+
+.scroll-table-area {
+    max-width: 100%;
+    max-height: 30vh;
+    overflow-y: auto;
+    width: 100%;
+}
+
+/* ================================
+   테이블 UI 확장
+================================ */
+
+.sale-header-table {
+    border: 1px solid black;
+    display: table;
+    width: 100%;
+    border-collapse: separate;
+    margin-top: 20%;
+    background: #B0C4DE;
+    overflow: hidden;
+    border-radius: 10px 10px 0 0;
+}
+
+/* ================================
+   팝업 UI
+================================ */
+
+.popup-window {
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: white;
+    border: 1px solid #ccc;
+    z-index: 1000;
+    box-shadow: 0 0 10px gray;
+    min-width: 1500px;
+    min-height: 30vh;
+}
+
+.popup-table {
+    display: block;
+    width: 100%;
+    height: 50vh;
+    border-collapse: collapse;
+    margin-top: 50px;
+    overflow: scroll;
+}
+
+/* ================================
+   재확인 박스 UI
+================================ */
+
+.checkinv-box {
+    display: none;
+}
+
+/* ================================
+   레이아웃 붕괴 수정
+================================ */
+
+/* 테이블 가운데 정렬 제거 */
+.table_line {
+    max-width: none;
+    margin: 0;
+}
+
+/* 헤더 테이블 margin 제거 */
+.sale-header-table {
+    margin-top: 0;
+}
+
+/* 메인 레이아웃 재설정 */
+.layout-grid {
+    grid-template-columns: 65% 35%;
+    column-gap: 20px;
+}
+
+/* 오른쪽 UI 음수 margin 제거 */
+.right-ui-area {
+    margin-top: 0;
+}
+
+/* 왼쪽 UI 정렬 */
+.left-ui-area {
+    margin-top: 0;
+    height: auto;
+}
+
+/* 스크롤 테이블 높이 안정화 */
+.scroll-table-area {
+    max-height: 300px;
+}
+
+/* 세트 테이블 겹침 방지 */
+.regularTable {
+    position: relative;
+    z-index: 1;
+}
+
+/* 팝업 최소 폭 완화 */
+.popup-window {
+    min-width: 80vw;
+}
+
+/* 제목 영역 고정 */
+.sale-title-area {
+    position: relative;
+    margin-bottom: 20px;
+}
+

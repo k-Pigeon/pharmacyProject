@@ -1,0 +1,79 @@
+<%@ page language="java" contentType="application/json; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ page import="java.io.BufferedReader" %>
+<%@ page import="java.io.FileInputStream" %>
+<%@ page import="java.io.InputStreamReader" %>
+<%@ page import="java.io.FileOutputStream" %>  <!-- 추가된 import -->
+<%@ page import="org.json.JSONObject" %>
+
+<%
+    String custnumber = request.getParameter("custnumber");  // 클라이언트에서 전달된 고객 번호
+    String memo = request.getParameter("memo");  // 클라이언트에서 전달된 메모 값
+    String csvFilePath = getServletContext().getRealPath("/DB백업.csv");  // CSV 파일 경로
+    BufferedReader br = null;
+    String line;
+    StringBuilder updatedCsvContent = new StringBuilder();
+    boolean found = false;
+
+    try {
+        // CSV 파일을 UTF-8로 읽기 위해 InputStreamReader 사용
+        FileInputStream fis = new FileInputStream(csvFilePath);
+        InputStreamReader isr = new InputStreamReader(fis, "UTF-8");
+        br = new BufferedReader(isr);
+        
+        // 첫 번째 행을 읽고, 두 번째 행부터 비교
+        while ((line = br.readLine()) != null) {
+            String[] data = line.split(",");  // 쉼표로 구분된 데이터를 배열로 나눔
+
+            // 데이터가 두 개 이상일 경우에만 진행
+            if (data.length >= 2) {
+                String rowNumber = data[0].trim();  // 첫 번째 열 (고객 번호)
+                String rowMemo = data[1].trim();  // 두 번째 열 (메모)
+                
+                // 고객 번호가 일치하면 해당 메모를 업데이트
+                if (rowNumber.equals(custnumber)) {
+                    updatedCsvContent.append(rowNumber).append(",").append(memo).append("\n");
+                    found = true;
+                } else {
+                    updatedCsvContent.append(rowNumber).append(",").append(rowMemo).append("\n");
+                }
+            }
+        }
+
+        // 고객 번호를 찾지 못한 경우 새로운 행 추가
+        if (!found) {
+            updatedCsvContent.append(custnumber).append(",").append(memo).append("\n");
+        }
+        
+        // 파일을 덮어쓰기 (수정된 CSV 파일을 서버에 저장)
+        FileOutputStream fos = new FileOutputStream(csvFilePath);
+        fos.write(updatedCsvContent.toString().getBytes("UTF-8"));
+        fos.close();
+
+    } catch (Exception e) {
+        e.printStackTrace();
+    } finally {
+        try {
+            if (br != null) {
+                br.close();  // 리소스 해제
+            }
+
+            try { if (pstmt != null) pstmt.close(); } catch (Exception e) {}
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    // JSON 응답 생성
+    JSONObject responseJson = new JSONObject();
+    if (found) {
+        responseJson.put("status", "success");
+        responseJson.put("message", "고객 번호 " + custnumber + "의 메모가 업데이트되었습니다.");
+    } else {
+        responseJson.put("status", "success");
+        responseJson.put("message", "고객 번호 " + custnumber + "가 추가되었습니다.");
+    }
+    
+    // 응답으로 JSON 객체를 반환
+    response.setContentType("application/json; charset=UTF-8");
+    response.getWriter().write(responseJson.toString());
+%>

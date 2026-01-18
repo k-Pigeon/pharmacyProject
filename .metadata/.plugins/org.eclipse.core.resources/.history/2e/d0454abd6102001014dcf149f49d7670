@@ -1,0 +1,433 @@
+<%@ page language="java" contentType="application/json; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ page import="java.io.*, java.util.*, javax.servlet.*"%>
+<%@ page import="javax.servlet.http.*"%>
+<%@ page import="java.sql.*"%>
+<%@ page import="org.json.JSONArray"%>
+<%@ page import="org.json.JSONObject"%>
+<%@ include file="sessionManager.jsp"%>
+<%@ include file="DBconnection.jsp"%>
+<%
+String dbName = (session != null) ? (String) session.getAttribute("dbName") : null;
+String id = (session != null) ? (String) session.getAttribute("id") : null;
+String password = (session != null) ? (String) session.getAttribute("password") : null;
+
+/* out.println(password);
+out.println(dbName);
+out.println(id);
+out.println(password); */
+
+if (id == null || dbName == null) {
+    response.sendRedirect("login.jsp");
+    return;
+}
+
+jdbcDriver = dbName;
+%>
+<%
+request.setCharacterEncoding("UTF-8");
+
+java.util.Date today = new java.util.Date();
+java.sql.Timestamp sqlDate = new java.sql.Timestamp(today.getTime());
+
+PreparedStatement pstmt = null;
+PreparedStatement clientpstmt = null;
+PreparedStatement ptement = null;
+PreparedStatement statement2 = null;
+PreparedStatement discountStmt = null;
+PreparedStatement statement3 = null;
+PreparedStatement statement4 = null;
+
+try {
+    conn.setAutoCommit(false); // 트랜잭션 시작
+
+    // 받은 JSON 데이터 파싱
+    StringBuilder sb = new StringBuilder();
+    try {
+        BufferedReader reader = request.getReader();
+        String line;
+        while ((line = reader.readLine()) != null) {
+            sb.append(line);
+        }
+    } catch (Exception e) {
+        e.printStackTrace();
+    }
+
+    JSONArray jsonArray = new JSONArray(sb.toString());
+
+    // 개별 파라미터 처리
+    JSONObject paramObj = jsonArray.getJSONObject(jsonArray.length() - 1);
+    String medicinePrice = paramObj.getString("medicinePrice");
+    String generalPrice = paramObj.getString("generalPrice");
+    String clientName = paramObj.getString("discounted");
+
+    // 개별 파라미터 삽입
+    String priceSql = "INSERT INTO priceRecord (saleDate, maxmedicinePrice, generalPrice) VALUES (?, ?, ?)";
+    pstmt = conn.prepareStatement(priceSql);
+    pstmt.setTimestamp(1, sqlDate);
+    pstmt.setString(2, medicinePrice);
+    pstmt.setString(3, generalPrice);
+    pstmt.executeUpdate();
+    
+    String discountSql = "INSERT INTO discountedDB (sale_date, discounted) VALUES (?, ?)";
+    discountStmt = conn.prepareStatement(discountSql);
+    discountStmt.setTimestamp(1, sqlDate); // SalesRecord의 saleDate와 동일한 값 사용
+    discountStmt.setString(2, clientName);
+    discountStmt.executeUpdate();
+
+    // JSON 배열을 순회하며 데이터베이스 업데이트
+    for (int i = 0; i < jsonArray.length() - 2; i++) {
+        JSONObject obj = jsonArray.getJSONObject(i);
+
+        // inventory 필드의 값 존재 여부 확인
+        double inventoryAdjustment = obj.optDouble("inventory", 0.0); // 값이 없으면 기본값 0.0 설정
+
+        // price 필드의 값 존재 여부 확인
+        int price = obj.optInt("price", 0); // 값이 없으면 기본값 0 설정
+
+        // 종류 검색
+        String sortationSQL = "SELECT kind FROM testTable WHERE SerialNumber = ? AND medicineName = ?";
+        ptement = conn.prepareStatement(sortationSQL);
+        ptement.setString(1, obj.optString("serialNumber", ""));
+        ptement.setString(2, obj.optString("medicineName", ""));
+        ResultSet rs = ptement.executeQuery();
+
+        // 규격에 대한 개수 가져오기
+        String standardSQL = "SELECT REGEXP_REPLACE(?, '[^0-9]', '') AS standard FROM testTable WHERE medicineName = ?";
+        statement2 = conn.prepareStatement(standardSQL);
+        statement2.setString(1, obj.optString("standard", ""));
+        statement2.setString(2, obj.optString("medicineName", ""));
+        ResultSet standRS = statement2.executeQuery();
+
+        // 뒤 두글자를 제외한 이름 가져오기
+        String NameSQL = "SELECT SUBSTRING(REPLACE(?, ' ', ''), 1, CHAR_LENGTH(REPLACE(?, ' ', '')) - 2) AS Result FROM testTable";
+        statement3 = conn.prepareStatement(NameSQL);
+        statement3.setString(1, obj.optString("medicineName", ""));
+        statement3.setString(2, obj.optString("medicineName", ""));
+        ResultSet NameRS = statement3.executeQuery();
+
+        String kind = null;
+        String standard = null;
+        String medicineName = null;
+        if (rs.next()) {
+            kind = rs.getString("kind");
+        }
+        if (standRS.next()) {
+            standard = standRS.getString("standard");
+        }
+        if (NameRS.next()) {
+            medicineName = NameRS.getString("Result");
+        }
+
+        if ("일반세트".equals(obj.optString("serialNumber", ""))) {
+            // vitalSet 테이블에서 medicineName 검색
+            String vitalSetSQL = "SELECT medicineName_1, medicineName_2, medicineName_3, medicineName_4 FROM productSet WHERE medicineName = ?";
+            PreparedStatement vitalSetStmt = conn.prepareStatement(vitalSetSQL);
+            vitalSetStmt.setString(1, obj.optString("medicineName", ""));
+            ResultSet vitalSetRS = vitalSetStmt.executeQuery();
+
+            if (vitalSetRS.next()) {
+                // 리소스 값 가져오기
+                String[] resources = {
+                    vitalSetRS.getString("medicineName_1"), 
+                    vitalSetRS.getString("medicineName_2"),
+                    vitalSetRS.getString("medicineName_3"), 
+                    vitalSetRS.getString("medicineName_4")
+                };
+
+                // 각 리소스에 대해 재고 차감
+                for (int count = 0; count < resources.length; count++) {
+                    String resource = resources[count];
+                    if (resource != null && !resource.isEmpty()) {
+                        System.out.println("Processing resource: " + resource); // 디버깅 로그 추가
+
+                        double remainingAdjustment = inventoryAdjustment; // 각 리소스 별로 남은 재고 조정
+                        while (remainingAdjustment > 0) {
+                            // 가장 유통기한이 짧은 날짜 선택
+                            String selectDateSQL = "SELECT DeliveryDate, inventory FROM testTable "
+                                    + "WHERE medicineName = ? AND returnInv = '0' AND inventory > 0 "
+                                    + "ORDER BY DeliveryDate ASC LIMIT 1";
+                            PreparedStatement selectDateStmt = conn.prepareStatement(selectDateSQL);
+                            selectDateStmt.setString(1, resource);
+                            ResultSet dateRS = selectDateStmt.executeQuery();
+
+                            if (!dateRS.next()) {
+                                break; // 더 이상 차감할 날짜가 없음
+                            }
+
+                            String minDeliveryDate = dateRS.getString("DeliveryDate");
+                            double availableInventory = dateRS.getDouble("inventory");
+                            dateRS.close();
+                            selectDateStmt.close();
+
+                            // 재고 차감
+                            double deductedInventory = Math.min(remainingAdjustment, availableInventory);
+                            String updateSQL = "UPDATE testTable SET inventory = inventory - ? "
+                                    + "WHERE medicineName = ? AND DeliveryDate = ?";
+                            PreparedStatement updateStmt = conn.prepareStatement(updateSQL);
+                            updateStmt.setDouble(1, deductedInventory);
+                            updateStmt.setString(2, resource);
+                            updateStmt.setString(3, minDeliveryDate);
+                            int rowsAffected = updateStmt.executeUpdate();
+                            System.out.println("Rows affected by inventory update for resource " + resource + ": " + rowsAffected); // 디버깅 로그 추가
+                            updateStmt.close();
+
+                            // 차감된 재고량을 업데이트
+                            remainingAdjustment -= deductedInventory;
+                        }
+                    }
+                }
+            }
+
+            vitalSetRS.close();
+            vitalSetStmt.close();
+        } else if ("한약세트".equals(obj.optString("serialNumber", ""))) {
+            // 1️⃣ regularSet에서 medicineName 기준으로 saleInventory * inventory 계산
+            String getSaleInventorySQL = "SELECT COALESCE(saleInventory, 0) * COALESCE(inventory, 0) AS totalDeduction FROM regularSet WHERE medicineName = ?";
+            PreparedStatement saleStmt = conn.prepareStatement(getSaleInventorySQL);
+            saleStmt.setString(1, obj.optString("medicineName", ""));
+            System.out.println("medicineName: " + obj.optString("medicineName", "") + ", length: " + obj.optString("medicineName", "").length());
+            System.out.println("SerialNumebr: " + obj.optString("serialNumber", "") + ", length: " + obj.optString("serialNumber", "").length());
+            ResultSet saleRS = saleStmt.executeQuery();
+
+            double inventoryAdjustment2 = 0;
+            if (saleRS.next()) {
+                inventoryAdjustment2 = saleRS.getDouble("totalDeduction"); // 차감할 총 재고량
+                System.out.println(inventoryAdjustment2);
+            }
+            saleRS.close();
+            saleStmt.close();
+            
+            while (inventoryAdjustment2 > 0) {
+                // 2️⃣ testTable에서 가장 유통기한이 짧은 데이터 찾기
+                String selectDateSQL = "SELECT DeliveryDate, inventory FROM testTable "
+                        + "WHERE medicineName = ? AND returnInv = '0' AND inventory > 0 "
+                        + "ORDER BY DeliveryDate ASC LIMIT 1";
+                PreparedStatement selectDateStmt = conn.prepareStatement(selectDateSQL);
+                selectDateStmt.setString(1, obj.optString("medicineName", ""));
+                ResultSet dateRS = selectDateStmt.executeQuery();
+
+                if (!dateRS.next()) {
+                    break; // 차감할 재고가 없음
+                }
+
+                String minDeliveryDate = dateRS.getString("DeliveryDate");
+                double availableInventory = dateRS.getDouble("inventory");
+                dateRS.close();
+                selectDateStmt.close();
+
+                // 3️⃣ 실제 차감할 양 결정
+                double deductedInventory = Math.min(inventoryAdjustment2, availableInventory);
+                String updateSQL = "UPDATE testTable SET inventory = inventory - ? "
+                                 + "WHERE medicineName = ? AND DeliveryDate = ?";
+                PreparedStatement updateStmt = conn.prepareStatement(updateSQL);
+                updateStmt.setDouble(1, deductedInventory);
+                updateStmt.setString(2, obj.optString("medicineName", ""));
+                updateStmt.setString(3, minDeliveryDate);
+                int rowsAffected = updateStmt.executeUpdate();
+                System.out.println("Rows affected by inventory update: " + rowsAffected); // 디버깅 로그
+                updateStmt.close();
+
+                // 남은 차감량 업데이트
+                inventoryAdjustment2 -= deductedInventory;
+            }
+        } else {
+            while (inventoryAdjustment > 0) {
+                // 1️⃣ 가장 유통기한이 짧은 데이터 선택
+                String selectDateSQL = "SELECT DeliveryDate, inventory, concurrently FROM testTable "
+                        + "WHERE SerialNumber = ? AND medicineName = ? AND returnInv = '0' AND inventory > 0 "
+                        + "ORDER BY DeliveryDate ASC LIMIT 1";
+                PreparedStatement selectDateStmt = conn.prepareStatement(selectDateSQL);
+                selectDateStmt.setString(1, obj.optString("serialNumber", ""));
+                selectDateStmt.setString(2, obj.optString("medicineName", ""));
+                ResultSet dateRS = selectDateStmt.executeQuery();
+
+                if (!dateRS.next()) {
+                    System.out.println("🚨 차감할 재고 데이터 없음: " + obj.optString("medicineName", ""));
+                    break; // 더 이상 차감할 날짜가 없음
+                }
+
+                String minDeliveryDate = dateRS.getString("DeliveryDate");
+                double availableInventory = dateRS.getDouble("inventory");
+                int calculatedInventoryFlag = dateRS.getInt("concurrently"); // ✅ `calculatedInventory` 값 가져오기
+                dateRS.close();
+                selectDateStmt.close();
+
+                System.out.println("🟢 찾은 재고 데이터: " + obj.optString("medicineName", "") +
+                                   ", 유통기한: " + minDeliveryDate + 
+                                   ", 현재 재고: " + availableInventory + 
+                                   ", 차감 대상량: " + inventoryAdjustment);
+
+                // 2️⃣ 🔹 우선순위 적용하여 차감할 수량 계산
+                standard = obj.optString("standard", "").trim();
+                double standardFactor = 1.0; // 기본값
+
+                // ✅ [1순위] 띄어쓰기가 있는 경우 (두 개의 숫자를 곱하고 inventory 와 다시 곱하기)
+                if (standard.contains(" ")) {
+                    String[] parts = standard.split("\\s+"); // 공백 기준 분리
+                    double firstNum = 1, secondNum = 1;
+
+                    for (String part : parts) {
+                        try {
+                            double num = Double.parseDouble(part.replaceAll("[^0-9]", ""));
+                            if (firstNum == 1) {
+                                firstNum = num;
+                            } else {
+                                secondNum = num;
+                                break; // 두 번째 숫자까지만 필요함
+                            }
+                        } catch (Exception e) {
+                            // 숫자가 아니면 무시
+                        }
+                    }
+                    standardFactor = firstNum * secondNum; // 예: 20 * 4 = 80
+                    System.out.println("🔹 [1순위] 띄어쓰기 적용: " + firstNum + " * " + secondNum + " = " + standardFactor);
+                }
+                // ✅ [2순위] ml 포함된 경우 → `inventory * standardFactor` 적용
+                else if (standard.matches(".*ml$")) { 
+                    try {
+                        standardFactor = Double.parseDouble(standard.replaceAll("[^0-9]", ""));
+                    } catch (Exception e) {
+                        standardFactor = 1; // 숫자가 없으면 기본값 유지
+                    }
+                    System.out.println("🔹 [2순위] ml 적용: " + standardFactor);
+                }
+                // ✅ [3순위] g, l, 포 포함된 경우 → inventory 그대로 유지 (standardFactor = 1)
+                else if (standard.matches(".*(g|l|포)$")) {
+                    standardFactor = 1;
+                    System.out.println("🔹 [3순위] g/l/포 적용: " + standardFactor);
+                }
+                // ✅ [4순위] 그 외 → 숫자로 변환해서 곱하기
+                else {
+                    try {
+                        standardFactor = Double.parseDouble(standard.replaceAll("[^0-9]", ""));
+                    } catch (Exception e) {
+                        standardFactor = 1; // 숫자가 없으면 기본값 유지
+                    }
+                    System.out.println("🔹 [4순위] 숫자 적용: " + standardFactor);
+                }
+
+                // 🔹 최종 차감할 `inventory * standardFactor` 적용
+                double deductedInventory = Math.min(inventoryAdjustment * standardFactor, availableInventory);
+                
+                System.out.println("🔹 최종 차감할 재고량: " + deductedInventory +
+                                   " (기준: " + standard + ", standardFactor: " + standardFactor + ")");
+
+                if (deductedInventory <= 0) {
+                    System.out.println("⚠️ 차감량이 0이어서 업데이트 건너뜀");
+                    break;
+                }
+
+                // ✅ `calculatedInventoryFlag` 값에 따라 처리 방식 분기
+                if (calculatedInventoryFlag == 1) {
+                    // 같은 유통기한을 가진 모든 규격 차감
+                    String updateSQL = "UPDATE testTable SET inventory = inventory - ? "
+                                     + "WHERE DeliveryDate = ? AND returnInv = '0' AND inventory > 0";
+                    PreparedStatement updateStmt = conn.prepareStatement(updateSQL);
+                    updateStmt.setDouble(1, deductedInventory);
+                    updateStmt.setString(2, minDeliveryDate);
+                    int rowsAffected = updateStmt.executeUpdate();
+                    updateStmt.close();
+
+                    System.out.println("✅ 차감 완료 (같은 유통기한 전체 차감): " + rowsAffected + "개");
+                } else {
+                    // 같은 유통기한이면서 같은 규격인 제품만 차감
+                    String updateSQL = "UPDATE testTable SET inventory = inventory - ? "
+                                     + "WHERE medicineName = ? AND standard = ? AND DeliveryDate = ? AND returnInv = '0' AND inventory > 0";
+                    PreparedStatement updateStmt = conn.prepareStatement(updateSQL);
+                    updateStmt.setDouble(1, deductedInventory);
+                    updateStmt.setString(2, obj.optString("medicineName", ""));
+                    updateStmt.setString(3, standard);
+                    updateStmt.setString(4, minDeliveryDate);
+                    int rowsAffected = updateStmt.executeUpdate();
+                    updateStmt.close();
+
+                    System.out.println("✅ 차감 완료 (동일 규격만 차감): " + rowsAffected + "개");
+                }
+
+                // 차감된 재고량 업데이트
+                inventoryAdjustment -= deductedInventory;
+            }
+        }
+
+
+
+
+        // 판매 날짜 입력
+        try {
+            double inventory = obj.optDouble("inventory", 0.0);
+            String standardStr = obj.optString("standard", ""); // 문자열로 가져오기
+            double standardValue = 1.0; // 기본값 설정
+
+            if (standardStr.contains("ml")) {
+                // ml 단위인 경우 inventory 그대로 사용
+                standardValue = inventory;
+            } else {
+                // ml이 아닌 경우 standard에서 숫자만 추출
+                try {
+                	// standard에서 숫자만 추출
+                	String numericStandard = standard.replaceAll("[^0-9]", "");
+                	if (!numericStandard.isEmpty()) {
+                	    try {
+                	        standardValue = Double.parseDouble(numericStandard) * inventory;
+                	    } catch (NumberFormatException e) {
+                	        System.err.println("Invalid standard format: " + standard);
+                	        standardValue = inventory; // 기본값 사용
+                	    }
+                	} else {
+                	    standardValue = inventory; // 숫자가 없으면 기본값 사용
+                	}
+                } catch (NumberFormatException e) {
+                    System.err.println("Invalid standard format: " + e.getMessage());
+                }
+            }
+
+            String salesSql = "INSERT INTO SalesRecord (saleDate, medicineName, Buyingprice, price, inventory, SerialNumber, DeliveryDate, standard) "
+                            + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+            statement4 = conn.prepareStatement(salesSql);
+            statement4.setTimestamp(1, sqlDate);
+            statement4.setString(2, obj.optString("medicineName", ""));
+            statement4.setString(3, obj.optString("Buyingprice", ""));
+            statement4.setInt(4, price); // 변환된 price 값을 사용
+            statement4.setDouble(5, standardValue); // 계산된 standardValue 사용
+            statement4.setString(6, obj.optString("serialNumber", ""));
+            statement4.setString(7, obj.optString("deliveryDate", ""));
+            statement4.setString(8, obj.optString("standard", "")); // 계산된 standardValue 사용
+            statement4.executeUpdate();
+            System.out.println(statement4);
+        } catch (SQLException e) {
+            e.printStackTrace();
+            throw new SQLException("Error inserting into SalesRecord: " + e.getMessage());
+        }
+
+    }
+
+    // 트랜잭션 커밋
+    conn.commit();
+    out.println("{\"result\":\"success\"}");
+    
+
+} catch (Exception e) {
+    // 오류 발생 시 롤백
+    try {
+        if (conn != null) {
+        	conn.rollback();
+        }
+    } catch (SQLException rollbackEx) {
+        rollbackEx.printStackTrace();
+    }
+    e.printStackTrace();
+    out.println("{\"result\":\"error\", \"message\":\"" + e.getMessage() + "\"}");
+} finally {
+    // 자원 정리
+    try {
+        if (pstmt != null) pstmt.close();
+        if (clientpstmt != null) clientpstmt.close();
+        if (ptement != null) ptement.close();
+        if (statement2 != null) statement2.close();
+        if (statement3 != null) statement3.close();
+        if (conn != null) conn.close();
+    } catch (SQLException e) {
+        e.printStackTrace();
+    }
+}
+%>

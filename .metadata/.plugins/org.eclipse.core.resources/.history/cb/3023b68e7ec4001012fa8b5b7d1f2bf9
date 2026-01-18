@@ -1,0 +1,73 @@
+<%@ page language="java" contentType="application/json; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ page import="java.sql.*, java.util.regex.*" %>
+<%@ include file="sessionManager.jsp" %>
+<%@ include file="DBconnection.jsp" %>
+<%
+String dbName = (session != null) ? (String) session.getAttribute("dbName") : null;
+String id = (session != null) ? (String) session.getAttribute("id") : null;
+String password = (session != null) ? (String) session.getAttribute("password") : null;
+
+/* out.println(password);
+out.println(dbName);
+out.println(id);
+out.println(password); */
+
+String idSortation = (session != null) ? (String) session.getAttribute("idSortation") : null;
+if (id == null || dbName == null) {
+	response.sendRedirect("login.jsp");
+	return;
+}
+
+jdbcDriver = dbName;
+response.setContentType("application/json; charset=UTF-8");
+
+String sql = "SELECT SerialNumber, medicineName, DeliveryDate, inventory, price, standard, kind, companyName, receiptDate, quantity " +
+             "FROM testTable" + idSortation;
+
+StringBuilder html = new StringBuilder();
+boolean found = false;
+
+try (PreparedStatement ps = conn.prepareStatement(sql);
+     ResultSet rs = ps.executeQuery()) {
+
+    while (rs.next()) {
+
+        double inventory = rs.getDouble("inventory");
+        String standardStr = rs.getString("standard");
+        double quantity = rs.getDouble("quantity");
+
+        // 규격 파싱 (예: "20g 4포" → 20*4)
+        double standard = 1;
+        if (standardStr != null) {
+            Matcher m = Pattern.compile("\\d+(\\.\\d+)?").matcher(standardStr);
+            while (m.find()) {
+                standard *= Double.parseDouble(m.group());
+            }
+        }
+
+        // 조건 체크
+        if (quantity < inventory * standard) {
+            found = true;
+
+            html.append("<tr>")
+                .append("<td>").append(rs.getString("medicineName")).append("</td>")
+                .append("<td>").append(rs.getString("DeliveryDate")).append("</td>")
+                .append("<td>").append(inventory).append("</td>")
+                .append("<td>").append(rs.getString("price")).append("</td>")
+                .append("<td>").append(standardStr).append("</td>")
+                .append("<td>").append(rs.getString("kind")).append("</td>")
+                .append("<td>").append(rs.getString("companyName")).append("</td>")
+                .append("<td>").append(rs.getString("receiptDate")).append("</td>")
+                .append("<td>").append(quantity).append("</td>")
+                .append("</tr>");
+        }
+    }
+} catch (Exception e) {
+    e.printStackTrace();
+}
+
+conn.close();
+
+// JSON 반환
+out.print("{\"html\":\"" + html.toString().replace("\"","\\\"") + "\",\"found\":" + found + "}");
+%>

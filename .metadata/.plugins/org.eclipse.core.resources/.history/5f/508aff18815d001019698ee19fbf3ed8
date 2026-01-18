@@ -1,0 +1,89 @@
+<%@ page contentType="application/json; charset=UTF-8" pageEncoding="UTF-8" %>
+<%@ page import="java.io.*, java.sql.*, org.json.*" %>
+<%@ include file="sessionManager.jsp"%>
+<%@ include file="DBconnection.jsp"%>
+<%
+String dbName = (session != null) ? (String) session.getAttribute("dbName") : null;
+String id = (session != null) ? (String) session.getAttribute("id") : null;
+
+JSONObject responseJson = new JSONObject();
+PreparedStatement psSet = null;
+PreparedStatement psDetail = null;
+
+try {
+    if (id == null || dbName == null) {
+        response.sendRedirect("login.jsp");
+        return;
+    }
+
+    jdbcDriver = dbName;
+    Class.forName("com.mysql.cj.jdbc.Driver");
+
+    // JSON 파싱
+    BufferedReader reader = request.getReader();
+    StringBuilder sb = new StringBuilder();
+    String line;
+    while ((line = reader.readLine()) != null) sb.append(line);
+    JSONObject json = new JSONObject(sb.toString());
+
+    String setName = json.getString("setName");
+    int buyingprice = json.getInt("buyingprice");
+    int price = json.getInt("price");
+    int inventory = json.getInt("inventory");
+    JSONArray products = json.getJSONArray("products");
+    
+    int price = 0;
+    int buyingPrice = 0;
+
+    if (priceStr != null && !priceStr.isEmpty()) {
+        priceStr = priceStr.replaceAll(",", ""); // 쉼표 제거
+        price = Integer.parseInt(priceStr);
+    }
+
+    if (buyingStr != null && !buyingStr.isEmpty()) {
+        buyingStr = buyingStr.replaceAll(",", ""); // 쉼표 제거
+        buyingPrice = Integer.parseInt(buyingStr);
+    }
+
+    // 1. productSet 테이블 저장
+    String sqlSet = "INSERT INTO productSet (setName, buyingprice, price, inventory) VALUES (?, ?, ?, ?)";
+    psSet = conn.prepareStatement(sqlSet, Statement.RETURN_GENERATED_KEYS);
+    psSet.setString(1, setName);
+    psSet.setInt(2, buyingprice);
+    psSet.setInt(3, price);
+    psSet.setInt(4, inventory);
+    psSet.executeUpdate();
+
+    ResultSet rs = psSet.getGeneratedKeys();
+    int setId = 0;
+    if (rs.next()) setId = rs.getInt(1);
+    rs.close();
+
+    // 2. productSet_detail 테이블 저장
+    String sqlDetail = "INSERT INTO productSet_detail (productSet_id, medicineName, standard) VALUES (?, ?, ?)";
+    psDetail = conn.prepareStatement(sqlDetail);
+
+    for (int i = 0; i < products.length(); i++) {
+        JSONObject p = products.getJSONObject(i);
+        psDetail.setInt(1, setId);
+        psDetail.setString(2, p.getString("medicineName"));
+        psDetail.setString(3, p.getString("standard"));
+        psDetail.addBatch();
+    }
+    psDetail.executeBatch();
+
+    conn.commit(); // 모두 성공 시 커밋
+    responseJson.put("status", "success");
+    responseJson.put("message", "세트 저장 완료");
+
+} catch (Exception e) {
+    responseJson.put("status", "error");
+    responseJson.put("message", "오류 발생: " + e.getMessage());
+    e.printStackTrace();
+} finally {
+    try { if (psDetail != null) psDetail.close(); } catch (Exception e) {}
+    try { if (psSet != null) psSet.close(); } catch (Exception e) {}
+    try { if (conn != null) conn.close(); } catch (Exception e) {}
+    out.print(responseJson.toString());
+}
+%>

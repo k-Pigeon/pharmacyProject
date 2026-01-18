@@ -1,0 +1,45 @@
+<%@ page import="java.sql.*, org.json.*" %>
+<%@ include file="DBconnection.jsp" %>
+<%
+String dbName = (session != null) ? (String) session.getAttribute("dbName") : null;
+String id = (session != null) ? (String) session.getAttribute("id") : null;
+String password = (session != null) ? (String) session.getAttribute("password") : null;
+
+/* out.println(password);
+out.println(dbName);
+out.println(id);
+out.println(password); */
+
+String idSortation = (session != null) ? (String) session.getAttribute("idSortation") : null;
+if (id == null || dbName == null) {
+	response.sendRedirect("login.jsp");
+	return;
+}
+
+jdbcDriver = dbName;
+%>
+    request.setCharacterEncoding("UTF-8");
+    String medicineName = request.getParameter("medicineName");
+
+    JSONObject obj = new JSONObject();
+
+    try {
+        PreparedStatement ps = conn.prepareStatement(
+            "SELECT inventory, standard FROM testTable" + idSortation +
+            " WHERE medicineName=? AND returnInv='0' LIMIT 1"
+        );
+        ps.setString(1, medicineName);
+
+        ResultSet rs = ps.executeQuery();
+        if (rs.next()) {
+            obj.put("inventory", rs.getDouble("inventory"));
+            obj.put("standard", rs.getString("standard"));
+        }
+        rs.close();
+        ps.close();
+    } catch (Exception e) {
+        obj.put("error", e.getMessage());
+    }
+
+    out.print(obj.toString());
+%>

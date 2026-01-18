@@ -1,0 +1,137 @@
+<%@ page contentType="text/html; charset=UTF-8" language="java"%>
+<%@ page import="java.sql.*, java.util.*"%>
+<%@ include file="sessionManager.jsp"%>
+<%@ include file="DBconnection.jsp"%>
+<%
+String dbName = (session != null) ? (String) session.getAttribute("dbName") : null;
+String id = (session != null) ? (String) session.getAttribute("id") : null;
+String password = (session != null) ? (String) session.getAttribute("password") : null;
+
+/* out.println(password);
+out.println(dbName);
+out.println(id);
+out.println(password); */
+
+if (id == null || dbName == null) {
+    response.sendRedirect("login.jsp");
+    return;
+}
+
+jdbcDriver = dbName;
+%>
+<%
+    PreparedStatement pstmt = null;
+    ResultSet rs = null;
+
+    try {
+        // 클라이언트에서 전달된 값 받기 (POST 방식으로 값 받기)
+        String value = request.getParameter("value");
+
+        // 쿼리 작성
+        String sql = "SELECT medicineName, price, MAX(receiptDate) AS lastPurchaseDate, "
+                   + "MIN(DeliveryDate) AS shortestExpiryDate, MAX(DeliveryDate) AS longestExpiryDate "
+                   + "FROM testTable WHERE medicineName = ? GROUP BY medicineName, price";
+
+        // PreparedStatement 사용하여 쿼리 실행
+        pstmt = conn.prepareStatement(sql);
+        pstmt.setString(1, value);
+        rs = pstmt.executeQuery();
+
+        // 데이터 출력
+        if (rs.next()) {
+%>
+<style>
+    .product-table {
+        width: 100%;
+        max-width: 460px;
+        margin: 20px auto;
+        border-collapse: collapse;
+        border-radius: 20px;
+        overflow: hidden;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        text-align:center;
+    }
+
+    .product-table th,
+    .product-table td {
+        padding: 14px 18px;
+        text-align: left;
+        font-size: 15px;
+    }
+
+    .product-table .top-row {
+        background-color: #FFFCFA; /* 상단 배경 */
+        font-size: 16px;
+        font-weight: bold;
+    }
+
+    .product-table .price-row {
+        background-color: #F1EFFE; /* 가격 줄 배경 */
+        color: #4F46E5; /* 가격 강조색 */
+        font-weight: bold;
+    }
+
+    .product-table .normal-row {
+        background-color: #FEFDFF; /* 하단 기본 배경 */
+    }
+
+    .product-table .footer-row {
+        background-color: #FEFDFF;
+        font-weight: bold;
+        font-size: 14px;
+    }
+
+    .close-button {
+        background-color: #EF4444;
+        color: white;
+        font-weight: bold;
+        font-size: 13px;
+        padding: 4px 12px;
+        border-radius: 999px;
+        float: right;
+        margin: 10px 5px 0 0;
+        cursor: pointer;
+    }
+</style>
+<div class="close-button">닫기 X</div>
+<table class="product-table">
+    <tr class="top-row">
+        <th colspan="2">이름</th>
+        <td colspan="2"><%= rs.getString("medicineName") %></td>
+    </tr>
+    <tr class="price-row">
+        <th colspan="2">가격</th>
+        <td colspan="2"><%= rs.getString("price") %></td>
+    </tr>
+    <tr class="normal-row">
+        <th colspan="2">마지막 구매 날짜</th>
+        <td colspan="2"><%= rs.getString("lastPurchaseDate") %></td>
+    </tr>
+    <tr class="footer-row">
+        <th>가장 짧은 유통기한</th>
+        <td><%= rs.getString("shortestExpiryDate") %></td>
+        <th>가장 긴 유통기한</th>
+        <td><%= rs.getString("longestExpiryDate") %></td>
+    </tr>
+</table>
+<%
+        } else {
+%>
+<div class='close-button'>닫기 X</div>
+<div class='no_data_Record'>데이터가 없습니다.</div>
+<%
+        }
+
+    } catch (Exception e) {
+        e.printStackTrace();
+        out.println("오류 발생: " + e.getMessage());
+    } finally {
+        try {
+            if (rs != null) rs.close();
+            if (pstmt != null) pstmt.close();
+            if (conn != null) conn.close();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+%>

@@ -1,0 +1,64 @@
+<%@ page language="java" contentType="application/json; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ page import="java.sql.*, org.json.*" %>
+<%@ include file="sessionManager.jsp"%>
+<%@ include file="DBconnection.jsp"%>
+
+<%
+response.setContentType("application/json; charset=UTF-8");
+request.setCharacterEncoding("UTF-8");
+
+String idSortation = (session != null) ? (String) session.getAttribute("idSortation") : null;
+String tableName = "SalesRecord";
+if (idSortation != null && !idSortation.isEmpty()) tableName += idSortation;
+
+String month = request.getParameter("month");
+JSONObject result = new JSONObject();
+JSONArray rows = new JSONArray();
+JSONArray days = new JSONArray();
+
+PreparedStatement ps = null;
+ResultSet rs = null;
+
+try {
+    // 1) 일자 리스트
+    String sqlDays = "SELECT DISTINCT DATE(saleDate) as d FROM " + tableName + 
+                     " WHERE DATE_FORMAT(saleDate, '%Y-%m') = ? ORDER BY d";
+    ps = conn.prepareStatement(sqlDays);
+    ps.setString(1, month);
+    rs = ps.executeQuery();
+    while(rs.next()){
+        JSONObject dayObj = new JSONObject();
+        dayObj.put("day", rs.getString("d"));
+        days.put(dayObj);
+    }
+    rs.close(); ps.close();
+
+    // 2) 월 전체 집계
+    String sqlRows = "SELECT medicineName, SUM(buyingPrice) as buyingPrice, " +
+                     "SUM(price) as price, SUM(price - buyingPrice) as margin, " +
+                     "ROUND((SUM(price - buyingPrice)/SUM(price))*100,1) as marginRate " +
+                     "FROM " + tableName + " WHERE DATE_FORMAT(saleDate, '%Y-%m') = ? " +
+                     "GROUP BY medicineName";
+    ps = conn.prepareStatement(sqlRows);
+    ps.setString(1, month);
+    rs = ps.executeQuery();
+    while(rs.next()){
+        JSONObject row = new JSONObject();
+        row.put("medicineName", rs.getString("medicineName"));
+        row.put("buyingPrice", rs.getInt("buyingPrice"));
+        row.put("price", rs.getInt("price"));
+        row.put("margin", rs.getInt("margin"));
+        row.put("marginRate", rs.getDouble("marginRate"));
+        rows.put(row);
+    }
+
+    result.put("days", days);
+    result.put("rows", rows);
+} catch(Exception e){
+    result.put("error", e.getMessage());
+} finally {
+    if (rs != null) try{ rs.close(); }catch(Exception ignore){}
+    if (ps != null) try{ ps.close(); }catch(Exception ignore){}
+}
+out.print(result.toString());
+%>

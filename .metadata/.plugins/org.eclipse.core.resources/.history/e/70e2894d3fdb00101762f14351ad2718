@@ -1,0 +1,812 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8"
+	pageEncoding="UTF-8"%>
+<%@ page import="java.sql.*"%>
+<%@ include file="sessionManager.jsp"%>
+<%@ include file="DBconnection.jsp"%>
+<%
+String dbName = (session != null) ? (String) session.getAttribute("dbName") : null;
+String id = (session != null) ? (String) session.getAttribute("id") : null;
+String password = (session != null) ? (String) session.getAttribute("password") : null;
+
+/* out.println(password);
+out.println(dbName);
+out.println(id);
+out.println(password); */
+
+String idSortation = (session != null) ? (String) session.getAttribute("idSortation") : null;
+if (id == null || dbName == null) {
+	response.sendRedirect("login.jsp");
+	return;
+}
+
+jdbcDriver = dbName;
+%>
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Insert title here</title>
+<style>
+#table_body {
+	max-height: 200px; /* 원하는 최대 높이로 설정 */
+	overflow-y: auto; /* 세로 스크롤을 표시할 수 있도록 설정 */
+}
+
+table {
+	width: 100%;
+	border-collapse: collapse;
+}
+
+thead {
+	position: sticky;
+	top: 0;
+	background-color: white;
+	z-index: 1;
+}
+
+tbody {
+	display: block;
+	max-height: 300px; /* 원하는 높이로 설정 */
+	overflow-y: scroll; /* Y축 스크롤 */
+	width: 100%;
+}
+
+/* X축은 자동으로 같이 움직이도록 */
+table thead, table tbody {
+	display: table;
+	width: 100%;
+	table-layout: fixed; /* 각 셀의 크기가 고정되도록 */
+}
+
+/* 스크롤바 숨기기 */
+tbody::-webkit-scrollbar {
+	display: none;
+}
+
+tbody {
+	-ms-overflow-style: none; /* IE and Edge */
+	scrollbar-width: none; /* Firefox */
+}
+
+/* 셀 높이 지정 */
+thead th, tbody td {
+	width: 150px; /* 셀 너비 고정 */
+}
+
+.toggle-button {
+	display: inline-flex;
+	align-items: center;
+	justify-content: space-between;
+	width: 150px;
+	height: 40px;
+	background-color: #ccc;
+	border-radius: 20px;
+	position: relative;
+	cursor: pointer;
+	transition: background-color 0.3s;
+	padding: 0 10px;
+	color: white;
+	font-weight: bold;
+	font-size: 14px;
+}
+
+.toggle-button.on {
+	background-color: #4caf50;
+}
+
+.toggle-knob {
+	width: 36px;
+	height: 36px;
+	background-color: #fff;
+	border-radius: 50%;
+	position: absolute;
+	top: 2px;
+	left: 2px;
+	transition: left 0.3s;
+}
+
+.toggle-button.on .toggle-knob {
+	left: 112px;
+}
+
+.toggle-text {
+	position: absolute;
+	width: 100%;
+	text-align: center;
+	z-index: 1;
+	color: #ffffff;
+}
+
+.hidden {
+	display: none; /* 숨기기 스타일 */
+}
+
+.updateInfo, .deleteInfo {
+	position: relative;
+	border: none;
+	display: inline-block;
+	padding: 6px 20px;
+	border-radius: 15px;
+	font-family: "paybooc-Light", sans-serif;
+	box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+	text-decoration: none;
+	font-weight: 600;
+	transition: 0.25s;
+	background: linear-gradient(-45deg, #33ccff 0%, #ff99cc 100%);
+	color: white;
+}
+
+#bookmark_button {
+	position: relative;
+	border: none;
+	min-width: 115px;
+	min-height: 33px;
+	background: linear-gradient(90deg, rgba(129, 230, 217, 1) 0%,
+		rgba(79, 209, 197, 1) 100%);
+	border-radius: 1000px;
+	color: darkslategray;
+	cursor: pointer;
+	box-shadow: 12px 12px 24px rgba(79, 209, 197, 0.64);
+	font-weight: 700;
+	transition: 0.3s;
+}
+
+#bookmark_button:hover {
+	transform: scale(1.2);
+}
+
+#bookmark_button:hiver::after {
+	content: "";
+	width: 30px;
+	height: 30px;
+	border-radius: 100%;
+	border: 6px solid #00ffcb;
+	position: absolute;
+	z-index: -1;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	animation: ring 1.5s infinite;
+}
+
+.table_line th:nth-child(2), .table_line td:nth-child(2) {
+	width: 150px;
+}
+
+.table_line th:nth-child(1), .table_line td:nth-child(1) {
+	width: 350px;
+}
+
+.custom-btn {
+	width: 90px;
+	height: 33px;
+	line-height: 33px;
+	border: 2px solid #000;
+	font-family: 'Lato', sans-serif;
+	font-weight: 500;
+	background: transparent;
+	cursor: pointer;
+	transition: all 0.3s ease;
+	position: relative;
+	display: inline-block;
+}
+
+.btn-13 {
+	background: #000;
+	color: #fff;
+	z-index: 1;
+}
+
+.btn-13:after {
+	position: absolute;
+	content: "";
+	width: 100%;
+	height: 0;
+	bottom: 0;
+	left: 0;
+	z-index: -1;
+	background: #e0e5ec;
+	transition: all 0.3s ease;
+}
+
+.btn-13:hover {
+	color: #000;
+}
+
+.btn-13:hover:after {
+	top: 0;
+	height: 100%;
+}
+
+.btn-13:active {
+	top: 2px;
+}
+
+.btn-5 {
+	width: 130px;
+	height: 40px;
+	line-height: 42px;
+	padding: 0;
+	border: none;
+	background: rgb(255, 27, 0);
+	background: linear-gradient(0deg, rgba(255, 27, 0, 1) 0%,
+		rgba(251, 75, 2, 1) 100%);
+	font-weight: bold;
+	margin: 0 10px;
+}
+
+.btn-5:hover {
+	color: #f0094a;
+	background: transparent;
+	box-shadow: none;
+}
+
+.btn-5:before, .btn-5:after {
+	content: '';
+	position: absolute;
+	top: 0;
+	right: 0;
+	height: 2px;
+	width: 0;
+	background: #f0094a;
+	box-shadow: -1px -1px 5px 0px #fff, 7px 7px 20px 0px #0003, 4px 4px 5px
+		0px #0002;
+	transition: 400ms ease all;
+}
+
+.btn-5:after {
+	right: inherit;
+	top: inherit;
+	left: 0;
+	bottom: 0;
+}
+
+.btn-5:hover:before, .btn-5:hover:after {
+	width: 100%;
+	transition: 800ms ease all;
+}
+
+#coordinates {
+	position: absolute;
+	background: #ADD8E6;
+	border: 2px solid #4682B4;
+	width: 200px;
+	height: 80px;
+	color: white;
+	border-radius: 5px;
+	display: none;
+}
+
+#coordinates span {
+	display: block;
+	width: 100%;
+	height: 50%;
+	margin: 0;
+	padding: 0;
+	color: black;
+	font-size: 20px;
+	text-align: center;
+}
+
+#coordinates span:hover {
+	cursor: pointer;
+	background-color: #B0C4DE;
+	color: white;
+}
+
+#wrap .table_line #inventory_list tr.selectDetail {
+	background-color: #FFF8DC;
+}
+
+#detailInfo_popup, #paymentInto_popup {
+	display: none;
+	width: 50vh;
+	height: 40vh;
+	border: 2px solid black;
+	border-radius: 50px;
+	position: fixed;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	background-color: white;
+	z-index: 3;
+}
+
+.popupDown {
+	width: 140px;
+	height: 50px;
+	float: right;
+	transform: translate(0px, 0px);
+	font-size: 26px;
+	border: 1px solid black;
+	border-top-right-radius: 45px;
+	text-align: center;
+	cursor: pointer;
+}
+
+.table_line2 tr th, .table_line2 tr td {
+	color: #000;
+	height: 50px;
+	text-align: center;
+}
+
+.alert-container {
+	position: relative;
+	width: 100px;
+	height: 100px;
+	transform: translate(40px, -30px);
+	display: none;
+}
+
+.alert-container:hover {
+	cursor: pointer;
+}
+
+.alert-ring {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	width: 10px;
+	height: 10px;
+	border: 4px solid rgba(255, 0, 0, 0.6);
+	border-radius: 50%;
+	transform: translate(-50%, -50%);
+	animation: ripple 1.5s infinite ease-out;
+}
+
+.alert-ring:nth-child(2) {
+	animation-delay: 0.5s;
+}
+
+.alert-ring:nth-child(3) {
+	animation-delay: 1s;
+}
+
+.alert-center {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	font-size: 24px;
+	color: #ff0000;
+}
+
+@
+keyframes ripple { 0% {
+	width: 10px;
+	height: 10px;
+	opacity: 1;
+}
+
+100
+
+
+%
+{
+width
+
+
+:
+
+
+100px
+;
+
+
+height
+
+
+:
+
+
+100px
+;
+
+
+opacity
+
+
+:
+
+
+0
+;
+
+
+}
+}
+.settingPage {
+	width: 100%;
+	height: 100vh;
+	position: absolute;
+	background-color: #DCDCDC;
+	z-index: 100;
+	opacity: 0.8;
+	display: none;
+}
+
+.showSetting {
+	display: block;
+}
+
+#wrap .table_line #inventory_list input {
+	width: 100%;
+	height: 105%;
+	text-align: center;
+	font-size: 20px;
+}
+
+#saveAll {
+	position: absolute;
+	width: 150px;
+	height: 50px;
+	right: 10%;
+	font-size: 25px;
+}
+
+#pageControl #prevPage, #pageControl #nextPage {
+	width: 60px;
+	height: 35px;
+	font-size: 20px;
+}
+
+#wrap .table_line .focusRow input, #wrap .table_line .focusCol input {
+	background-color: #D9BCF7;
+}
+
+#wrap .table_line .focusCell input {
+	background-color: #754DB8;
+	color: white;
+}
+</style>
+</head>
+<body>
+	<div id="content"></div>
+	<div class="settingPage">
+		<jsp:include page="settingPage.jsp"></jsp:include>
+	</div>
+	<div class="informationUI">
+		<jsp:include page="informationUI.jsp"></jsp:include>
+	</div>
+	<div id="wrap">
+		<header>
+			<jsp:include page="header.jsp"></jsp:include>
+		</header>
+		<form action="index.jsp" name="data" method="post" id="formTeg"
+			style="min-width: 90%;">
+			<div>
+				<input type="button" id="saveAll" value="💾 전체 저장">
+				<div class="filter"	style='display: flex; position: fixed; width: 100%; height: 40px; float: left;'>
+					<div id="pageControl" style="text-align: center;;">
+						<button id="prevPage">이전</button>
+						<span id="pageInfo">1 / 1</span>
+						<button id="nextPage">다음</button>
+					</div>
+					<div class="leftFilter">
+						
+					</div>
+					<div class="rightFilter">
+					
+					</div>
+				</div>
+				<h1 style="text-align: center; margin-top: 40px;">재고 목록</h1>
+			</div>
+			<input id="barcodeInput" type='text' name="barcodeInput"
+				autofocus="autofocus" autocomplete="off" />
+			<table class="table_line"
+				style="min-width: 100%; max-width: 100%; height: calc(70vh); display: block; overflow: auto; padding: 0; margin: 0 auto; border-radius: 20px; box-shadow: 5px 5px 5px -5px #333;">
+				<thead
+					style="width: 960px; color: black; z-index: 2; border-bottom: 5px solid #5F9EA0;">
+					<tr>
+						<th>이름<span class="ascendingOrder nameAscendingOrder">↑</span><span
+							class="descendingOrder nameDescendingOrder">↓</span></th>
+						<th>유통기한<br>(유효기간)
+						<th>실제 수량<span class="ascendingOrder invAscendingOrder">↑</span><span
+							class="ascendingOrder invDescendingOrder">↓</span></th>
+						<th>가격<span class="ascendingOrder priceAscendingOrder">↑</span><span
+							class="descendingOrder priceDescendingOrder">↓</span></th>
+						<th>규격</th>
+						<th>수정 / 삭제<br> <!-- 
+						<th>즐겨찾기</th> -->
+						<th>종류 <br> <select id="kindValue">
+								<option value="전체" selected>전체</option>
+								<option value="건강기능식품">건강기능식품</option>
+								<option value="일반의약품">일반의약품</option>
+								<option value="파스류">파스류</option>
+								<option value="연고류">연고류</option>
+								<option value="드링크류">드링크류</option>
+								<option value="비타민류">비타민류</option>
+								<option value="한약류">한약류</option>
+								<option value="기타">기타</option>
+						</select>
+						</th>
+						<th>회사명</th>
+						<th>입고 날짜</th>
+						<th>반품개시<br>
+					</tr>
+				</thead>
+				<tbody id="inventory_list"
+					style="background-color: RGBA(255, 255, 255, 0.8); min-width: 960px;">
+				</tbody>
+			</table>
+			<div id="pagination" style="text-align: center; margin-top: 20px;"></div>
+		</form>
+	</div>
+	<!-- 우클릭 했을 때 정보 확인 -->
+	<div id="coordinates">
+		<span class="Respectively_saleRecord">판매기록 보기</span> <span
+			class="Respectively_payment">재품정보 상세보기</span>
+	</div>
+	<!-- 판매기록 보기의 팝업창 -->
+	<div id="detailInfo_popup"></div>
+	<!-- 재품 상세정보 보기의 팝업창 -->
+	<div id="paymentInto_popup"></div>
+	<script src="jquery-3.7.1.min.js"></script>
+	<script src="script.js"></script>
+	<!-- xlsx 라이브러리 로드 (CDN 사용) -->
+	<script type="text/javascript">
+let currentPage = 1;
+let totalPages = 0;
+let changedData = {};
+let showReturnHidden = false;
+let toggleStates = {};
+
+// 페이지 로드 후 실행
+$(document).ready(function () {
+    initLoad();
+    bindEvents();
+});
+
+/** 첫 로드시 1페이지 불러오기 **/
+function initLoad() {
+    loadPage(1, true);
+}
+
+/** ======================== 이벤트 바인딩 ======================== **/
+function bindEvents() {
+
+    /** 숫자 3자리 콤마 */
+    $("#wrap").on("input", ".price, .Buyingprice, .inventory", function () {
+        const val = $(this).val().replace(/[^0-9]/g, "");
+        $(this).val(val.replace(/\B(?=(\d{3})+(?!\d))/g, ","));
+    });
+
+    /** 수정 데이터 수집 */
+    $(document).on("input", ".editable", function () {
+        const key = $(this).closest("tr").data("key");
+        const field = $(this).attr("name");
+        const value = $(this).val();
+
+        if (!changedData[key]) changedData[key] = {};
+        changedData[key][field] = value;
+    });
+
+    /** 엔터 입력 시 바코드 submit */
+    $(document).keydown(function (event) {
+        if (event.key === "Enter" && $("#barcodeInput").val()) {
+            event.preventDefault();
+            $('#formTeg').submit();
+        }
+    });
+
+    /** 저장 버튼 */
+    $("#saveAll").click(function () {
+        if (!Object.keys(changedData).length) {
+            alert("변경된 데이터가 없습니다.");
+            return;
+        }
+
+        $.ajax({
+            url: "saveAll.jsp",
+            type: "POST",
+            contentType: "application/json",
+            data: JSON.stringify(changedData),
+            success: () => {
+                alert("저장 완료!");
+                loadPage(currentPage, false);
+            }
+        });
+    });
+
+    /** 포커스 기반 행/열 강조 */
+    $("#wrap").on("focus", ".table_line input", handleFocus);
+
+    /** 방향키 이동 */
+    $("#wrap .table_line").on("keydown", "input", arrowMove);
+
+    /** 마우스 hover 효과 */
+    $("#wrap .table_line").on("mouseover", "tr", hoverRow)
+                          .on("mouseout", "tr", hoverRow);
+
+    /** 우클릭 상세메뉴 */
+    $("#wrap .table_line").on("contextmenu", "tr", showContextMenu);
+
+    /** ESC → 설정창 토글 */
+    $(document).keydown((e) => {
+        if (e.key === "Escape") $("#coordinates").hide();
+    });
+
+    /** 페이지네이션 */
+    $("#nextPage").click(() => { if (currentPage < totalPages) loadPage(currentPage + 1); });
+    $("#prevPage").click(() => { if (currentPage > 1) loadPage(currentPage - 1); });
+
+    /** 검색 필터 */
+    $("#nameSearch").on("input", filterByName);
+    $("#kindValue").on("change", filterByKind);
+
+    /** 반품 토글 */
+    $('#toggleButton').click(toggleReturnRows);
+
+    /** 상세 팝업 닫기 */
+    $("#detailInfo_popup, #paymentInto_popup").on("click", ".popupDown, .close-button", hidePopup);
+    $("#wrap .table_line #inventory_list").on("click", "tr td input", function(){
+    	(this).select();
+    });
+    
+    $("#wrap").on("input",".table_line .deliveryDate, .table_line .receipDate", function () {
+        $(this).val(formatDateInput($(this).val()));
+    });
+
+}
+
+/** ======================== 기능 함수 ======================== **/
+function formatDateInput(value) {
+    // 숫자만 추출
+    let v = value.replace(/[^0-9]/g, "");
+
+    // 자리수 제한 (6자리)
+    v = v.substring(0, 6);
+
+    // 자동 슬래시 삽입
+    if (v.length >= 5) {
+        v = v.replace(/(\d{2})(\d{2})(\d{1,2})/, "$1/$2/$3");
+    } else if (v.length >= 3) {
+        v = v.replace(/(\d{2})(\d{1,2})/, "$1/$2");
+    }
+
+    return v;
+}
+
+
+function loadPage(page, updatePageInfo = true) {
+    $.ajax({
+        url: "getDatas.jsp",
+        type: "GET",
+        data: { page },
+        dataType: "json",
+        success: function (res) {
+            $("#inventory_list").html(res.html);
+            currentPage = page;
+            totalPages = res.totalPages;
+            if (updatePageInfo) $("#pageInfo").text(page + " / " + totalPages);
+
+            showFirstToggleButton(); // 재고 그룹 초기화
+        }
+    });
+}
+
+function handleFocus() {
+    $(".focusRow, .focusCol, .focusCell").removeClass("focusRow focusCol focusCell");
+
+    const $tr = $(this).closest("tr");
+    const col = $(this).closest("td").index();
+
+    $tr.addClass("focusRow");
+    $(".table_line tbody tr").each(function () {
+        $(this).children("td").eq(col).addClass("focusCol");
+    });
+    $(this).closest("td").addClass("focusCell");
+}
+
+function arrowMove(e) {
+    const dir = { ArrowUp: -1, ArrowDown: 1 };
+    const key = e.key;
+    if (!["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(key)) return;
+
+    const td = $(this).closest("td");
+    const tr = $(this).closest("tr");
+    const col = td.index();
+    let nextInput;
+
+    if (key === "ArrowUp" || key === "ArrowDown") {
+        const nextTr = key === "ArrowUp" ? tr.prev() : tr.next();
+        nextInput = nextTr.children("td").eq(col).find("input");
+    } else {
+        const add = key === "ArrowLeft" ? -1 : 1;
+        nextInput = tr.children("td").eq(col + add).find("input");
+    }
+
+    if (nextInput?.length) {
+        e.preventDefault();
+        nextInput.focus().select();
+    }
+}
+
+function hoverRow() {
+    if (!$("#coordinates").is(":visible")) $(this).toggleClass("selectDetail");
+}
+
+function showContextMenu(e) {
+    e.preventDefault();
+    const x = e.pageX, y = e.pageY;
+    $("#coordinates").css({ top: y + 10, left: x + 10 }).show();
+    $(this).addClass("selectDetail");
+}
+
+function hidePopup() {
+    $(".selectDetail").removeClass("selectDetail");
+    $("#coordinates").hide();
+    $(this).hide();
+}
+
+function filterByName() {
+    const search = $(this).val().toLowerCase();
+    $(".table_line tbody tr").each(function () {
+        $(this).toggle($(this).find("td:eq(1)").text().toLowerCase().includes(search));
+    });
+}
+
+function filterByKind() {
+    const val = $(this).val();
+    if (val === "전체") return location.reload();
+
+    $(".table_line tbody tr").hide().filter(function () {
+        return $(this).find("td:eq(5)").text() === val;
+    }).show();
+}
+
+function toggleReturnRows() {
+    showReturnHidden = !showReturnHidden;
+    $("#inventory_list tr").each(function () {
+        const txt = $(this).find("td:nth-child(11) button").text();
+        if (txt === "반품됨") $(this).toggle(!showReturnHidden);
+    });
+    $("#toggleText").text(showReturnHidden ? "반품 ON" : "반품 OFF");
+}
+
+function keyDetailAction(e) {
+    const selected = $("#inventory_list tr.selectDetail");
+    if (!selected.length) return;
+    if (e.key.toUpperCase() === "D") requestSaleRecord();
+    if (e.key.toUpperCase() === "E") requestPaymentRecord();
+}
+
+function requestSaleRecord() {
+    const val = $(".selectDetail td:eq(1)").text();
+    $.post("Respectively_saleRecord.jsp", { value: val }, function (res) {
+        $("#detailInfo_popup").html(res).show();
+    });
+}
+
+function requestPaymentRecord() {
+    const val = $(".selectDetail td:eq(1)").text();
+    $.post("Respectively_payment.jsp", { value: val }, function (res) {
+        $("#paymentInto_popup").html(res).show();
+    });
+}
+
+/** 동일 제품 접기 기능 초기 적용 */
+function showFirstToggleButton() {
+    const rows = $("#inventory_list tr").toArray();
+    const group = {};
+
+    rows.forEach(row => {
+        const name = row.cells[1].textContent;
+        if (!group[name]) group[name] = [];
+        group[name].push(row);
+    });
+
+    // 첫 row에만 토글 버튼
+    for (const name in group) {
+        const arr = group[name];
+        arr.forEach((r, i) => {
+            const btn = $(r).find(".toggle-details");
+            btn.toggle(i === 0);
+        });
+    }
+}
+</script>
+
+</body>
+</html>

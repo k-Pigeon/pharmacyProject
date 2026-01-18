@@ -1,0 +1,41 @@
+<%@ page language="java" contentType="application/json; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ page import="java.sql.*, org.json.*" %>
+<%@ include file="sessionManager.jsp"%>
+<%@ include file="DBconnection.jsp"%>
+
+<%
+response.setContentType("application/json; charset=UTF-8");
+request.setCharacterEncoding("UTF-8");
+
+String idSortation = (session != null) ? (String) session.getAttribute("idSortation") : null;
+String tableName = "SalesRecord";
+if (idSortation != null && !idSortation.isEmpty()) tableName += idSortation;
+
+String month = request.getParameter("month");
+JSONObject result = new JSONObject();
+JSONArray rows = new JSONArray();
+JSONArray days = new JSONArray();
+
+// 1) 해당 월 날짜 리스트
+String sqlDays = "SELECT DISTINCT DATE(saleDate) as d " +
+                 "FROM " + tableName + " " +
+                 "WHERE DATE_FORMAT(saleDate, '%Y-%m') = ? " +
+                 "ORDER BY d";
+PreparedStatement ps = conn.prepareStatement(sqlDays);
+ps.setString(1, month);
+ResultSet rs = ps.executeQuery();
+while(rs.next()){
+    JSONObject dayObj = new JSONObject();
+    dayObj.put("day", rs.getString("d"));
+    days.put(dayObj);
+}
+rs.close(); ps.close();
+
+// 2) 월별 전체 집계
+// (기존 코드 그대로 두시면 됩니다)
+
+// JSON 출력
+result.put("days", days);
+result.put("rows", rows);
+out.print(result.toString());
+%>

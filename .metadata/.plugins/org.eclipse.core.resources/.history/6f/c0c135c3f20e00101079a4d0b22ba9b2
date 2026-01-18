@@ -1,0 +1,89 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8"
+    pageEncoding="UTF-8"%>
+<%@ include file="DBconnection.jsp"%>
+<%
+String userId = (session != null) ? (String) session.getAttribute("id") : null;
+String userInformation = null;
+
+if(userId.equals("root")){
+	userInformation = "서가종로온누리약국";
+}else{
+	userInformation = "사무실";
+}
+%>
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Insert title here</title>
+<link rel="stylesheet" href="style.css">
+<style>
+	#changeAcc{
+	    width: 500px;
+	    height: 200px;
+	    border: 1px solid black;
+	    position: absolute;
+	    display: none;
+	    left: 50%;
+   		top: 40%;
+   		transform: translate(-50%, -50%);
+	}
+</style>
+</head>
+<body>
+	<header id="header" style="font-size: 20px;">
+        <ul>
+			<li><a href="index.jsp">재고 확인</a></li>
+            <li><a href="index2.jsp">재고 수정 및 검색</a></li>
+			<li><a href="Product_Registration.jsp">재고 입력</a></li>
+			<li><a href="inventory_Exhaustion.jsp">판매</a></li>
+			<li><a href="bookmark_list.jsp">즐겨찾기</a></li>
+			<li><a href="priceRecord.jsp">결제기록</a></li>
+			<li><a href="PaymentRecord.jsp">판매기록</a></li>
+			<li><a href="salesRegistration.jsp">판매등록</a></li>
+			<li><a href="customerRegistration.jsp">고객등록 / 고객수정</a></li>
+			<li><a href="price_Fluctuation.jsp">가격 변동</a></li>
+			<li><a href="price_FluctuationRecord.jsp">변동 기록</a></li>
+			<li><a href="total_list.jsp">총합계</a></li>
+            <li><a href=""><button id="logoutButton" class="btn-4"><%= userInformation %></button></a></li>
+			<li style="float:right"><a href="#"><button id="ManagerAccount">관리자 계정 전환</button></a></li>
+        </ul>
+	</header>
+	<section id="changeAcc">
+		
+	</section>
+</body>
+<script src="jquery-3.7.1.min.js"></script><script src="script.js"></script>
+<script>
+	$(document).ready(function() {
+	    // 현재 페이지의 URL 경로를 가져오기	
+		const currentPage = window.location.pathname.split('/').pop();
+
+	    // 각 <a> 태그의 href와 현재 페이지 경로 비교
+	    $('#header ul li').each(function() {
+	        const linkHref = $(this).find("a").attr('href');
+	
+	        if (linkHref === currentPage) {
+	            $(this).find("a").addClass('pageShow'); // .pageShow 클래스 추가
+	        }
+	    });
+	    
+        // 로그아웃 버튼 클릭 시 AJAX 요청
+        $("#logoutButton").click(function() {
+            $.ajax({
+                url: "logout.jsp", // 로그아웃 처리 JSP
+                method: "POST",
+                success: function(response) {
+                    // 서버 응답이 "success"이면 로그인 페이지로 리다이렉트
+                    if (response.status === "success") {
+                        window.location.href = "login.jsp"; // 로그인 페이지로 리다이렉트
+                    }
+                },
+                error: function() {
+                    alert("로그아웃 처리 중 오류가 발생했습니다.");
+                }
+            });
+        });
+	});
+</script>
+</html>

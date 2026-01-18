@@ -1,0 +1,13 @@
+package frameProject;
+
+import javax.swing.*; //스윙 클래스
+
+public class frame {
+	public static void main(String[] args) {
+		JFrame f = new JFrame("Frame");//프래임 제목
+		f.setSize(300, 200);//크기
+		f.setLocationRelativeTo(null);
+		f.setVisible(true);//프래임 호출
+	}
+
+}

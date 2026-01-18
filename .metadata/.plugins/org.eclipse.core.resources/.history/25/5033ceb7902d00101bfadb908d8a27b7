@@ -1,0 +1,86 @@
+<%@ page contentType="text/html; charset=UTF-8" language="java"%>
+<%@ page import="java.sql.*, java.util.*"%>
+<%@ include file="sessionManager.jsp"%>
+<%@ include file="DBconnection.jsp"%>
+<%
+String dbName = (session != null) ? (String) session.getAttribute("dbName") : null;
+String id = (session != null) ? (String) session.getAttribute("id") : null;
+String password = (session != null) ? (String) session.getAttribute("password") : null;
+
+/* out.println(password);
+out.println(dbName);
+out.println(id);
+out.println(password); */
+
+if (id == null || dbName == null) {
+    response.sendRedirect("login.jsp");
+    return;
+}
+
+jdbcDriver = dbName;
+%>
+<%
+    PreparedStatement pstmt = null;
+    ResultSet rs = null;
+
+    try {
+        // 클라이언트에서 전달된 값 받기 (POST 방식으로 값 받기)
+        String value = request.getParameter("value");
+
+        // 쿼리 작성
+        String sql = "SELECT medicineName, price, MAX(receiptDate) AS lastPurchaseDate, "
+                   + "MIN(DeliveryDate) AS shortestExpiryDate, MAX(DeliveryDate) AS longestExpiryDate "
+                   + "FROM testTable WHERE medicineName = ? GROUP BY medicineName, price";
+
+        // PreparedStatement 사용하여 쿼리 실행
+        pstmt = conn.prepareStatement(sql);
+        pstmt.setString(1, value);
+        rs = pstmt.executeQuery();
+
+        // 데이터 출력
+        if (rs.next()) {
+%>
+<div class='popupDown'>닫기 X</div>
+<table border='1' style='width: 100%; height: auto;' class="table_line2">
+    <tr>
+        <th>
+        	이름<br>
+        	<%= rs.getString("medicineName") %>
+        </th>
+    </tr>
+    <tr>
+        <th>가격</th>
+        <td><%= rs.getString("price") %></td>
+    </tr>
+    <tr>
+        <th>마지막 구매 날짜</th>
+        <td><%= rs.getString("lastPurchaseDate") %></td>
+    </tr>
+    <tr>
+        <th>가장 짧은 유통기한</th>
+        <td><%= rs.getString("shortestExpiryDate") %></td>
+        <th>가장 긴 유통기한</th>
+        <td><%= rs.getString("longestExpiryDate") %></td>
+    </tr>
+</table>
+<%
+        } else {
+%>
+<div class='popupDown'>닫기 X</div>
+<div class='no_data_Record'>데이터가 없습니다.</div>
+<%
+        }
+
+    } catch (Exception e) {
+        e.printStackTrace();
+        out.println("오류 발생: " + e.getMessage());
+    } finally {
+        try {
+            if (rs != null) rs.close();
+            if (pstmt != null) pstmt.close();
+            if (conn != null) conn.close();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+%>

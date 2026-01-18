@@ -1,0 +1,182 @@
+<%@ page language="java" contentType="application/json; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ page import="java.io.*, java.util.*, java.sql.*,
+                 javax.servlet.*, javax.servlet.http.*,
+                 org.json.JSONArray, org.json.JSONObject,
+                 java.util.regex.Pattern, java.util.regex.Matcher" %>
+<%@ include file="sessionManager.jsp"%>
+<%@ include file="DBconnection.jsp"%>
+
+<%
+String dbName = (session != null) ? (String) session.getAttribute("dbName") : null;
+String id = (session != null) ? (String) session.getAttribute("id") : null;
+String password = (session != null) ? (String) session.getAttribute("password") : null;
+
+if (id == null || dbName == null) {
+    response.sendRedirect("login.jsp");
+    return;
+}
+
+jdbcDriver = dbName;
+request.setCharacterEncoding("UTF-8");
+java.sql.Timestamp sqlDate = new java.sql.Timestamp(new java.util.Date().getTime());
+
+PreparedStatement pstmt = null, discountStmt = null;
+PreparedStatement ptement = null, statement2 = null, statement3 = null, statement4 = null;
+
+try {
+    conn.setAutoCommit(false);
+
+    StringBuilder sb = new StringBuilder();
+    try (BufferedReader reader = request.getReader()) {
+        String line;
+        while ((line = reader.readLine()) != null) sb.append(line);
+    }
+
+    JSONArray jsonArray = new JSONArray(sb.toString());
+    JSONObject paramObj = jsonArray.getJSONObject(jsonArray.length() - 1);
+    String medicinePrice = paramObj.getString("medicinePrice");
+    String generalPrice = paramObj.getString("generalPrice");
+    String clientName = paramObj.getString("discounted");
+
+    // 가격 기록
+    String priceSql = "INSERT INTO priceRecord (saleDate, maxmedicinePrice, generalPrice) VALUES (?, ?, ?)";
+    pstmt = conn.prepareStatement(priceSql);
+    pstmt.setTimestamp(1, sqlDate);
+    pstmt.setString(2, medicinePrice);
+    pstmt.setString(3, generalPrice);
+    pstmt.executeUpdate();
+
+    // 할인 기록
+    String discountSql = "INSERT INTO discountedDB (sale_date, discounted) VALUES (?, ?)";
+    discountStmt = conn.prepareStatement(discountSql);
+    discountStmt.setTimestamp(1, sqlDate);
+    discountStmt.setString(2, clientName);
+    discountStmt.executeUpdate();
+
+    for (int i = 0; i < jsonArray.length() - 1; i++) {
+    	System.out.println(jsonArray);
+        JSONObject obj = jsonArray.getJSONObject(i);
+        String serial = obj.optString("serialNumber", "").trim();
+        String medName = obj.optString("medicineName", "").trim();
+        double inventoryAdjustment = obj.optDouble("inventory", 0.0);
+        String priceStr = obj.optString("price", "0").replaceAll("[^0-9.]", "");
+        String buyingPriceStr =  obj.optString("Buyingprice", "0").replaceAll("[^0-9.]", "");
+        System.out.println(priceStr + " " + buyingPriceStr);
+        boolean bySerial = !serial.isEmpty();
+        
+        double priceVal  = 0.0;
+        double buyVal    = 0.0;
+        try { priceVal = Double.parseDouble(priceStr);      } catch (NumberFormatException ignore) {}
+        try { buyVal   = Double.parseDouble(buyingPriceStr);} catch (NumberFormatException ignore) {}
+        
+        // kind 조회
+        String kind = null;
+        if (bySerial) {
+            ptement = conn.prepareStatement("SELECT kind FROM testTable WHERE SerialNumber = ? AND medicineName = ?");
+            ptement.setString(1, serial);
+            ptement.setString(2, medName);
+        } else {
+            ptement = conn.prepareStatement("SELECT kind FROM testTable WHERE medicineName = ? LIMIT 1");
+            ptement.setString(1, medName);
+        }
+        ResultSet rs = ptement.executeQuery();
+        if (rs.next()) kind = rs.getString("kind");
+
+        // standard 값 숫자 추출
+        String standard = obj.optString("standard", "");
+        double standardFactor = 1.0;
+        try {
+            Matcher matcher = Pattern.compile("\\d+(\\.\\d+)?").matcher(standard);
+            double num1 = 1.0, num2 = 1.0;
+            if (matcher.find()) num1 = Double.parseDouble(matcher.group());
+            if (matcher.find()) num2 = Double.parseDouble(matcher.group());
+            standardFactor = num1 * num2;
+        } catch (Exception e) { standardFactor = 1.0; }
+
+        // 이름 보정 처리 (앞 2글자 제거)
+        String medicineName = null;
+        statement3 = conn.prepareStatement("SELECT SUBSTRING(REPLACE(?, ' ', ''), 1, CHAR_LENGTH(REPLACE(?, ' ', '')) - 2) AS Result FROM testTable");
+        statement3.setString(1, medName);
+        statement3.setString(2, medName);
+        ResultSet NameRS = statement3.executeQuery();
+        if (NameRS.next()) medicineName = NameRS.getString("Result");
+
+        // 일반/한약세트는 재고 차감하지 않음
+        if (!"일반세트".equals(serial) && !"한약세트".equals(serial)) {
+            while (inventoryAdjustment > 0) {
+                String dateSql;
+                PreparedStatement dateStmt;
+                if (bySerial) {
+                    dateSql = "SELECT DeliveryDate, inventory FROM testTable WHERE SerialNumber = ? AND medicineName = ? AND returnInv = '0' AND inventory > 0 ORDER BY DeliveryDate ASC LIMIT 1";
+                    dateStmt = conn.prepareStatement(dateSql);
+                    dateStmt.setString(1, serial);
+                    dateStmt.setString(2, medName);
+                } else {
+                    dateSql = "SELECT DeliveryDate, inventory FROM testTable WHERE medicineName = ? AND returnInv = '0' AND inventory > 0 ORDER BY DeliveryDate ASC LIMIT 1";
+                    dateStmt = conn.prepareStatement(dateSql);
+                    dateStmt.setString(1, medName);
+                }
+                ResultSet dateRS = dateStmt.executeQuery();
+                if (!dateRS.next()) break;
+
+                String deliveryDate = dateRS.getString("DeliveryDate");
+                double availableInventory = dateRS.getDouble("inventory");
+                dateRS.close(); dateStmt.close();
+
+                double deductedInventory = Math.min(inventoryAdjustment, availableInventory);
+                double calculated = deductedInventory * standardFactor;
+
+                // 재고 차감
+                PreparedStatement updateStmt = conn.prepareStatement(
+                    "UPDATE testTable SET inventory = inventory - ? WHERE medicineName = ? AND DeliveryDate = ?");
+                updateStmt.setDouble(1, calculated);
+                updateStmt.setString(2, medName);
+                updateStmt.setString(3, deliveryDate);
+                updateStmt.executeUpdate();
+                updateStmt.close();
+
+                inventoryAdjustment -= deductedInventory;
+            }
+        }
+
+        // 판매 기록 저장
+        try {
+            statement4 = conn.prepareStatement(
+                "INSERT INTO SalesRecord (saleDate, medicineName, Buyingprice, price, inventory, SerialNumber, DeliveryDate, standard) " +
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+            statement4.setTimestamp(1, sqlDate);
+            statement4.setString(2, medName);
+            statement4.setDouble(3, buyVal);
+            statement4.setDouble(4, priceVal);
+            System.out.println(priceStr);
+            statement4.setString(5, obj.optString("inventory", ""));
+            statement4.setString(6, serial);
+            statement4.setString(7, obj.optString("deliveryDate", ""));
+            statement4.setString(8, obj.optString("standard", ""));
+            statement4.executeUpdate();
+        } catch (SQLException e) {
+            throw new SQLException("SalesRecord 저장 중 오류: " + e.getMessage());
+        }
+    }
+
+    conn.commit();
+    out.println("{\"result\":\"success\"}");
+
+} catch (Exception e) {
+    if (conn != null) try { conn.rollback(); } catch (SQLException ex) { ex.printStackTrace(); }
+    e.printStackTrace();
+    out.println("{\"result\":\"error\", \"message\":\"" + e.getMessage().replace("\"", "'") + "\"}");
+} finally {
+    try {
+        if (pstmt != null) pstmt.close();
+        if (discountStmt != null) discountStmt.close();
+        if (ptement != null) ptement.close();
+        if (statement2 != null) statement2.close();
+        if (statement3 != null) statement3.close();
+        if (statement4 != null) statement4.close();
+        if (conn != null) conn.close();
+    } catch (SQLException e) {
+        e.printStackTrace();
+    }
+}
+%>

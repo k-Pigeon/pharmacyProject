@@ -1,0 +1,87 @@
+<%@ page language="java" contentType="application/json; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ page import="java.sql.*" %>
+<%@ include file="sessionManager.jsp"%>
+<%@ include file="DBconnection.jsp"%>
+<%
+response.setContentType("application/json; charset=UTF-8");
+
+String dbName = (session != null) ? (String) session.getAttribute("dbName") : null;
+String id = (session != null) ? (String) session.getAttribute("id") : null;
+String idSortation = (session != null) ? (String) session.getAttribute("idSortation") : null;
+
+if (id == null || dbName == null) {
+    response.sendRedirect("login.jsp");
+    return;
+}
+jdbcDriver = dbName;
+
+request.setCharacterEncoding("UTF-8");
+String saleDate = request.getParameter("saleDate");
+
+PreparedStatement psUpdate = null;
+PreparedStatement psDelSales = null;
+PreparedStatement psDelClient = null;
+
+int updated = 0;
+int deletedSales = 0;
+int deletedClient = 0;
+
+try {
+    conn.setAutoCommit(false);
+
+    // 1) testTable 재고 복귀 (JOIN 한방)
+    // - 키는 medicineName + SerialNumber + DeliveryDate 로 가정
+    // - DeliveryDate 타입 불일치를 피하려면 DATE()로 맞춰 비교
+String updateSql =
+    "UPDATE testTable" + idSortation + " t " +
+    "JOIN SalesRecord" + idSortation + " s " +
+    "  ON t.medicineName = s.medicineName " +
+    " AND t.SerialNumber = s.SerialNumber " +            // 필요 없으면 이 라인 지워도 됨
+    " AND DATE(t.DeliveryDate) = DATE(s.DeliveryDate) " +// 타입 불일치 대비
+    "SET t.inventory = t.inventory + s.inventory " +     // ★★ 핵심: SET 절 추가 ★★
+    "WHERE s.saleDate = ?";
+
+
+    psUpdate = conn.prepareStatement(updateSql);
+    psUpdate.setString(1, saleDate);
+    updated = psUpdate.executeUpdate();
+
+    // 업데이트가 0이어도, 실제로 정말 복귀할 게 없을 수 있으므로
+    // '0이면 실패'로 단정하지 않고, 삭제로 진행할지 정책적으로 결정.
+    // 여기서는 '업데이트 결과와 무관하게' 삭제를 허용한다고 가정.
+
+    // 2) 삭제 (SalesRecord + clientRecord)
+    String delSales =
+        "DELETE FROM SalesRecord" + idSortation + " WHERE saleDate = ?";
+    psDelSales = conn.prepareStatement(delSales);
+    psDelSales.setString(1, saleDate);
+    deletedSales = psDelSales.executeUpdate();
+
+    String delClient =
+        "DELETE FROM clientRecord WHERE saleDate = ?"; // clientRecord에도 idSortation이 필요하면 붙이세요.
+    psDelClient = conn.prepareStatement(delClient);
+    psDelClient.setString(1, saleDate);
+    deletedClient = psDelClient.executeUpdate();
+
+    conn.commit();
+
+    // JSON 응답
+    out.print("{");
+    out.print("\"ok\":true,");
+    out.print("\"updated\":" + updated + ",");
+    out.print("\"deletedSales\":" + deletedSales + ",");
+    out.print("\"deletedClient\":" + deletedClient);
+    out.print("}");
+
+} catch (Exception e) {
+    try { if (conn != null) conn.rollback(); } catch (Exception ignore) {}
+    e.printStackTrace();
+    out.print("{\"ok\":false,\"error\":\"" + e.getMessage().replace("\"","\\\"") + "\"}");
+} finally {
+    try { if (psUpdate != null) psUpdate.close(); } catch(Exception ignore){}
+    try { if (psDelSales != null) psDelSales.close(); } catch(Exception ignore){}
+    try { if (psDelClient != null) psDelClient.close(); } catch(Exception ignore){}
+    try { if (conn != null) conn.setAutoCommit(true); } catch(Exception ignore){}
+    try { if (conn != null) conn.close(); } catch(Exception ignore){}
+}
+%>

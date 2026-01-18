@@ -1,0 +1,58 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ page import="java.sql.*, java.math.BigDecimal, java.text.NumberFormat, java.util.Locale" %>
+<%@ include file="sessionManager.jsp"%>
+<%@ include file="DBconnection.jsp"%>
+
+<%
+response.setContentType("text/html; charset=UTF-8");
+request.setCharacterEncoding("UTF-8");
+
+String detailDate = request.getParameter("saleDate");  // ✅ 무조건 saleDate 사용
+System.out.println(detailDate);
+
+PreparedStatement ps = null;
+ResultSet rs = null;
+
+// 숫자 포맷 (천단위)
+NumberFormat nf = NumberFormat.getInstance(Locale.KOREA);
+
+try {
+    String sql =
+        "SELECT medicineName, " +
+        " SUM(CAST(Buyingprice AS DECIMAL)) AS buyingPrice, " +
+        " SUM(CAST(price AS DECIMAL)) AS price, " +
+        " SUM(CAST(price AS DECIMAL) - CAST(Buyingprice AS DECIMAL)) AS margin, " +
+        " ROUND((SUM(CAST(price AS DECIMAL) - CAST(Buyingprice AS DECIMAL)) / NULLIF(SUM(CAST(price AS DECIMAL)),0))*100,2) AS marginRate " +
+        " FROM salesRecord " +
+        " WHERE saleDate = ? " +
+        " GROUP BY medicineName";
+
+    ps = conn.prepareStatement(sql);
+    ps.setString(1, detailDate);
+    rs = ps.executeQuery();
+%>
+
+        <% while (rs.next()) {
+             String medicineName = rs.getString("medicineName");
+             BigDecimal buyingPrice = rs.getBigDecimal("buyingPrice");
+             BigDecimal price = rs.getBigDecimal("price");
+             BigDecimal margin = rs.getBigDecimal("margin");
+             BigDecimal marginRate = rs.getBigDecimal("marginRate");
+        %>
+        <tr>
+          <td><%= (medicineName == null ? "" : medicineName) %></td>
+          <td class="num"><%= (buyingPrice == null ? "" : nf.format(buyingPrice)) %></td>
+          <td class="num"><%= (price == null ? "" : nf.format(price)) %></td>
+          <td class="num"><%= (margin == null ? "" : nf.format(margin)) %></td>
+          <td class="num"><%= (marginRate == null ? "" : nf.format(marginRate)) %></td>
+        </tr>
+        <% } 
+} catch (Exception e) {
+	
+}finally {
+    try { if (rs != null) rs.close(); } catch (Exception ignored) {}
+    try { if (ps != null) ps.close(); } catch (Exception ignored) {}
+    try { if (conn != null) conn.close(); } catch (Exception ignored) {}
+}
+
+%>

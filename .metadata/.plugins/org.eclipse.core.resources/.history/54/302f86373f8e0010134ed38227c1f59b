@@ -1,0 +1,88 @@
+<%@ page contentType="text/html; charset=UTF-8" %>
+<%@ page import="java.sql.*, java.util.*, java.util.regex.*" %>
+<%@ include file="sessionManager.jsp"%>
+<%@ include file="DBconnection.jsp"%>
+<%
+String dbName = (session != null) ? (String) session.getAttribute("dbName") : null;
+String id = (session != null) ? (String) session.getAttribute("id") : null;
+String password = (session != null) ? (String) session.getAttribute("password") : null;
+
+String idSortation = (session != null) ? (String) session.getAttribute("idSortation") : null; if (id == null || dbName == null) {
+    response.sendRedirect("login.jsp");
+    return;
+}
+
+jdbcDriver = dbName;
+%>
+<%
+request.setCharacterEncoding("UTF-8");
+String nameSearch = request.getParameter("nameSearch");
+
+if (nameSearch != null && !nameSearch.trim().isEmpty()) {
+    PreparedStatement pstmt = null;
+    ResultSet rs = null;
+
+    try {
+        String sql = "SELECT medicineName, price, inventory, companyName, standard, receiptDate, DeliveryDate, returnInv "
+                   + "FROM testTable"  + idSortation + "  WHERE medicineName LIKE ? ORDER BY medicineName ASC";
+
+        pstmt = conn.prepareStatement(sql);
+        pstmt.setString(1, "%" + nameSearch + "%");
+
+        rs = pstmt.executeQuery();
+
+        while (rs.next()) {
+            String standardStr = rs.getString("standard");
+            double inventory = rs.getDouble("inventory");
+            double standardFactor = 1.0;
+
+            try {
+                Pattern numberPattern = Pattern.compile("\\d+(\\.\\d+)?");
+                Matcher matcher = numberPattern.matcher(standardStr);
+                List<Double> numbers = new ArrayList<Double>();
+
+                while (matcher.find()) {
+                    numbers.add(Double.parseDouble(matcher.group()));
+                }
+
+                if (numbers.size() >= 2) {
+                    standardFactor = 1.0;
+                    for (double num : numbers) standardFactor *= num;
+                } else if (numbers.size() == 1) {
+                    standardFactor = numbers.get(0);
+                }
+            } catch (Exception e) {
+                standardFactor = 1.0;
+            }
+
+            double realInv = inventory / standardFactor;
+            realInv = Math.round(realInv * 100.0) / 100.0;
+%>
+            <tr>
+                <td><button>▼</button></td>
+                <td>
+                    <button type="button" class="updateInfo">수정</button>
+                    <button class="deleteInfo">삭제</button>
+                </td>
+                <td><%= rs.getString("medicineName") %></td>
+                <td><%= rs.getString("DeliveryDate") %></td>
+                <td><%= realInv %></td>
+                <td><%= rs.getString("standard") %></td>
+                <td><%= rs.getString("price") %></td>
+                <td><%= rs.getString("companyName") %></td>
+                <td><%= rs.getString("receiptDate") %></td>
+                <td>
+                    <input type="button" value="<%= rs.getInt("returnInv") == 1 ? "반품됨" : "반품하기" %>">
+                </td>
+            </tr>
+<%
+        }
+    } catch (Exception e) {
+        e.printStackTrace();
+    } finally {
+        if (rs != null) try { rs.close(); } catch (SQLException e) {}
+        if (pstmt != null) try { pstmt.close(); } catch (SQLException e) {}
+        if (conn != null) try { conn.close(); } catch (SQLException e) {}
+    }
+}
+%>

@@ -1,0 +1,29 @@
+<%@ page language="java" contentType="text/plain; charset=UTF-8" %>
+<%@ include file="DBconnection.jsp" %>
+
+<%
+boolean warningFound = false;
+
+String sql = "SELECT inventory, standard, quantity FROM testTable" + idSortation;
+PreparedStatement ps = conn.prepareStatement(sql);
+ResultSet rs = ps.executeQuery();
+
+while(rs.next()){
+    double inventory = rs.getDouble("inventory");
+    String standardStr = rs.getString("standard");
+    double quantity = rs.getDouble("quantity");
+
+    double standard = 1;
+    Matcher m = Pattern.compile("\\d+(\\.\\d+)?").matcher(standardStr);
+    while(m.find()) standard *= Double.parseDouble(m.group());
+
+    if(quantity < inventory * standard){
+        warningFound = true;
+        break;
+    }
+}
+rs.close();
+ps.close();
+
+out.print(warningFound ? "Y" : "N");
+%>

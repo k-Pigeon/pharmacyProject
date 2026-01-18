@@ -1,0 +1,287 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8"
+	pageEncoding="UTF-8"%>
+<%@ page import="java.sql.*"%>
+<%@ include file="sessionManager.jsp"%>
+<%@ include file="DBconnection.jsp"%>
+<%
+request.setCharacterEncoding("UTF-8");
+
+String dbName = (session != null) ? (String) session.getAttribute("dbName") : null;
+String id = (session != null) ? (String) session.getAttribute("id") : null;
+if (id == null || dbName == null) {
+	response.sendRedirect("login.jsp");
+	return;
+}
+jdbcDriver = dbName;
+
+boolean isSubmitted = "true".equals(request.getParameter("submitted"));
+%>
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="style.css">
+<title>제품 등록</title>
+<style>
+.container {
+width: 100%;
+    height: 60vh;
+    background: white;
+    border: 1px solid #ccc;
+    border-radius: 10px;
+    padding: 20px 30px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    overflow: scroll;
+}
+.container input {
+	width: 23%;
+	padding: 10px 0px;
+	box-sizing: border-box;
+	font-size: 15px;
+	border: 1px solid black;
+}
+
+.standardPriceGroup input {
+	box-shadow: 10px 10px 15px 0px;
+}
+
+.container .backLocal {
+	display: block;
+	position: relative;
+	float: right;
+	border: 1px solid black;
+	border-radius: 20px;
+	padding: 10px;
+}
+
+.container .backLocal:hover {
+	cursor: pointer;
+	background-color: RGBA(127, 127, 127, 0.6);
+}
+
+.submitNew {
+	width: 150px;
+	height: 50px;
+	font-size: 20px;
+	box-shadow: 5px 5px 5px;
+}
+</style>
+</head>
+<body>
+
+	<%
+	if (isSubmitted) {
+		String medicineName = request.getParameter("medicineName");
+		String[] standardList = request.getParameter("standardList").split(",");
+		String[] priceList = request.getParameter("priceList").split(",");
+		String[] buyingPriceList = request.getParameter("buyingPriceList").split(",");
+		String[] lowerAndHigestList = request.getParameter("lowerAndHigestList").split(",");
+
+		try {
+			Class.forName("com.mysql.cj.jdbc.Driver");
+			conn = DriverManager.getConnection(jdbcDriver, dbUser, dbPwd); // 연결 확인
+
+			// 1. MAX(countNumber) 가져오기
+			String countQuery = "SELECT MAX(CAST(countNumber AS UNSIGNED)) FROM RegistTable";
+			PreparedStatement countStmt = conn.prepareStatement(countQuery);
+			ResultSet countRs = countStmt.executeQuery();
+
+			int nextCount = 1;
+			if (countRs.next()) {
+		nextCount = countRs.getInt(1) + 1;
+			}
+			countRs.close();
+			countStmt.close();
+
+			// 2. INSERT 쿼리 준비
+			String sql = "INSERT INTO RegistTable (medicineName, standard, buyingPrice, price, countNumber, lowerAndHigest) VALUES (?, ?, ?, ?, ?, ?)";
+			PreparedStatement pstmt = conn.prepareStatement(sql);
+
+			int maxLength = Math.max(Math.max(standardList.length, priceList.length),
+			Math.max(buyingPriceList.length, lowerAndHigestList.length));
+
+			for (int i = 0; i < maxLength; i++) {
+		String standard = (i < standardList.length) ? standardList[i].trim() : "";
+		String price = (i < priceList.length) ? priceList[i].trim() : "";
+
+		// price가 필수이므로 없으면 넘어감
+		if (standard.isEmpty() || price.isEmpty())
+			continue;
+
+		// buyingPrice와 lowerAndHigest는 price로 대체
+		String buyingPrice = (i < buyingPriceList.length && !buyingPriceList[i].trim().isEmpty())
+				? buyingPriceList[i].trim()
+				: price;
+		String lowerAndHigest = (i < lowerAndHigestList.length && !lowerAndHigestList[i].trim().isEmpty())
+				? lowerAndHigestList[i].trim()
+				: price;
+
+		pstmt.setString(1, medicineName);
+		pstmt.setString(2, standard);
+		pstmt.setString(3, buyingPrice);
+		pstmt.setString(4, price);
+		pstmt.setString(5, String.valueOf(nextCount++));
+		pstmt.setString(6, lowerAndHigest);
+		pstmt.executeUpdate();
+			}
+
+			pstmt.close();
+	%>
+	<script>
+		alert("제품이 등록되었습니다.");
+		return;
+	</script>
+	<%
+	return;
+	} catch (Exception e) {
+	%>
+	<p style="color: red;">
+		에러:
+		<%=e.getMessage()%></p>
+	<%
+	} finally {
+	if (conn != null)
+		conn.close();
+	}
+	} else {
+	String medicineName = request.getParameter("medicineName") != null ? request.getParameter("medicineName") : "";
+	%>
+
+	<div class="container">
+		<h2 style="text-align: center;">제품 등록</h2>
+		<input type="button" class="backtosite" value="닫기 X"
+			style="position: relative;float: right;font-size: 25px;width: 10%;top: 0;">
+		<table style="width:100%;">
+			<tr>
+				<td>제품명</td>
+				<td><input type="text" id="medicineName"
+					value="<%=medicineName%>" style="width:35%;"></td>
+			</tr>
+			<tr>
+				<td>규격 및 가격</td>
+				<td>
+					<div id="standardPriceContainer">
+						<div class="standardPriceGroup">
+							<input type="text" class="standard" placeholder="규격"> <input
+								type="text" class="price" placeholder="판매가"> <input
+								type="text" class="buyingPrice" placeholder="사입가"> <input
+								type="text" class="lowerAndHigest" placeholder="최소 / 최고가">
+							<button type="button" class="removeStandardPrice"
+								style="display: none;">삭제</button>
+						</div>
+					</div>
+					<button type="button" id="addStandardPrice">+ 추가</button>
+				</td>
+			</tr>
+			<tr>
+				<td colspan="2" style="text-align: center;"><button
+						class="submitNew">등록하기</button></td>
+			</tr>
+		</table>
+
+	</div>
+	<script src="jquery-3.7.1.min.js"></script>
+	<script>
+		$(document).ready(function() {
+			// 가격 관련 input에 쉼표 붙이기
+			$(document).on("input", ".price, .buyingPrice", function () {
+			    let raw = $(this).val();
+			    let numberOnly = raw.replace(/[^0-9]/g, "");
+			    let formatted = numberOnly.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+			    $(this).val(formatted);
+			});
+
+		    $("#addStandardPrice").on("click", function() {
+		        const newGroup = `
+		            <div class="standardPriceGroup" style="margin-top: 5px;">
+		                <input type="text" class="standard" placeholder="규격">
+		                <input type="text" class="price" placeholder="판매가">
+						<input type="text" class="buyingPrice" placeholder="사입가">
+						<input type="text" class="lowerAndHigest" placeholder="최소 / 최고가">
+		                <button type="button" class="removeStandardPrice">삭제</button>
+		            </div>
+		        `;
+		        $("#standardPriceContainer").append(newGroup);
+		        $(".removeStandardPrice").show(); // 최소 2개 이상일 때 삭제 버튼 보이게
+		    });
+
+		    // 규격/가격 삭제 버튼
+		    $(document).on("click", ".removeStandardPrice", function() {
+		        $(this).closest(".standardPriceGroup").remove();
+		        if ($(".standardPriceGroup").length === 1) {
+		            $(".removeStandardPrice").hide();
+		        }
+		    });
+
+		    // 처음에는 삭제 버튼 안보이게
+		    if ($(".standardPriceGroup").length === 1) {
+		        $(".removeStandardPrice").hide();
+		    }
+		    $(document).on("click", ".submitNew", function(e) {
+		        e.preventDefault(); // 기본 submit 막기
+
+		        const medicineName = $("#medicineName").val();
+		        let standardList = [];
+		        let priceList = [];
+		        let buyingPriceList = [];
+		        let lowerAndHigestList = [];
+
+		        $(".standard").each(function() {
+		            const val = $(this).val().trim();
+		            if (val !== "") standardList.push(val);
+		        });
+		        $(".price").each(function() {
+		            const val = $(this).val().replace(/[^0-9]/g, "").trim();
+		            if (val !== "") priceList.push(val);
+		        });
+		        $(".buyingPrice").each(function() {
+		            const val = $(this).val().replace(/[^0-9]/g, "").trim();
+		            if (val !== "") buyingPriceList.push(val);
+		        });
+		        $(".lowerAndHigest").each(function() {
+		            const val = $(this).val().trim();
+		            if (val !== "") lowerAndHigestList.push(val);
+		        });
+
+		        if (!medicineName || standardList.length === 0 || priceList.length === 0) {
+		            alert("제품명과 규격, 가격은 필수입니다.");
+		            return;
+		        }
+
+		        $.ajax({
+		            url: "addProduct.jsp",
+		            method: "POST",
+		            data: {
+		                submitted: "true",
+		                medicineName: medicineName,
+		                standardList: standardList.join(","),
+		                priceList: priceList.join(","),
+		                buyingPriceList: buyingPriceList.join(","),
+		                lowerAndHigestList: lowerAndHigestList.join(",")
+		            },
+		            success: function(response) {
+		                // 성공하면 blackBG 숨기기
+		                $(".blackBG").hide();
+		                alert("등록 완료!");
+		                $(document).find("#content").data("current-page", url); // ★ 현재 불러온 페이지 기억
+		                restoreInputValues();
+		                // 필요하면 폼 초기화 등 추가 작업
+		            },
+		            error: function(xhr, status, error) {
+		                console.error(error);
+		                alert("등록 중 오류 발생!");
+		            }
+		        });
+		    });
+
+			$(".backtosite").on("click", function() {
+				$(document).find(".addMedicine").hide();
+			});
+		});
+	</script>
+
+	<%
+	}
+	%>
+</body>
+</html>

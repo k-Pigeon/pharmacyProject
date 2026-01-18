@@ -1,0 +1,121 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8"
+    pageEncoding="UTF-8"%>
+<%@ page import="java.sql.*"%>
+<%@ include file="sessionManager.jsp"%>
+<%@ include file="DBconnection.jsp"%>
+<%
+String dbName = (session != null) ? (String) session.getAttribute("dbName") : null;
+String id = (session != null) ? (String) session.getAttribute("id") : null;
+String password = (session != null) ? (String) session.getAttribute("password") : null;
+
+/* out.println(password);
+out.println(dbName);
+out.println(id);
+out.println(password); */
+
+if (id == null || dbName == null) {
+    response.sendRedirect("login.jsp");
+    return;
+}
+
+jdbcDriver = dbName;
+%>
+<%
+    String saleDate = request.getParameter("saleDate");
+    PreparedStatement pstmt = null;
+    ResultSet rs = null;
+
+    try {
+        String sql = " SELECT saleDate, medicineName, " +
+                     " inventory, standard, price, " +
+        			 " case " +
+                     " when standard LIKE '%ml%' then (price * inventory) " +
+                     " when standard LIKE '%l%' then (price * inventory) " +
+                     " ELSE ((price/standard) * inventory) " +
+                     " END AS total " +
+                     " FROM SalesRecord " +
+                     " WHERE saleDate = ?";
+        
+        pstmt = conn.prepareStatement(sql);
+        pstmt.setString(1, saleDate);
+        rs = pstmt.executeQuery();
+
+        boolean hasRecords = false;
+%>
+
+<table class="table_line" style="text-align:center;border:1px solid black;width: calc(95%);margin:0 auto;">
+	<colgroup>
+		<col width="30%">
+		<col width="10%">
+		<col width="20%">
+		<col width="20%">
+		<col width="20%">
+	</colgroup>
+    <thead>
+        <tr>
+            <th>제품이름</th>
+            <th>개수</th>
+            <th>조제의약품</th>
+            <th>일반의약품</th>
+            <th>총합계</th>
+        </tr>
+    </thead>
+    <tbody>
+<%
+while (rs.next()) {
+    hasRecords = true;
+    String medicineName = rs.getString("medicineName");
+    int inventory = rs.getInt("inventory");
+    String standard = rs.getString("standard");
+
+    // standard에서 문자만 추출 (ml, L 체크용)
+    String unit = standard.replaceAll("[0-9]", "").trim(); // 숫자 제거 후 공백 제거
+
+    // standard에서 숫자만 추출
+    String numericStandard = standard.replaceAll("[^0-9]", ""); // 숫자만 남김
+    
+    double finalInventory;
+    if (unit.equalsIgnoreCase("ml") || unit.equalsIgnoreCase("l")) {
+        finalInventory = inventory; // 단위가 ml, L이면 그대로 사용
+    } else if (!numericStandard.isEmpty()) {
+        try {
+            int numericValue = Integer.parseInt(numericStandard); // 숫자로 변환
+            finalInventory = (double) inventory / numericValue;
+        } catch (NumberFormatException e) {
+            finalInventory = inventory; // 숫자 변환 실패 시 기본값 유지
+        }
+    } else {
+        finalInventory = inventory; // 기본값 유지
+    }
+%>
+        <tr>
+            <td><%= medicineName %></td>
+            <td><%= finalInventory %></td>
+            <td><%= rs.getString("standard") %></td>
+            <td><%= rs.getString("price") %></td>
+            <td><%= rs.getString("total") %></td>
+        </tr>
+<%
+        }
+
+        if (!hasRecords) {
+%>
+        <tr>
+            <td colspan="3">해당 날짜에 대한 기록이 없습니다.</td>
+        </tr>
+<%
+        }
+%>
+    </tbody>
+</table>
+<%
+    } catch (SQLException se) {
+        se.printStackTrace();
+    } catch (Exception e) {
+        e.printStackTrace();
+    } finally {
+        if (rs != null) try { rs.close(); } catch (SQLException ignore) {}
+        if (pstmt != null) try { pstmt.close(); } catch (SQLException ignore) {}
+        if (conn != null) try { conn.close(); } catch (SQLException ignore) {}
+    }
+%>

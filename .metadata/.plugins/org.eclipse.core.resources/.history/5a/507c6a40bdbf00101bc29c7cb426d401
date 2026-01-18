@@ -1,0 +1,44 @@
+<%@ page contentType="application/json; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ include file="DBconnection.jsp"%>
+<%@ page import="java.sql.*, org.json.*" %>
+
+<%
+int page = Integer.parseInt(request.getParameter("page"));
+int limit = 50;
+int offset = (page - 1) * limit;
+
+// 전체 페이지 수 계산
+PreparedStatement countStmt = conn.prepareStatement("SELECT COUNT(*) FROM testTable");
+ResultSet countRs = countStmt.executeQuery();
+countRs.next();
+int totalRows = countRs.getInt(1);
+int totalPages = (int)Math.ceil((double)totalRows / limit);
+
+String sql = "SELECT * FROM testTable ORDER BY medicineName ASC, deliveryDate ASC LIMIT ? OFFSET ?";
+PreparedStatement pstmt = conn.prepareStatement(sql);
+pstmt.setInt(1, limit);
+pstmt.setInt(2, offset);
+ResultSet rs = pstmt.executeQuery();
+
+StringBuilder html = new StringBuilder();
+while(rs.next()){
+    html.append("<tr data-id='" + rs.getInt("id") + "'>");
+    html.append("<td><button class='toggle-details custom-btn btn-13'>▼</button></td>");
+    html.append("<td><input type='text' name='medicineName' class='editable' value='" + rs.getString("medicineName") + "'></td>");
+    html.append("<td><input type='text' name='DeliveryDate' class='editable' value='" + rs.getString("DeliveryDate") + "'></td>");
+    html.append("<td><input type='text' name='inventory' class='editable' value='" + rs.getDouble("inventory") + "'></td>");
+    html.append("<td>" + rs.getString("standard") + "</td>");
+    html.append("<td><button class='updateInfo'>수정</button><button class='deleteInfo'>삭제</button></td>");
+    html.append("<td><input type='text' name='price' class='editable' value='" + rs.getDouble("price") + "'></td>");
+    html.append("<td><input type='text' name='kind' class='editable' value='" + rs.getString("kind") + "'></td>");
+    html.append("<td><input type='text' name='companyName' class='editable' value='" + rs.getString("companyName") + "'></td>");
+    html.append("<td><input type='text' name='receiptDate' class='editable' value='" + rs.getString("receiptDate") + "'></td>");
+    html.append("<td><input type='button' value='" + (rs.getInt("returnInv")==1 ? "반품됨" : "반품하기") + "' id='returnProduct'></td>");
+    html.append("</tr>");
+}
+
+JSONObject result = new JSONObject();
+result.put("html", html.toString());
+result.put("totalPages", totalPages);
+out.print(result.toString());
+%>

@@ -1,0 +1,557 @@
+@charset "UTF-8";
+
+/* =========================
+   레이아웃
+========================= */
+
+#wrap {
+    display: block;
+    overflow-x: hidden;
+}
+
+#content {
+    display: flex;
+    width: 100%;
+    height: 60vh;
+    overflow: hidden;
+}
+
+#tableContainer {
+    padding: 20px;
+    overflow-y: auto;
+    border-right: 2px solid #ddd;
+    position: relative;
+}
+
+#sidePanel {
+    flex: 2;
+    padding: 20px;
+    overflow-y: auto;
+    display: block;
+}
+
+/* =========================
+   제목 / 필터 영역
+========================= */
+
+.page-title {
+    text-align: center;
+    margin-top: 40px;
+}
+
+.filter_line {
+    width: 1200px;
+    line-height: 50px;
+    margin: 40px auto 0;
+    padding: 0;
+    display: flex;
+}
+
+.filter-left {
+    flex: 1;
+}
+
+.filter-right {
+    flex: 1;
+}
+
+.search-input {
+    position: relative;
+    display: block;
+    height: 40px;
+    float: right;
+    margin-right: 20px;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+/* =========================
+   날짜 입력
+========================= */
+
+#startDate,
+#endDate {
+    border-radius: 10px;
+    height: 30px;
+    margin-top: 5%;
+}
+
+#startDate.selectDate,
+#endDate.selectDate {
+    border: 2px solid aqua;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, .25);
+}
+
+/* =========================
+   테이블
+========================= */
+
+.table_line {
+    padding: 0;
+    margin: 0;
+    float: right;
+    width: 95%;
+    border-collapse: collapse;
+    border-radius: 10px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.25);
+    overflow: hidden;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 0;
+}
+
+th,
+td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: left;
+}
+
+thead {
+    background-color: #B0E0E6;
+    color: white;
+}
+
+th {
+    background-color: #f4f4f4;
+}
+
+#inventory_list tr:nth-child(even) td {
+    background: #E6E6FA;
+}
+
+#inventory_list tr.selected {
+    background-color: #d3d3d3;
+}
+
+#inventory_list.recordList {
+    background-color: aqua;
+}
+
+/* =========================
+   버튼
+========================= */
+
+.custom-btn {
+    width: 65px;
+    height: 40px;
+    border-radius: 5px;
+    font-family: 'Lato', sans-serif;
+    font-weight: 500;
+    background: transparent;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+    display: inline-block;
+    box-shadow:
+        inset 2px 2px 2px 0px rgba(255, 255, 255, .5),
+        7px 7px 20px 0px rgba(0, 0, 0, .1),
+        4px 4px 5px 0px rgba(0, 0, 0, .1);
+    outline: none;
+}
+
+.btn-16 {
+    border: none;
+    color: #000;
+}
+
+.btn-16:after {
+    position: absolute;
+    content: "";
+    width: 0;
+    height: 100%;
+    top: 0;
+    left: 0;
+    direction: rtl;
+    z-index: -1;
+    box-shadow:
+        -7px -7px 20px 0px #fff9,
+        -4px -4px 5px 0px #fff9,
+        7px 7px 20px 0px #0002,
+        4px 4px 5px 0px #0001;
+    transition: all 0.3s ease;
+}
+
+.btn-16:hover {
+    color: #000;
+}
+
+.btn-16:hover:after {
+    left: auto;
+    right: 0;
+    width: 100%;
+}
+
+.btn-16:active {
+    top: 2px;
+}
+
+/* =========================
+   페이지네이션
+========================= */
+
+.pagination {
+    display: flex;
+    justify-content: center;
+    list-style: none;
+    padding: 0;
+    margin: 20px 0;
+    position: fixed;
+    top: calc(100vh - 100px);
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.pagination li {
+    margin: 0 5px;
+    padding: 10px 15px;
+    cursor: pointer;
+    border: 2px solid black;
+    border-radius: 5px;
+}
+
+.pagination li.active {
+    background-color: #007fff;
+    color: white;
+    border-color: #007bff;
+}
+
+.pagination li:hover:not(.active) {
+    background-color: #f1f1f1;
+}
+#wrap .title{
+    display: block;
+    padding-top: 100px;
+    text-align: center;
+}
+/* =========================
+   매출 페이지 레이아웃
+========================= */
+
+.sales-wrap {
+    display: block;
+}
+
+.sales-section {
+    display: block;
+    width: 100%;
+    height: 95vh;
+    transform: translateY(5vh);
+}
+
+.sales-section h1 {
+    text-align: center;
+}
+
+/* =========================
+   필터 영역
+========================= */
+
+.salesfilter {
+    width: 90%;
+    height: 100px;
+    margin: 0 auto;
+}
+
+.startSales,
+.endSales {
+    width: 120px;
+    height: 35px;
+}
+
+.dateBtn {
+    margin-top: 5px;
+    width: 50%;
+}
+
+/* 버튼 스타일 */
+
+.dateBtnfilter,
+.buyingTotal {
+    color: #090909;
+    padding: 0.7em 1.7em;
+    font-size: 18px;
+    border-radius: 0.5em;
+    background: #e8e8e8;
+    cursor: pointer;
+    border: 1px solid #e8e8e8;
+    transition: all 0.3s;
+    box-shadow: 6px 6px 12px #c5c5c5, -6px -6px 12px #ffffff;
+}
+
+.dateBtnfilter:active,
+.buyingTotal:active {
+    color: #666;
+    box-shadow: inset 4px 4px 12px #c5c5c5, inset -4px -4px 12px #ffffff;
+}
+
+.filterSelect {
+    background: #D8BFD8;
+    border: 1px solid #E6E6FA;
+}
+
+/* Excel 버튼 */
+
+.excelDownload {
+    position: absolute;
+    right: 5%;
+    font-weight: 600;
+    color: white;
+    text-transform: uppercase;
+    padding: 1em 2em;
+    background-color: #00bcd4;
+    border: 2px solid #008ba3;
+    border-radius: 10px;
+    cursor: pointer;
+    box-shadow: 0 8px 12px rgba(0, 128, 192, 0.3);
+    transition: background-color 0.2s ease, transform 0.2s ease;
+}
+
+.excelDownload:hover {
+    background-color: #008ba3;
+    transform: translateY(-2px);
+}
+
+.excelDownload:active {
+    background-color: #006978;
+    transform: translateY(1px);
+}
+
+/* =========================
+   테이블 영역
+========================= */
+
+.tableWrapper {
+    height: 75%;
+    margin: auto;
+    width: 90%;
+    border: 1px solid #ccc;
+    overflow-y: scroll;
+}
+
+.salesTable {
+    border-collapse: separate;
+    border-spacing: 0;
+    width: 100%;
+    table-layout: fixed;
+}
+
+.salesTable thead th {
+    position: sticky;
+    top: 0;
+    background-color: #6c4ba0;
+    z-index: 1;
+    color: white;
+}
+
+.salesTable th,
+.salesTable td {
+    text-align: center;
+    padding: 8px;
+    border: 1px solid #ccc;
+}
+
+.salesTable td:nth-child(1) {
+    background-color: #c6aef0;
+    color: white;
+}
+
+/* hover 강조 */
+
+.totalSales tr.detailTR {
+    background: linear-gradient(145deg, #5D3FD3, #4B0082);
+    color: #fff;
+    transform: translateY(-4px);
+    box-shadow: 0 12px 24px rgba(75, 0, 130, 0.6);
+}
+
+/* =========================
+   토글 스위치
+========================= */
+
+.toggleSwitch {
+    position: relative;
+    top: 5px;
+    left: 5%;
+    height: 2rem;
+    width: 100px;
+    cursor: pointer;
+    appearance: none;
+    border-radius: 9999px;
+    background-color: rgba(100, 116, 139, 0.377);
+    transition: all .3s ease;
+}
+
+.toggleSwitch:checked {
+    background-color: rgba(236, 72, 153, 1);
+}
+
+.toggleSwitch::after {
+    position: absolute;
+    width: 95%;
+    content: "일별";
+    text-align: center;
+}
+
+.toggleSwitch::before {
+    position: absolute;
+    content: "";
+    left: -20px;
+    top: -7px;
+    height: 45px;
+    width: 45px;
+    border: 1px solid rgba(100, 116, 139, 0.527);
+    border-radius: 9999px;
+    background-color: #fff;
+    box-shadow: 0 3px 10px rgba(100, 116, 139, 0.327);
+    transition: all .3s ease;
+}
+
+.toggleSwitch:checked::before {
+    transform: translateX(85px);
+}
+
+.toggleSwitch:checked::after {
+    content: "월별";
+}
+
+/* =========================
+   모달
+========================= */
+
+.modal-flex {
+    display: flex;
+}
+
+.day-list {
+    width: 200px;
+    border-right: 1px solid #ddd;
+    padding: 0;
+    margin: 0;
+    list-style: none;
+    overflow-y: auto;
+}
+
+.modal-right {
+    flex: 1;
+    padding-left: 10px;
+}
+
+.modal-header {
+    background: #6a0dad;
+    color: white;
+    height: 60px;
+}
+
+.modal-close:hover {
+    background: #c084fc;
+}
+
+/* =========================
+   buyingList
+========================= */
+
+.buyingList {
+    position: absolute;
+    display: none;
+    width: 220px;
+    height: 180px;
+    background-color: white;
+    top: 20%;
+    right: 5%;
+    border-radius: 20px;
+    z-index: 100;
+}
+
+.buying-header-bar {
+    width: 100%;
+    height: 10%;
+    background-color: #3B82F6;
+    border-radius: 20px 20px 0 0;
+    margin-bottom: 20px;
+}
+
+.totalTitle {
+    font-size: 25px;
+    text-align: center;
+    color: #374151;
+    font-weight: bold;
+}
+
+.totalPrice {
+    text-align: center;
+    font-size: 35px;
+}
+
+/* =========================
+   기타
+========================= */
+
+.tbody-wrap {
+    height: 250px;
+    overflow-y: auto;
+}
+
+.tbody-wrap::-webkit-scrollbar {
+    display: none;
+}
+
+.flaTable,
+.fotaTable {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+}
+
+.flaTable th,
+.fotaTable td {
+    padding: 8px;
+    border: 1px solid #ddd;
+    text-align: center;
+    white-space: nowrap;
+}
+
+/* modal body 정렬 보완 */
+.modal-flex {
+    display: flex;
+    align-items: stretch;
+}
+
+/* dayList 완전 이관 */
+.day-list {
+    width: 200px;
+    border-right: 1px solid #ddd;
+    padding: 0;
+    margin: 0;
+    list-style: none;
+    overflow-y: auto;
+}
+
+/* 모달 우측 영역 */
+.modal-right {
+    flex: 1;
+    padding-left: 10px;
+}
+
+/* buyingList 상단 바 */
+.buying-header-bar {
+    width: 100%;
+    height: 10%;
+    background-color: #3B82F6;
+    border-radius: 20px 20px 0px 0px;
+    margin-bottom: 20px;
+}
+#detailModal{
+	display:block;
+	position: absolute;
+    width: calc(70%);
+    height: calc(35%);
+    top: 0;
+    left: 0;
+    background-color: white;
+    z-index: 100;
+    transform: translate(20%, 50%);
+}

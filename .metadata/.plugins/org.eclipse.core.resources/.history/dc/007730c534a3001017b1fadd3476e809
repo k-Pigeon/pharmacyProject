@@ -1,0 +1,241 @@
+<%@ page language="java" contentType="application/json; charset=UTF-8"
+    pageEncoding="UTF-8"%>
+<%@ page
+    import="java.io.*, java.util.*, java.sql.*, javax.servlet.*, javax.servlet.http.*, org.json.JSONArray, org.json.JSONObject, java.util.regex.*"%>
+<%@ include file="sessionManager.jsp"%>
+<%@ include file="DBconnection.jsp"%>
+
+<%
+String dbName = (session != null) ? (String) session.getAttribute("dbName") : null;
+String id = (session != null) ? (String) session.getAttribute("id") : null;
+String idSortation = (session != null) ? (String) session.getAttribute("idSortation") : null;
+if (id == null || dbName == null) {
+    response.sendRedirect("login.jsp");
+    return;
+}
+request.setCharacterEncoding("UTF-8");
+response.setContentType("application/json; charset=UTF-8");
+conn.setAutoCommit(false);
+
+List<String> lowStockList = new ArrayList<>();
+%><%! 
+/* ===================== 공통 유틸 ===================== */
+private String fmtDate(String s) {
+    try {
+        if (s == null) return null;
+        s = s.trim().replace('T', ' ');
+        if (s.isEmpty() || "null".equalsIgnoreCase(s) || "undefined".equalsIgnoreCase(s)) return null;
+        if (s.matches("\\d{4}-\\d{2}-\\d{2}\\s+\\d{2}:\\d{2}:\\d{2}")) return s;
+        if (s.matches("\\d{4}-\\d{2}-\\d{2}")) return s + " 00:00:00";
+        if (s.matches("\\d{2,4}/\\d{1,2}/\\d{1,2}")) {
+            String[] p = s.split("/");
+            int y = Integer.parseInt(p[0]);
+            int m = Integer.parseInt(p[1]);
+            int d = Integer.parseInt(p[2]);
+            if (y < 100) y += 2000;
+            return String.format("%04d-%02d-%02d 00:00:00", y, m, d);
+        }
+    } catch (Exception ignore) {}
+    return null;
+}
+
+/** saleDate 충돌 시 1ms 증가하여 유니크하게 보정 */
+private Timestamp ensureUniqueSaleTs(Connection conn, String idSortation, Timestamp baseTs) throws SQLException {
+    final String sql1 = "SELECT 1 FROM SalesRecord" + idSortation + " WHERE saleDate=? LIMIT 1";
+    final String sql2 = "SELECT 1 FROM priceRecord" + idSortation + " WHERE saleDate=? LIMIT 1";
+    final String sql3 = "SELECT 1 FROM discountedDB WHERE sale_date=? LIMIT 1";
+    Timestamp ts = baseTs;
+    while (true) {
+        boolean used = false;
+        try (PreparedStatement ps = conn.prepareStatement(sql1)) {
+            ps.setTimestamp(1, ts);
+            try (ResultSet rs = ps.executeQuery()) { if (rs.next()) used = true; }
+        }
+        if (!used) {
+            try (PreparedStatement ps = conn.prepareStatement(sql2)) {
+                ps.setTimestamp(1, ts);
+                try (ResultSet rs = ps.executeQuery()) { if (rs.next()) used = true; }
+            }
+        }
+        if (!used) {
+            try (PreparedStatement ps = conn.prepareStatement(sql3)) {
+                ps.setTimestamp(1, ts);
+                try (ResultSet rs = ps.executeQuery()) { if (rs.next()) used = true; }
+            }
+        }
+        if (!used) break;
+        ts = new Timestamp(ts.getTime() + 1);
+    }
+    return ts;
+}
+
+private double parseFactor(String standard) {
+    if (standard == null) return 1.0;
+    Matcher m = Pattern.compile("\\d+(?:\\.\\d+)?").matcher(standard);
+    double prod = 1.0; boolean found = false;
+    while (m.find()) { found = true; prod *= Double.parseDouble(m.group()); }
+    return found ? (prod > 0 ? prod : 1.0) : 1.0;
+}
+
+/** 지정된 세트명이 productSet 테이블에 존재하는지 */
+private boolean isProductSet(Connection conn, String setName) throws SQLException {
+    String q = "SELECT 1 FROM productSet WHERE setName=? LIMIT 1";
+    try (PreparedStatement ps = conn.prepareStatement(q)) {
+        ps.setString(1, setName);
+        try (ResultSet rs = ps.executeQuery()) { return rs.next(); }
+    }
+}
+private void fifoDeductByName(Connection conn, String idSortation, String medName, double qtySale, double factor,
+	    List<String> lowStockList) throws SQLException {
+
+	    double totalStock = 0.0;
+
+	    // 전체 재고 합계 먼저 구하기
+	    String sumQ = "SELECT SUM(inventory) FROM testTable" + idSortation +
+	                  " WHERE medicineName=? AND returnInv='0' AND inventory>0";
+	    try (PreparedStatement ps = conn.prepareStatement(sumQ)) {
+	        ps.setString(1, medName);
+	        try (ResultSet rs = ps.executeQuery()) {
+	            if (rs.next()) totalStock = rs.getDouble(1);
+	            if (rs.wasNull()) totalStock = 0.0;   // ✅ NULL 방지
+	        }
+	    }
+
+	    double required = qtySale * ((factor > 0) ? factor : 1.0);
+
+	    // ✅ 재고가 같거나 부족한 경우 모두 감지
+	    if (totalStock <= required) {
+	        lowStockList.add(medName + " (재고 부족: " + totalStock + " ≤ " + required + ")");
+	        return;
+	    }
+
+	    // ↓ 이하 기존 FIFO 차감 로직 유지
+	    String sel = "SELECT DeliveryDate, inventory FROM testTable" + idSortation
+	               + " WHERE medicineName=? AND returnInv='0' AND inventory>0 ORDER BY DeliveryDate ASC LIMIT 1";
+	    String upd = "UPDATE testTable" + idSortation
+	               + " SET inventory = inventory - ? WHERE medicineName=? AND DeliveryDate=? AND returnInv='0'";
+	    double remain = qtySale;
+	    double unit = (factor > 0) ? factor : 1.0;
+
+	    while (remain > 1e-9) {
+	        String dDate = null;
+	        double stock = 0.0;
+	        try (PreparedStatement ps = conn.prepareStatement(sel)) {
+	            ps.setString(1, medName);
+	            try (ResultSet rs = ps.executeQuery()) {
+	                if (!rs.next()) {
+	                    lowStockList.add(medName + " (재고 없음)");
+	                    return;
+	                }
+	                dDate = rs.getString("DeliveryDate");
+	                stock = rs.getDouble("inventory");
+	            }
+	        }
+
+	        double needDb = remain * unit;
+	        double useDb = Math.min(needDb, stock);
+
+	        try (PreparedStatement ps = conn.prepareStatement(upd)) {
+	            ps.setDouble(1, useDb);
+	            ps.setString(2, medName);
+	            ps.setString(3, dDate);
+	            ps.executeUpdate();
+	        }
+	        System.out.println("[DEBUG] med=" + medName + ", inv=" + it.optString("inventory") + ", qtySale=" + qtySale);
+
+	        remain -= (useDb / unit);
+	    }
+	}
+
+
+%>
+<%
+try {
+    StringBuilder body = new StringBuilder();
+    try (BufferedReader br = request.getReader()) {
+        String line; while ((line = br.readLine()) != null) body.append(line);
+    }
+    JSONArray arr = new JSONArray(body.toString());
+    JSONObject meta = arr.getJSONObject(arr.length() - 1);
+
+    String medicinePrice = meta.optString("medicinePrice", "0");
+    String generalPrice = meta.optString("generalPrice", "0");
+    String clientName = meta.optString("discounted", "");
+    String rawDate = meta.has("ScheduleDate") ? meta.optString("ScheduleDate", "") : meta.optString("scheduleDate", "");
+    String formatted = fmtDate(rawDate);
+
+    Timestamp baseTs = (formatted == null) ? new Timestamp(System.currentTimeMillis()) : Timestamp.valueOf(formatted);
+    Timestamp saleTs = ensureUniqueSaleTs(conn, idSortation, baseTs);
+
+    // 공통 메타 저장
+    try (PreparedStatement ps = conn.prepareStatement(
+        "INSERT INTO priceRecord" + idSortation + " (saleDate, maxmedicinePrice, generalPrice) VALUES (?, ?, ?)")) {
+        ps.setTimestamp(1, saleTs);
+        ps.setString(2, medicinePrice);
+        ps.setString(3, generalPrice);
+        ps.executeUpdate();
+    }
+    try (PreparedStatement ps = conn.prepareStatement(
+        "INSERT INTO discountedDB (sale_date, discounted) VALUES (?, ?)")) {
+        ps.setTimestamp(1, saleTs);
+        ps.setString(2, clientName);
+        ps.executeUpdate();
+    }
+
+    // 품목별 처리
+    for (int i = 0; i < arr.length() - 1; i++) {
+        JSONObject it = arr.getJSONObject(i);
+
+        String medName = it.optString("medicineName", "").trim();
+        String serial = it.optString("serialNumber", "").trim();
+        boolean bySerial = !serial.isEmpty();
+
+        double qtySale = 0.0;
+        try { qtySale = Double.parseDouble(it.optString("inventory", "0").replaceAll("[^\\d.]", "")); } catch (Exception ignore) {}
+
+        double price = 0.0;
+        try { price = Double.parseDouble(it.optString("price", "0").replaceAll("[^\\d.]", "")); } catch (Exception ignore) {}
+
+        double buying = 0.0;
+        try { buying = Double.parseDouble(it.optString("Buyingprice", "0").replaceAll("[^\\d.]", "")); } catch (Exception ignore) {}
+
+        double factor = parseFactor(it.optString("standard", ""));
+
+        // 재고 차감
+        if (isProductSet(conn, medName)) {
+            // 세트 구성품
+        } else {
+            // 단품
+            fifoDeductByName(conn, idSortation, medName, qtySale, factor, lowStockList);
+        }
+
+        // 판매 기록
+        try (PreparedStatement ps = conn.prepareStatement("INSERT INTO SalesRecord" + idSortation
+            + " (saleDate, medicineName, Buyingprice, price, inventory, SerialNumber, DeliveryDate, standard, memberName) "
+            + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")) {
+            ps.setTimestamp(1, saleTs);
+            ps.setString(2, medName);
+            ps.setDouble(3, buying);
+            ps.setDouble(4, price);
+            ps.setString(5, it.optString("inventory", ""));
+            ps.setString(6, serial);
+            ps.setString(7, it.optString("deliveryDate", ""));
+            ps.setString(8, it.optString("standard", ""));
+            ps.setString(9, it.optString("memberName", ""));
+            ps.executeUpdate();
+        }
+    }
+
+    conn.commit();
+
+    JSONObject result = new JSONObject();
+    result.put("result", "success");
+    if (!lowStockList.isEmpty()) result.put("lowStock", new JSONArray(lowStockList));
+    out.print(result.toString());
+
+} catch (Exception e) {
+    if (conn != null) try { conn.rollback(); } catch (SQLException ignore) {}
+    e.printStackTrace();
+    out.print("{\"result\":\"error\",\"message\":\"" + e.getMessage().replace("\"", "'") + "\"}");
+}
+%>

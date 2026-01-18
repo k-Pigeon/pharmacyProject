@@ -1,0 +1,10 @@
+import javax.swing.JFrame;
+
+public class JFrame_Test {
+
+	public static void main(String[] args) {
+		//GUI 창(변수명 : jf)
+		JFrame jf = new JFrame();
+	}
+
+}

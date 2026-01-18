@@ -1,0 +1,105 @@
+<%@ page contentType="application/json; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ page import="java.io.*, java.sql.*, org.json.*, java.util.*, java.util.regex.*" %>
+<%@ include file="sessionManager.jsp" %>
+<%@ include file="DBconnection.jsp" %>
+<%!
+private String formatDate(String inputDate) {
+    try {
+        if (inputDate == null || inputDate.trim().isEmpty()) {
+            return null;
+        }
+
+        if (inputDate.contains("-")) {
+            return inputDate;
+        }
+
+        String[] parts = inputDate.split("/");
+        if (parts.length != 3) {
+            throw new IllegalArgumentException("잘못된 날짜 형식: " + inputDate);
+        }
+
+        int year = Integer.parseInt(parts[0]);
+        year += 2000;
+
+        String month = String.format("%02d", Integer.parseInt(parts[1]));
+        String day = String.format("%02d", Integer.parseInt(parts[2]));
+
+        return year + "-" + month + "-" + day;
+    } catch (Exception e) {
+        System.err.println("날짜 변환 오류: " + inputDate + ", 오류 메시지: " + e.getMessage());
+        return null;
+    }
+}
+%>
+<%
+request.setCharacterEncoding("UTF-8");
+String idSortation = (session != null) ? (String) session.getAttribute("idSortation") : null;
+StringBuilder sb = new StringBuilder();
+String line;
+BufferedReader reader = request.getReader();
+while ((line = reader.readLine()) != null) sb.append(line);
+
+try {
+    JSONObject data = new JSONObject(sb.toString());
+    conn.setAutoCommit(false);
+
+    for (String key : data.keySet()) {
+        JSONObject row = data.getJSONObject(key);
+
+        // key = "medicineName|DeliveryDate|standard"
+        String[] parts = key.split("\\|");
+        if (parts.length < 3) continue;
+        String medicineName = parts[0];
+        String deliveryDate = parts[1];
+        String standard = parts[2];
+
+        // ======== [📌 inventory 계산 처리 로직 추가] ========
+        if (row.has("inventory")) {
+            try {
+                double inv = Double.parseDouble(row.getString("inventory"));
+                double factor = 1.0;
+
+                if (standard != null && !standard.trim().isEmpty()) {
+                    Matcher m = Pattern.compile("\\d+(\\.\\d+)?").matcher(standard);
+                    int count = 0;
+                    while (m.find()) {
+                        factor *= Double.parseDouble(m.group());
+                        count++;
+                        if (count >= 2) break; // 숫자가 2개 이상이면 곱셈까지만
+                    }
+                }
+
+                double newInv = inv * factor;
+                row.put("inventory", String.valueOf(newInv));
+            } catch (Exception ex) {
+                ex.printStackTrace();
+            }
+        }
+        // =============================================
+
+        StringBuilder sql = new StringBuilder("UPDATE testTable" + idSortation + " SET ");
+        List<String> cols = new ArrayList<>();
+        for (String col : row.keySet()) cols.add(col + "=?");
+        sql.append(String.join(",", cols));
+        sql.append(" WHERE medicineName=? AND DeliveryDate=? AND standard=?");
+
+        PreparedStatement pstmt = conn.prepareStatement(sql.toString());
+        int i = 1;
+        for (String col : row.keySet()) pstmt.setString(i++, row.getString(col));
+        pstmt.setString(i++, medicineName);
+        pstmt.setString(i++, deliveryDate);
+        pstmt.setString(i, standard);
+
+        pstmt.executeUpdate();
+        pstmt.close();
+    }
+
+    conn.commit();
+    conn.setAutoCommit(true);
+    out.print("{\"status\":\"success\"}");
+} catch (Exception e) {
+    conn.rollback();
+    e.printStackTrace();
+    out.print("{\"status\":\"error\",\"message\":\"" + e.getMessage() + "\"}");
+}
+%>

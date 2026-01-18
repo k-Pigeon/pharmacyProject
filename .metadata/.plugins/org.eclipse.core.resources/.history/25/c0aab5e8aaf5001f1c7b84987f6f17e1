@@ -1,0 +1,65 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ page import="java.sql.*"%>
+<%@ include file="sessionManager.jsp"%>
+<%@ include file="DBconnection.jsp"%>
+<%
+String dbName = (session != null) ? (String) session.getAttribute("dbName") : null;
+String id = (session != null) ? (String) session.getAttribute("id") : null;
+String password = (session != null) ? (String) session.getAttribute("password") : null;
+
+/* out.println(password);
+out.println(dbName);
+out.println(id);
+out.println(password); */
+
+if (id == null || dbName == null) {
+    response.sendRedirect("login.jsp");
+    return;
+}
+
+jdbcDriver = dbName;
+%>
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Insert title here</title>
+<link rel="stylesheet" href="style.css">
+<style>
+	#wrap h1{
+		width: 100%;
+    	height: 10px;
+    	text-align: center;
+   	    transform: translateY(50px);
+    }
+    #wrap .Warning,
+    #wrap hr{
+   	    display: block;
+	    width: 60vh;
+	    margin: 0 auto;
+	    text-align: right;
+	    transform: translateY(130px);
+    }
+    #wrap #section{
+    	display: block;
+	    width: 60vh;
+	    height: 50vh;
+	    margin: 0 auto;
+	    transform: translateY(130px);
+    }
+</style>
+</head>
+<body>
+	<div id="wrap" style="display: block;">
+		<header>
+			<jsp:include page="header.jsp"></jsp:include>
+		</header>
+		<h1>고객등록</h1>
+		<div class="Warning"><span class="essential">&nbsp;*&nbsp;</span>필수 요소</div>
+		<hr>
+		<section id="section">
+			<span class="name"><span class="essential">&nbsp;*&nbsp;</span>성함</span>&nbsp;&nbsp;<input type="text" class="memberName" placeholder="Name">
+		</section>
+	</div>
+</body>
+</html>

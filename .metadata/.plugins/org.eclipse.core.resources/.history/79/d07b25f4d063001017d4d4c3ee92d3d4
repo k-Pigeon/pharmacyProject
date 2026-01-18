@@ -1,0 +1,82 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ page import="java.sql.*, javax.servlet.http.*, javax.servlet.*" %>
+<%
+	request.setCharacterEncoding("UTF-8");
+    String userId = request.getParameter("userId");
+    String password = request.getParameter("password");
+    String isAjax = request.getParameter("ajax"); // Ajax 여부 판단용
+    String idSortation =  "";
+
+    // 초기값 설정
+    String jdbcDriver = "jdbc:mysql://rlawldls04171.cafe24.com:3306/rlawldls04171?useUnicode=true&characterEncoding=utf8";
+    String dbUser = "rlawldls04171";
+    String dbPwd = "jikim@136464790";
+
+    Connection conn = null;
+    PreparedStatement pstmt = null;
+    ResultSet rs = null;
+    String sql = "";
+
+    try {
+        Class.forName("com.mysql.cj.jdbc.Driver");
+
+        // 사용자 확인을 위한 기본 데이터베이스 연결
+        conn = DriverManager.getConnection(jdbcDriver, dbUser, dbPwd);
+
+        sql = "SELECT * FROM users WHERE userId = ? AND password = ?";
+        pstmt = conn.prepareStatement(sql);
+        pstmt.setString(1, userId);
+        pstmt.setString(2, password);
+
+        rs = pstmt.executeQuery();
+
+        if (rs.next()) {
+            // 로그인 성공
+            String userIdInt = rs.getString("userId"); // id 컬럼 가져오기
+            
+            // id 값에 따라 데이터베이스 이름 동적으로 설정
+            if (userIdInt.equals("b")) {
+                jdbcDriver = "jdbc:mysql://rlawldls04171.cafe24.com:3306/rlawldls04171?useUnicode=true&characterEncoding=utf8";
+                dbUser = "rlawldls04171";
+                dbPwd = "jikim@136464790";
+            }else if(userIdInt.equals("a") || userIdInt.equals("D")){
+                jdbcDriver = "jdbc:mysql://localhost:3306/tutorial?useUnicode=true&characterEncoding=utf8";
+                dbUser = "root";
+                dbPwd = "pharmacy@1234";
+            }
+            else {
+                throw new Exception("유효하지 않은 데이터베이스 선택");
+            }
+            if(userIdInt.equals("e")){
+            	
+            }
+            session.setAttribute("dbName", jdbcDriver);//mysql 드라이버
+            session.setAttribute("id", dbUser);//로그인 ID
+            session.setAttribute("password", dbPwd);//비밀번호
+            session.setAttribute("programID", userIdInt);//비밀번호
+            session.setAttribute("idSortation", idSortation);//비밀번호
+
+         // ✅ 구분 처리
+            if ("true".equals(isAjax)) {
+                // Ajax 요청인 경우
+                if (userId.equals("d") && password.equals("4")) {
+                    out.print("admin");
+                } else {
+                    out.print("user");
+                }
+            } else {
+                // 일반 로그인 처리일 경우
+                response.sendRedirect("index2.jsp");
+            }
+        } else {
+            // 로그인 실패
+            out.println("<script>alert('아이디 또는 비밀번호가 잘못되었습니다.'); location.href='login.jsp';</script>");
+        }
+    } catch (Exception e) {
+        e.printStackTrace();
+    } finally {
+        if (rs != null) try { rs.close(); } catch (Exception e) {}
+        if (pstmt != null) try { pstmt.close(); } catch (Exception e) {}
+        if (conn != null) try { conn.close(); } catch (Exception e) {}
+    }
+%>

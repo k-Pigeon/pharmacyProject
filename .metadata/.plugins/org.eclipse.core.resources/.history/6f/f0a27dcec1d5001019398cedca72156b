@@ -1,0 +1,184 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8"
+	pageEncoding="UTF-8"%>
+<%@ page import="java.sql.*, java.util.*, java.text.*"%>
+<%@ include file="sessionManager.jsp"%>
+<%@ include file="DBconnection.jsp"%>
+
+<%
+String dbName = (session != null) ? (String) session.getAttribute("dbName") : null;
+String id = (session != null) ? (String) session.getAttribute("id") : null;
+String idSortation = (session != null) ? (String) session.getAttribute("idSortation") : null;
+
+if (id == null || dbName == null) {
+	response.sendRedirect("login.jsp");
+	return;
+}
+
+jdbcDriver = dbName;
+request.setCharacterEncoding("UTF-8");
+%>
+
+<%!// ------------------------------
+	// 유틸 함수들
+	// ------------------------------
+	private String safeGet(String[] arr, int index) {
+		return (arr != null && arr.length > index && arr[index] != null) ? arr[index].trim() : "";
+	}
+
+	private String safeDate(String[] arr, int index) {
+		String val = safeGet(arr, index);
+		return formatDate(val);
+	}
+
+	// 문자열에서 숫자 추출 후 Double 변환
+	private double parseNumber(String value) {
+		if (value == null)
+			return 0;
+		String num = value.replaceAll("[^0-9.]", "");
+		return num.isEmpty() ? 0 : Double.parseDouble(num);
+	}
+
+	// 날짜(YY/MM/DD → YYYY-MM-DD)
+	private String formatDate(String inputDate) {
+		try {
+			if (inputDate == null || inputDate.trim().isEmpty())
+				return null;
+			if (inputDate.contains("-"))
+				return inputDate;
+
+			String[] parts = inputDate.split("/");
+			if (parts.length != 3)
+				return null;
+
+			int year = Integer.parseInt(parts[0]) + 2000;
+			String month = String.format("%02d", Integer.parseInt(parts[1]));
+			String day = String.format("%02d", Integer.parseInt(parts[2]));
+
+			return year + "-" + month + "-" + day;
+		} catch (Exception e) {
+			return null;
+		}
+	}
+
+	// countNumber 자동 증가
+	private int getNextCount(Connection conn) throws Exception {
+		String sql = "SELECT IFNULL(MAX(CAST(countNumber AS UNSIGNED)), 0) + 1 FROM RegistTable";
+		try (PreparedStatement ps = conn.prepareStatement(sql); ResultSet rs = ps.executeQuery()) {
+			return rs.next() ? rs.getInt(1) : 1;
+		}
+	}%>
+
+<%
+String[] serialArr = request.getParameterValues("SerialNumber[]");
+String[] nameArr = request.getParameterValues("medicineName[]");
+String[] bpArr = request.getParameterValues("Buyingprice[]");
+String[] priceArr = request.getParameterValues("price[]");
+String[] invArr = request.getParameterValues("inventory[]");
+String[] compArr = request.getParameterValues("companyName[]");
+String[] stdArr = request.getParameterValues("standard[]");
+String[] recArr = request.getParameterValues("receiptDate[]");
+String[] delArr = request.getParameterValues("DeliveryDate[]");
+String[] kindArr = request.getParameterValues("kind[]");
+String[] qtyArr = request.getParameterValues("quantity[]");
+
+// row 수 결정
+int rowCount = (serialArr != null) ? serialArr.length : 0;
+
+try {
+	Class.forName("com.mysql.cj.jdbc.Driver");
+	conn = DriverManager.getConnection(jdbcDriver, dbUser, dbPwd);
+
+	for (int i = 0; i < rowCount; i++) {
+
+		// ---------- (1) 배열 데이터 받아오기 ----------
+		String serialNumber = safeGet(serialArr, i);
+		String medicineName = safeGet(nameArr, i);
+		String buyingPrice = safeGet(bpArr, i);
+		String price = safeGet(priceArr, i);
+		String inventory = safeGet(invArr, i);
+		String companyName = safeGet(compArr, i);
+		String kind = safeGet(kindArr, i);
+		String standard = safeGet(stdArr, i);
+		String receiptDate = safeGet(recArr, i);
+		String deliveryDate = safeDate(delArr, i);
+		String qty = safeGet(qtyArr, i);
+
+		// ---------- (2) 기존 데이터 존재 여부 체크 ----------
+		String checkSQL = "SELECT inventory FROM testTable" + idSortation
+		+ " WHERE SerialNumber = ? AND DeliveryDate = ?";
+
+		boolean exists = false;
+
+		try (PreparedStatement ps = conn.prepareStatement(checkSQL)) {
+	ps.setString(1, serialNumber);
+	ps.setString(2, deliveryDate);
+	try (ResultSet rs = ps.executeQuery()) {
+		exists = rs.next();
+	}
+		}
+
+		// ---------- (3) 존재하는 경우 → UPDATE ----------
+		if (exists) {
+	String updateSQL = "UPDATE testTable" + idSortation
+			+ " SET inventory = inventory + ? WHERE SerialNumber = ? AND DeliveryDate = ?";
+
+	try (PreparedStatement ps = conn.prepareStatement(updateSQL)) {
+		ps.setString(1, inventory);
+		ps.setString(2, serialNumber);
+		ps.setString(3, deliveryDate);
+		ps.executeUpdate();
+	}
+	continue;
+		}
+
+		// ---------- (4) 존재하지 않으면 INSERT ----------
+		String insertSQL = "INSERT INTO testTable" + idSortation
+		+ " (SerialNumber, medicineName, price, inventory, Buyingprice, companyName, kind, standard, receiptDate, DeliveryDate, returnInv, quantity) "
+		+ "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+
+		try (PreparedStatement ps = conn.prepareStatement(insertSQL)) {
+	ps.setString(1, serialNumber);
+	ps.setString(2, medicineName);
+	ps.setString(3, price);
+	ps.setString(4, inventory);
+	ps.setString(5, buyingPrice);
+	ps.setString(6, companyName);
+	ps.setString(7, kind);
+	ps.setString(8, standard);
+	ps.setString(9, receiptDate);
+	ps.setString(10, deliveryDate);
+	ps.setString(11, "0");
+	ps.setString(12, qty);
+	ps.executeUpdate();
+		}
+
+		// ---------- (5) RegistTable countNumber 업데이트 ----------
+		int nextCnt = getNextCount(conn);
+
+		String registSQL = "INSERT INTO RegistTable (medicineName, standard, Buyingprice, price, countNumber) VALUES (?, ?, ?, ?, ?)";
+
+		try (PreparedStatement ps = conn.prepareStatement(registSQL)) {
+	ps.setString(1, medicineName);
+	ps.setString(2, standard);
+	ps.setString(3, buyingPrice);
+	ps.setString(4, price);
+	ps.setInt(5, nextCnt);
+	ps.executeUpdate();
+		}
+	}
+
+	// ---------- (6) 빈 SerialNumber 삭제 ----------
+	String deleteEmpty = "DELETE FROM testTable" + idSortation + " WHERE SerialNumber = ''";
+	try (PreparedStatement ps = conn.prepareStatement(deleteEmpty)) {
+		ps.executeUpdate();
+	}
+
+	out.println("모든 데이터가 정상적으로 처리되었습니다.");
+
+} catch (Exception e) {
+	e.printStackTrace();
+	out.println("오류 발생: " + e.getMessage());
+}
+%>
+
+<jsp:forward page="Product_Registration.jsp"></jsp:forward>

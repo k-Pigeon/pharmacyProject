@@ -1,0 +1,588 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ page import="java.sql.*"%>
+<%@ page import="java.util.*"%>
+<%@ page import="java.io.*"%>
+<%@ page import="java.sql.*, java.util.*" %>
+<%@ include file="sessionManager.jsp"%>
+<%@ include file="DBconnection.jsp"%>
+<%
+String dbName = (session != null) ? (String) session.getAttribute("dbName") : null;
+String id = (session != null) ? (String) session.getAttribute("id") : null;
+String password = (session != null) ? (String) session.getAttribute("password") : null;
+
+/* out.println(password);
+out.println(dbName);
+out.println(id);
+out.println(password); */
+
+if (id == null || dbName == null) {
+    response.sendRedirect("login.jsp");
+    return;
+}
+
+jdbcDriver = dbName;
+
+    request.setCharacterEncoding("UTF-8");
+    String period = request.getParameter("period");
+
+    if (period == null || period.isEmpty()) {
+        period = "week";  // 기본값 설정
+    }
+
+    // 날짜 간격을 숫자로 설정
+    int intervalValue = 0;
+    String intervalUnit = "";
+
+    // period 값에 따라 interval 설정
+    if("week".equals(period)) {
+        intervalValue = 1;
+        intervalUnit = "WEEK";
+    } else if("month1".equals(period)) {
+        intervalValue = 1;
+        intervalUnit = "MONTH";
+    } else if("month3".equals(period)) {
+        intervalValue = 3;
+        intervalUnit = "MONTH";
+    } else if("month6".equals(period)) {
+        intervalValue = 6;
+        intervalUnit = "MONTH";
+    }
+
+    // 'data' 리스트 초기화
+    List<String[]> data = new ArrayList<String[]>();
+
+    try {
+        String sql = "";
+        
+        // period에 따라 다른 쿼리 실행
+        if (intervalValue > 0) {
+            sql = " SELECT medicineName,  " 
+        		+ " CASE "
+        		+ " WHEN standard LIKE '%ml' OR standard LIKE '%l' THEN inventory "
+                + " ELSE inventory / CAST(standard AS DECIMAL)"
+                + " END AS inventory, DeliveryDate, saleDate "
+                + " from SalesRecord "
+                + " WHERE saleDate >= DATE_SUB(CURDATE(), INTERVAL ? " + intervalUnit + ") ";
+        }
+
+        PreparedStatement stmt = conn.prepareStatement(sql);
+        stmt.setInt(1, intervalValue); // interval 값 설정
+        ResultSet rs = stmt.executeQuery();
+        
+        System.out.println(rs.getString("inventory"));
+        
+        // 데이터를 리스트로 저장
+        while (rs.next()) {
+            String[] row = new String[4];
+            row[0] = rs.getString("medicineName");
+            row[1] = inventory;
+            row[2] = rs.getString("DeliveryDate");
+            row[3] = rs.getString("saleDate");
+            data.add(row);
+        }
+    } catch (SQLException e) {
+        e.printStackTrace();
+    }
+
+    // 테이블 부분만 반환 (전체 HTML 코드가 아닌 테이블만)
+    out.println("<table id='testTable_line' style='display:none;'>");
+    out.println("<thead><tr><th>Sale Date</th><th>Product Name</th><th>Profit</th><th>Delivery Date</th></tr></thead>");
+    out.println("<tbody>");
+    
+    for (String[] row : data) {
+        out.println("<tr>");
+        out.println("<td>" + row[3] + "</td>");
+        out.println("<td>" + row[0] + "</td>");
+        out.println("<td>" + row[1] + "</td>");
+        out.println("<td>" + row[2] + "</td>");
+        out.println("</tr>");
+    }
+    
+    out.println("</tbody>");
+    out.println("</table>");
+%>
+<!DOCTYPE html>
+<html>
+<head>
+<title>Sales Profit Graph</title>
+<script type="text/javascript"
+	src="https://www.gstatic.com/charts/loader.js"></script>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<style>
+#header ul {
+	display: block;
+}
+.toggleBG {
+    background: #CCCCCC;
+    width: 70px;
+    height: 30px;
+    border: 1px solid #CCCCCC;
+    border-radius: 15px;
+    position: relative; /* 상대 위치로 변경 */
+}
+.toggleFG {
+    background: #FFFFFF;
+    width: 30px;
+    height: 30px;
+    border: none;
+    border-radius: 15px;
+    position: absolute; /* 절대 위치로 변경 */
+    left: 0px;
+    top: 0px; /* 수직 가운데 정렬 */
+}
+/* 모달 배경 (초기에는 숨겨짐) */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.4);
+}
+
+/* 모달 콘텐츠 */
+.modal-content {
+    background-color: #fff;
+    margin: 10% auto;
+    padding: 20px;
+    border-radius: 8px;
+    width: 80%;
+    max-width: 900px;
+}
+
+/* 닫기 버튼 */
+.close {
+    color: #aaa;
+    font-size: 28px;
+    font-weight: bold;
+    position: absolute;
+    top: 10px;
+    right: 20px;
+}
+
+.close:hover,
+.close:focus {
+    color: black;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+/* 테이블 스타일 */
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+th, td {
+    padding: 8px;
+    text-align: left;
+    border: 1px solid #ddd;
+}
+
+th {
+    background-color: #f2f2f2;
+}
+
+
+.custom-btn {
+	width: 130px;
+	height: 40px;
+	color: #fff;
+	border-radius: 5px;
+	padding: 10px 25px;
+	font-family: 'Lato', sans-serif;
+	font-weight: 500;
+	background: transparent;
+	cursor: pointer;
+	transition: all 0.3s ease;
+	position: relative;
+	display: inline-block;
+	box-shadow: inset 2px 2px 2px 0px rgba(255, 255, 255, .5), 7px 7px 20px
+		0px rgba(0, 0, 0, .1), 4px 4px 5px 0px rgba(0, 0, 0, .1);
+	outline: none;
+}
+
+.btn-6 {
+	background: rgb(247, 150, 192);
+	background: radial-gradient(circle, rgba(247, 150, 192, 1) 0%,
+		rgba(118, 174, 241, 1) 100%);
+	line-height: 42px;
+	padding: 0;
+	border: none;
+}
+
+.btn-6 span {
+	position: relative;
+	display: block;
+	width: 100%;
+	height: 100%;
+}
+
+.btn-6:before, .btn-6:after {
+	position: absolute;
+	content: "";
+	height: 0%;
+	width: 1px;
+	box-shadow: -1px -1px 20px 0px rgba(255, 255, 255, 1), -4px -4px 5px 0px
+		rgba(255, 255, 255, 1), 7px 7px 20px 0px rgba(0, 0, 0, .4), 4px 4px
+		5px 0px rgba(0, 0, 0, .3);
+}
+
+.btn-6:before {
+	right: 0;
+	top: 0;
+	transition: all 500ms ease;
+}
+
+.btn-6:after {
+	left: 0;
+	bottom: 0;
+	transition: all 500ms ease;
+}
+
+.btn-6:hover {
+	background: transparent;
+	color: #76aef1;
+	box-shadow: none;
+}
+
+.btn-6:hover:before {
+	transition: all 500ms ease;
+	height: 100%;
+}
+
+.btn-6:hover:after {
+	transition: all 500ms ease;
+	height: 100%;
+}
+
+.btn-6 span:before, .btn-6 span:after {
+	position: absolute;
+	content: "";
+	box-shadow: -1px -1px 20px 0px rgba(255, 255, 255, 1), -4px -4px 5px 0px
+		rgba(255, 255, 255, 1), 7px 7px 20px 0px rgba(0, 0, 0, .4), 4px 4px
+		5px 0px rgba(0, 0, 0, .3);
+}
+
+.btn-6 span:before {
+	left: 0;
+	top: 0;
+	width: 0%;
+	height: .5px;
+	transition: all 500ms ease;
+}
+
+.btn-6 span:after {
+	right: 0;
+	bottom: 0;
+	width: 0%;
+	height: .5px;
+	transition: all 500ms ease;
+}
+
+.btn-6 span:hover:before {
+	width: 100%;
+}
+
+.btn-6 span:hover:after {
+	width: 100%;
+}
+
+#popup_chart {
+	display: none;
+	position: fixed; /* fixed로 변경하여 화면에 고정 */
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	font-size: 23px;
+	border: 1px solid black;
+	padding: 20px;
+	background-color: white;
+	box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.3);
+	width: 50vh;
+}
+</style>
+</head>
+<body>
+	<div id="wrap" style="display: block;">
+		<header>
+			<jsp:include page="header.jsp"></jsp:include>
+		</header>
+		<div style="transform: translateY(50px);">
+			<div class='toggleBG'>
+    			<button class='toggleFG'></button>
+			</div>
+		</div>
+		<!-- 버튼 추가 -->
+		<div class="chart-buttons" style="width: 100%;height: 100px;display: block;position: relative;margin-bottom: 20px;transform: translateY(60px);text-align: right;">
+			<button onclick="changeData('week')" class=" custom-btn btn-6">1주일</button>
+			<button onclick="changeData('month1')" class=" custom-btn btn-6">1개월</button>
+			<button onclick="changeData('month3')" class=" custom-btn btn-6">3개월</button>
+			<button onclick="changeData('month6')" class=" custom-btn btn-6">6개월</button>
+		</div>
+		<div style="width: 100%;height: 40px;">
+			<button class="custom-btn btn-6 downloadExcel" style="float: right;">엑셀 다운로드</button>
+		</div>
+
+
+		<div id="chart_div" style="width: 85%; height: 400px;margin:0 auto;padding:0;"></div>
+	</div>
+	<div id="popup_chart"></div>
+<!-- 모달 -->
+<div id="excelModal" class="modal">
+    <div class="modal-content">
+        <span class="close">&times;</span> <!-- 닫기 버튼 -->
+        <h2>Excel Table</h2>
+        <div id="ExcelTableChart">
+        <button class="excelDownload">다운로드</button>
+            <!-- AJAX로 테이블 내용이 여기에 들어갑니다. -->
+        </div>
+    </div>
+</div>
+
+	<!-- 테이블 추가 -->
+	<script src="jquery-3.7.1.min.js"></script>
+	<script src="https://code.highcharts.com/highcharts.js"></script>
+	<script src="https://code.highcharts.com/modules/exporting.js"></script>
+	<script src="https://code.highcharts.com/modules/accessibility.js"></script>
+
+	<script>
+	let isOn = localStorage.getItem('isOn') === 'true';//토글 설정을 위한 변수(절대 변경되지 않고, 변경 되어서도 안됨)
+	$(document).on('click', '#wrap .toggleBG', function () {
+	    var toggleBG = $(this);
+	    var toggleFG = toggleBG.find('.toggleFG');
+	    var left = parseInt(toggleFG.css('left')); // 숫자로 변환
+
+	    if (left === 40) { 
+	        toggleBG.css('background', '#CCCCCC');
+	        toggleActionStart(toggleFG, 'TO_LEFT');
+	        $("#wrap .toggleFG").text = "좌측 정렬";
+	        isOn = "true";
+	        localStorage.setItem('isOn', isOn);
+	    } else if (left === 0) { 
+	        toggleBG.css('background', '#53FF4C');
+	        toggleActionStart(toggleFG, 'TO_RIGHT');
+	        $("#wrap .toggleFG").text = "우측 정렬";
+	        isOn = "false";
+	        localStorage.setItem('isOn', isOn);
+	    }
+	});
+
+	function toggleActionStart(toggleBtn, LR) {
+	    var intervalID = setInterval(function () {
+	        var left = parseInt(toggleBtn.css('left')); // 숫자로 변환
+	        left += (LR === 'TO_RIGHT') ? 5 : -5;
+
+	        if (left >= 0 && left <= 40) {
+	            toggleBtn.css('left', left + 'px');
+	        }
+	    }, 10);
+
+	    setTimeout(function () {
+	        clearInterval(intervalID);
+	    }, 201); // 201ms로 애니메이션 종료
+	}
+    
+	var isMouseOut = true;  // 마우스가 영역을 벗어났는지 체크하는 변수
+
+	$('#popup_chart').on('mouseover', function() {
+	    isMouseOut = false;  // 영역 안에 있을 때는 false로 설정
+	});
+
+	$('#popup_chart').on('mouseout', function() {
+	    isMouseOut = true;  // 영역을 벗어났을 때는 true로 설정
+	});
+
+	// 마우스가 벗어난 후 클릭이 발생했을 때
+	$(document).on('click', function(e) {
+	    // 마우스가 영역을 벗어난 상태에서 클릭한 경우
+	    if (isMouseOut) {
+	        $("#popup_chart").hide();
+	        isMouseOut = false;  // 클릭 후에는 상태를 리셋
+	    }
+	});
+
+    var currentPeriod = 'week'; // Default to week
+    var categories = []; // 전역 변수로 선언
+
+    function changeData(period) {
+        currentPeriod = period;  // Set the period to week or month
+        drawChart();  // Redraw the chart with new data
+    }
+    
+	var Originaltable = $("#testTable_line");
+    var Copytable = Originaltable.clone(true);
+    
+    $(".downloadExcel").on("click", function() {
+		var excelPeriod = currentPeriod;
+        // AJAX를 사용하여 서버에서 처리된 테이블 부분만을 모달에 삽입
+        $.ajax({
+            url: 'total_list.jsp', // 서버에서 처리할 JSP 파일
+            type: 'POST',
+            data: { period: excelPeriod }, // 선택된 기간을 파라미터로 전달
+            success: function(response) {
+                // 서버에서 받은 테이블을 모달에 삽입
+                $("#ExcelTableChart").append(Copytable);
+                Copytable.css("display", "block");
+
+                // 모달을 표시
+                $("#excelModal").fadeIn();  // fadeIn 효과로 모달 나타내기
+            },
+            error: function(xhr, status, error) {
+                console.error("AJAX Error: " + error);
+            }
+        });
+
+    });
+    
+    $(document).on("click", ".excelDownload", function () {
+        // 테이블 데이터를 가져오기
+        var table = $('#testTable_line');
+        var rows = table.find('tr');
+
+        // Excel 파일을 위한 CSV 형식 데이터 만들기
+        var csvContent = '\uFEFF'; // UTF-8 BOM 추가
+
+        // 헤더 처리
+        rows.eq(0).find('th').each(function () {
+            csvContent += '"' + $(this).text().trim() + '",'; // 데이터 감싸기
+        });
+        csvContent = csvContent.slice(0, -1); // 마지막 쉼표 제거
+        csvContent += '\n';
+
+        // 데이터 처리
+        rows.slice(1).each(function () {
+            $(this).find('td').each(function () {
+                csvContent += '"' + $(this).text().trim() + '",'; // 데이터 감싸기
+            });
+            csvContent = csvContent.slice(0, -1); // 마지막 쉼표 제거
+            csvContent += '\n';
+        });
+
+        // Blob 생성 및 다운로드 링크 생성
+        var blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        var link = document.createElement('a');
+        if (link.download !== undefined) { // 다운로드 속성이 지원되는 경우
+            var url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', 'table_data.csv');
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        } else {
+            alert("CSV 다운로드를 지원하지 않는 브라우저입니다.");
+        }
+    });
+
+    
+    // 모달 닫기 (X 버튼 클릭 시)
+    $(".close").on("click", function() {
+    	Originaltable = "";
+        $("#excelModal").fadeOut();  // fadeOut 효과로 모달 숨기기
+    });
+
+    // 모달 밖을 클릭하면 닫히도록 설정 (모달 배경 클릭 시)
+    $(window).on("click", function(event) {
+        if ($(event.target).is("#excelModal")) {
+        	Originaltable = "";
+            $("#excelModal").fadeOut();
+        }
+    });
+	
+    function drawChart() {
+        $.ajax({
+            url: "getSalesData.jsp", // 이 파일에서 DB 쿼리 실행
+            method: "GET",
+            data: { period: currentPeriod }, // 현재 기간을 서버로 보냄
+            success: function(response) {
+                // 응답을 JSON 형식으로 변환
+                console.log("Response from server:", response); // 디버깅용 로그
+                var parsedData = JSON.parse(response);
+
+                // Highcharts 데이터 포맷으로 변환
+                categories = parsedData.map(item => item[0]); // x축 날짜
+                var data = parsedData.map(item => item[1]); // y축 Profit
+
+                console.log("Categories:", categories); // 디버깅용 로그
+
+                Highcharts.chart('chart_div', {
+                    chart: {
+                        type: 'line'
+                    },
+                    title: {
+                        text: 'Sales Profit Graph'
+                    },
+                    xAxis: {
+                        categories: categories, // 날짜
+                        title: {
+                            text: 'Date'
+                        }
+                    },
+                    yAxis: {
+                        title: {
+                            text: 'Profit'
+                        }
+                    },
+                    legend: {
+                        layout: 'horizontal',
+                        align: 'center',
+                        verticalAlign: 'bottom'
+                    },
+                    series: [{
+                        name: 'Profit',
+                        data: data, // y축 데이터
+                        point: {
+                            events: {
+                                click: function () {
+                                	const clickedDate = categories[this.index];
+                                    console.log("Clicked Date:", clickedDate);
+
+                                    // AJAX로 클릭한 날짜 데이터를 서버로 전송
+                                    $.ajax({
+                                        url: "handleClick.jsp", // 서버에서 처리할 파일
+                                        method: "POST",
+                                        data: { date: clickedDate },
+                                        success: function (response) {
+                                            console.log("Server response:", response);
+											$("#popup_chart").html(response);
+											$("#popup_chart").show();
+											isMouseOut = true;
+                                        },
+                                        error: function () {
+                                            alert("Error sending date to server.");
+                                        }
+                                    });
+                                }
+                            }
+                        }
+                    }],
+                    responsive: {
+                        rules: [{
+                            condition: {
+                                maxWidth: 500
+                            },
+                            chartOptions: {
+                                legend: {
+                                    layout: 'horizontal',
+                                    align: 'center',
+                                    verticalAlign: 'bottom'
+                                }
+                            }
+                        }]
+                    }
+                });
+            },
+            error: function() {
+                alert("Error loading data");
+            }
+        });
+    }
+
+    // 초기 차트 로드
+    drawChart();
+</script>
+</body>
+</html>

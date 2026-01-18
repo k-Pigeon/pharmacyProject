@@ -1,0 +1,772 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8"
+	pageEncoding="UTF-8"%>
+<%@ page import="java.sql.*"%>
+<%@ include file="sessionManager.jsp"%>
+<%@ include file="DBconnection.jsp"%>
+<%
+String dbName = (session != null) ? (String) session.getAttribute("dbName") : null;
+String id = (session != null) ? (String) session.getAttribute("id") : null;
+String password = (session != null) ? (String) session.getAttribute("password") : null;
+
+String idSortation = (session != null) ? (String) session.getAttribute("idSortation") : null; if (id == null || dbName == null) {
+	response.sendRedirect("login.jsp");
+	return;
+}
+
+jdbcDriver = dbName;
+%>
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>바코드 스캔</title>
+<link rel="stylesheet" href="style.css">
+<style>
+html, body {
+	overflow-x: hidden; /* 가로 스크롤 방지 */
+	overflow-y: auto; /* 세로 스크롤 자동 */
+	margin: 0;
+	padding: 0;
+	box-sizing: border-box;
+}
+
+/* 테이블 스타일 */
+#table_input, .headTable {
+	width: 100%;
+	max-width: 100%; /* 화면을 넘지 않도록 설정 */
+	background-color: #f9f9f9; /* 아주 밝은 회색 배경 */
+	border-radius: 8px;
+	border: 1px solid #ddd; /* 밝은 테두리 */
+	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05); /* 부드러운 그림자 */
+	table-layout: auto; /* 테이블의 자동 크기 조정 */
+}
+
+/* 테이블 헤더 스타일 */
+#table_input th, #table_input td, .headTable th, .headTable td {
+	word-wrap: break-word; /* 긴 텍스트 줄바꿈 */
+}
+/* 테이블 헤더 스타일 */
+#table_input th, .headTable th {
+	background-color: #f0f0f0; /* 밝은 회색 */
+	color: #333333; /* 어두운 회색 텍스트 */
+	font-weight: 600;
+	text-align: left;
+	padding: 12px;
+	border-bottom: 2px solid #4CAF50; /* 초록색 선 강조 */
+}
+
+/* 테이블 데이터 입력란 스타일 */
+#table_input td, .headTable td {
+	padding: 12px;
+	background-color: #ffffff; /* 흰색 배경 */
+	border-bottom: 1px solid #e0e0e0; /* 얇은 회색 선 */
+}
+
+/* 입력창 스타일 */
+#table_input input[type="text"], #table_input input[type="date"],
+	#table_input select {
+	width: 100%;
+	height: 50px;
+	padding-left: 10px;
+	margin: -8px;
+	background-color: #ffffff;
+	color: #333333;
+	border: 1px solid #ccc;
+	border-radius: 4px;
+	box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.4);
+	transition: border-color 0.3s ease, box-shadow 0.3s ease;
+	font-size: 15px;
+}
+
+/* 입력창 포커스 시 스타일 */
+#table_input input[type="text"]:focus, #table_input input[type="date"]:focus,
+	#table_input select:focus {
+	border-color: #4CAF50; /* 포커스 시 초록색 테두리 */
+	box-shadow: 0 0 5px rgba(76, 175, 80, 0.3); /* 초록빛 하이라이트 */
+	outline: none;
+}
+
+/* 테이블의 제출 버튼 스타일 */
+#table_input input[type="submit"] {
+	padding: 10px 15px;
+	background-color: #4CAF50; /* 초록색 버튼 */
+	color: white;
+	border: none;
+	border-radius: 5px;
+	cursor: pointer;
+	transition: background-color 0.3s ease;
+}
+
+#table_input input[type="submit"]:hover {
+	background-color: #388E3C; /* 호버 시 더 짙은 초록색 */
+}
+
+#popup #popup-table #popup-content tr:hover {
+	background-color: #FAFAD2;
+}
+
+.highlight2 {
+	background-color: #FAFAD2;
+	color: red;
+}
+
+#wrap #table_input th, #wrap #table_input td {
+	padding: 8px;
+}
+
+table::-webkit-scrollbar {
+	display: none;
+}
+
+.headTable th {
+	text-align: center;
+}
+
+.focusRow td , .focusCell{
+	background-color: #7FFFD4 !important;
+}
+
+#wrap .tableBody .deleteTR {
+	width: 100%;
+	height: 100%;
+}
+.medicineHover{
+	cursor: pointer;
+	background-color: black;
+	color: white;
+	/* transform: scale(1.05); */
+	transition: all 0.1s ease-in-out;
+}
+#popup .closeMedicine{
+	position : relative;
+	width: 80px;
+    height: 40px;
+    text-align: center;
+    border: 1px solid black;
+    border-radius: 10px;
+    float: right;
+    z-index: 10000;
+  
+}
+#popup .closeMedicine:hover{
+	cursor:pointer;
+}
+#popup .closeMedicine:active{
+	transform: scale(0.8);
+	transition: all 0.1s ease-in-out;
+}
+</style>
+
+</head>
+<body>
+	<div id="wrap" style="display: block; width: 100%; position: fixed;">
+		<header>
+			<jsp:include page="header.jsp"></jsp:include>
+		</header>
+		<h1
+			style="text-align: center; margin: 70px; position: fixed; width: 100%;">재고
+			수량 입력</h1>
+		<form action="./testTableStore.jsp" name="data" method="post"
+			id="formTeg" onsubmit="return medicine()"
+			style="min-width: 100%; padding: 0; margin: 0; margin-top: 20vh;">
+			<table
+				style="display: block; border: 1px solid black; min-width: 1700px; max-width: 1600px; padding: 0; margin: 0 auto; overflow: auto;"
+				class="headTable">
+				<colgroup>
+					<col width="150px;">
+					<col width="360px;">
+					<col width="120px;">
+					<col width="120px;">
+					<col width="130px;">
+					<col width="130px;">
+					<col width="150px;">
+					<col width="150px;">
+					<col width="150px;">
+					<col width="110px;">
+					<col width="100px;">
+				</colgroup>
+				<thead>
+					<tr>
+						<th style="background: none; border: hidden;">제품코드<br></th>
+						<th style="background: none; border: hidden;">제품명</th>
+						<th style="background: none; border: hidden;">유통기한</th>
+						<th style="background: none; border: hidden;">입고 날짜</th>
+						<th style="background: none; border: hidden;">종류</th>
+						<th style="background: none; border: hidden;">입고 수량</th>
+						<th style="background: none; border: hidden;">판매가격</th>
+						<th style="background: none; border: hidden;">사입가격</th>
+						<th style="background: none; border: hidden;">회사명</th>
+						<th style="background: none; border: hidden;">규격</th>
+						<th style="background: none; border: hidden;">삭제</th>
+					</tr>
+				</thead>
+			</table>
+			<table
+				style="display: block; border: 1px solid black; min-width: 1700px; max-height: 600px; padding: 0; margin: 0 auto; overflow: auto;"
+				id="table_input">
+				<colgroup>
+					<col width="150px;">
+					<col width="360px;">
+					<col width="120px;">
+					<col width="120px;">
+					<col width="150px;">
+					<col width="150px;">
+					<col width="150px;">
+					<col width="150px;">
+					<col width="150px;">
+					<col width="110px;">
+					<col width="100px;">
+				</colgroup>
+				<tbody class="tableBody">
+					<tr class="insertTR">
+						<td style="border: none;"><input type="text"
+							name="SerialNumber[]" class="SerialNumber" placeholder="일련번호 입력"
+							autocomplete="off" autocomplete="off"
+							oninput="this.value = this.value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');"></td>
+						<td style="border: none;"><input type="text"
+							name="medicineName[]" class="medicineName" autocomplete="off"></td>
+						<td style="border: none;"><input type="text"
+							name="DeliveryDate[]" class="DeliveryDate" placeholder="yy/mm/dd"
+							pattern="\d{2}/\d{2}/\d{2}" required autocomplete="off"></td>
+						<td style="border: none;"><input type="date"
+							name="receiptDate[]" class="receiptDate" autocomplete="off"></td>
+						<td style="border: none;"><select name="kind[]" class="kind">
+								<option class="kindVal" value="건강기능식품">건강기능식품</option>
+								<option class="kindVal" value="일반의약품">일반의약품</option>
+								<option class="kindVal" value="파스류">파스류</option>
+								<option class="kindVal" value="연고류">연고류</option>
+								<option class="kindVal" value="드링크류">드링크류</option>
+								<option class="kindVal" value="비타민류">비타민류</option>
+								<option class="kindVal" value="한약류">한약류</option>
+								<option class="kindVal" value="기타">기타</option>
+						</select></td>
+						<td style="border: none;"><input type="text"
+							name="inventory[]" class="inventory" autocomplete="off"></td>
+						<td style="border: none;"><input type="text" name="price[]"
+							class="price" autocomplete="off"></td>
+						<td style="border: none;"><input type="text"
+							name="Buyingprice[]" class="Buyingprice" autocomplete="off"></td>
+						<td style="border: none;"><input type="text"
+							name="companyName[]" class="companyName" autocomplete="off"></td>
+						<td style="border: none;"><input type="text"
+							name="standard[]" class="standard" autocomplete="off"></td>
+						<td style="border: none;"><input type="button"
+							class="deleteTR" value="─"></td>
+					</tr>
+				</tbody>
+			</table>
+		</form>
+		<!-- 검색 팝업을 표시할 div -->
+		<!-- 검색 결과 팝업창 -->
+		<div id="popup"
+			style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background-color: white; border: 1px solid rgb(204, 204, 204); z-index: 1000; box-shadow: gray 0px 0px 10px; width: 1700px; height: 70vh;">
+			<h3	style="position: fixed; margin: 10px; width: 100%; text-align: center;">검색	결과</h3>
+			<div class="closeMedicine">닫기 X</div>
+			<table id="popup-table"
+				style="display: block; width: 100%; border-collapse: collapse; margin-top: 50px;">
+				<colgroup>
+					<col style="width: 550px">
+					<col style="width: 200px">
+					<col style="width: 100px">
+					<col style="width: 150px">
+					<col style="width: 200px">
+					<col style="width: 150px">
+					<col style="width: 150px">
+					<col style="width: 100px">
+					<col style="width: 100px">
+				</colgroup>
+				<thead>
+					<tr style="background-color: #f0f0f0;">
+						<th style="border: 1px solid #ccc; padding: 5px;">제품명</th>
+						<th style="border: 1px solid #ccc; padding: 5px;">회사명</th>
+						<th style="border: 1px solid #ccc; padding: 5px;">재고</th>
+						<th style="border: 1px solid #ccc; padding: 5px;">종류</th>
+						<th style="border: 1px solid #ccc; padding: 5px;">일련번호</th>
+						<th style="border: 1px solid #ccc; padding: 5px;">입고 날짜</th>
+						<th style="border: 1px solid #ccc; padding: 5px;">유통기한</th>
+						<th style="border: 1px solid #ccc; padding: 5px;">사입가</th>
+						<th style="border: 1px solid #ccc; padding: 5px;">판매가</th>
+					</tr>
+				</thead>
+			</table>
+			<table
+				style="display: block; width: 100%; height: calc(100% - 20%); border-collapse: collapse; overflow: scroll;">
+				<colgroup>
+					<col style="width: 550px">
+					<col style="width: 200px">
+					<col style="width: 100px">
+					<col style="width: 150px">
+					<col style="width: 200px">
+					<col style="width: 150px">
+					<col style="width: 150px">
+					<col style="width: 100px">
+					<col style="width: 100px">
+				</colgroup>
+				<tbody id="popup-content"></tbody>
+			</table>
+		</div>
+
+	</div>
+
+	<script src="jquery-3.7.1.min.js"></script>
+	<script src="script.js"></script>
+	<script>
+	$(document).ready(function () {
+		$("#popup .closeMedicine").on("click", function(){
+			$("#popup").hide();
+		});
+		function addNewRowWithToday() {
+		    const $firstRow = $("#table_input .insertTR:first").clone(); // 첫 행 복제
+		    const todayDate = new Date().toISOString().split('T')[0];
+		    $firstRow.find(".receiptDate").val(todayDate);
+		    $firstRow.find("input[type=text]").val('');
+		    $firstRow.removeClass("focusRow");
+		    $("#table_input .tableBody").append($firstRow);
+		}
+		$("#wrap .tableBody").on("click",".deleteTR", function(){
+			if($("#wrap #table_input .insertTR").length == 1){
+				return false;
+			}else{
+				$(this).closest("tr").remove();
+			}
+		});
+		$("#wrap").on("focus", "#table_input input", function () {
+		    // 모든 tr/td에서 클래스 제거
+		    $("#table_input tbody tr").removeClass("focusRow");
+		    $("#table_input tbody td").removeClass("focusCol focusCell");
+
+		    // 포커스된 input의 tr에 클래스 추가 (행 강조)
+		    const $tr = $(this).closest("tr");
+		    $tr.addClass("focusRow");
+
+		    // 포커스된 td의 index 구하기
+		    const $td = $(this).closest("td");
+		    const colIndex = $td.index();
+
+		    // 같은 열에 있는 모든 td에 클래스 추가 (열 강조)
+		    $("#table_input tbody tr").each(function () {
+		        $(this).children("td").eq(colIndex).addClass("focusCol");
+		    });
+
+		    // 자기 자신(td)은 교차점이니까 별도 강조
+		    $td.addClass("focusCell");
+		});
+
+		// 천 단위 쉼표 자동 적용 - 모든 tr에 동작
+		$("#wrap #formTeg").on("input", ".price, .Buyingprice, .inventory", function(){
+		    let value = $(this).val().replace(/[^0-9]/g, ""); // 숫자만
+		    if (value) {
+		        let formatted = value.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+		        $(this).val(formatted);
+		    }
+		});
+
+        // 키보드 '+' 키를 자동으로 입력 (Keypad '+')
+        let plusEvent = new KeyboardEvent('keydown', {
+            key: '+',
+            code: 'NumpadAdd',
+            keyCode: 107, // 숫자 키패드 + 키 코드
+            which: 107,
+            bubbles: true
+        });
+		//바코드 스캔 자료
+		document.addEventListener("keydown", function(event) {
+		    if (event.key === "!") { // 바코드가 "!"로 시작하면
+		        event.preventDefault();
+	            // 현재 포커스된 요소에 이벤트를 강제로 발생
+	            document.activeElement.dispatchEvent(plusEvent);
+	            addNewRowWithToday();
+	            $(".insertTR:eq(-2)").find("td .SerialNumber").focus();
+		    }
+		});
+		document.getElementById("logoutButton").addEventListener("click", function() {
+            window.location.href = "logout.jsp"; // 로그아웃 JSP로 리다이렉트
+        });
+		
+	    let currentRowIndex = -1; // 현재 선택된 행의 인덱스 초기화
+	    let currentRow; // 현재 선택된 행을 추적할 변수 추가
+
+	    // 검색 입력 시 Ajax 요청
+	    $("#table_input").on("keydown", ".insertTR .medicineName", function (e) {
+	        if (e.key === "Enter") { // Enter 키 감지
+	            e.preventDefault(); // 폼 제출 방지
+	            let medicineName = $(this).val();
+
+	            // 현재 포커스가 있는 행을 추적
+	            currentRow = $(this).closest('tr'); // 현재 입력 필드가 속한 행
+
+	            if (medicineName.trim() !== "") {
+	                // Ajax 요청
+	                $.ajax({
+	                    url: "productMedicine.jsp", // 데이터 검색 JSP
+	                    method: "POST",
+	                    data: { medicineName: medicineName }, // LIKE 검색 조건
+	                    success: function (response) {
+	                        $("#popup-content").html(response); // 결과를 테이블에 표시
+	                        $("#popup").show(); // 팝업 표시
+	                        currentRowIndex = -1;
+	                    },
+	                    error: function () {
+	                        return false;
+	                    }
+	                });
+	            }
+	        }
+	    });
+
+	    // 팝업 외부 클릭 시 닫기
+	    $(document).on("click", function (e) {
+	        if (!$(e.target).closest("#popup, .medicineName").length) {
+	            $("#popup").hide();
+	        }
+	    });
+
+	    // 테이블 행 클릭 시 데이터 입력
+	    $(document).on("click", ".result-row", function () {
+	        let data = $(this).data(); // 선택된 데이터 가져오기
+
+	        // 입력 필드에 값 채우기
+	        populateFields(data);
+	    });
+
+		$('#popup').on("mouseover", "tbody tr", function(){
+			  const rows = $('#popup-content tr:visible');
+			  currentRowIndex = rows.index(this);
+			  rows.removeClass('medicineHover');
+			  $(this).addClass('medicineHover');
+		});
+		let selectedRowIndex = -1;
+	    // 키보드 이벤트 처리 (방향키 및 Enter 키)
+		$(document).on('keydown', function (e) {
+			if (!$('#popup').is(':visible')) return;
+			if($("#popup").is(":visible")){
+				if(e.keyCode === 27){
+					e.preventDefault();
+					$('#popup').hide();
+				}
+			}
+			
+			const rows = $('#popup-content tr:visible');
+			if (!rows.length) return;
+			if (e.key === 'ArrowDown') {
+				e.preventDefault();
+			if (currentRowIndex < rows.length - 1) currentRowIndex++;
+			} else if (e.key === 'ArrowUp') {
+				e.preventDefault();
+			if (currentRowIndex > 0) currentRowIndex--;
+			} else if (e.key === 'Enter' && currentRowIndex >= 0) {
+				e.preventDefault();
+				$(rows[currentRowIndex]).trigger('click'); // 기존 클릭 로직 재사용
+			} else {
+				return;
+			}
+			
+			rows.removeClass('medicineHover');
+			if (currentRowIndex >= 0) {
+		    	$(rows[currentRowIndex]).addClass('medicineHover');
+		    	// 강조행이 가려졌다면 살짝만 보이게 스크롤
+		    	rows[currentRowIndex].scrollIntoView({block: 'nearest'});
+			}
+		});
+
+	    // 입력 필드에 데이터 채우기
+	    function populateFields(data) {
+	        // 현재 선택된 행에만 값 채우기
+	        currentRow.find(".medicineName").val(data.medicinename);
+	        currentRow.find(".companyName").val(data.companyname);
+	        currentRow.find(".standard").val(data.standard);
+	        currentRow.find(".kind").val(data.kind);
+	        currentRow.find(".inventory").val(data.inventory);
+	        currentRow.find(".SerialNumber").val(data.serialnumber);
+	        currentRow.find(".DeliveryDate").val(data.deliverydate);
+	        currentRow.find(".Buyingprice").val(data.buyingprice);
+	        currentRow.find(".price").val(data.price);
+
+	        $("#popup").hide(); // 팝업 숨기기
+	        currentRow.find(".DeliveryDate").focus(); // 입력 필드에 포커스 이동
+	    }
+	});
+
+
+
+
+
+	document.addEventListener('keydown', (event) => {
+	    //console.log(`Key: ${event.key}, ASCII Code: ${event.keyCode}`);
+	    // - 키를 누르면 맨 아래 리스트가 삭제
+		if (event.keyCode == 109) { // '-' 키
+	event.preventDefault();
+	const $rows = $("#table_input .insertTR");
+
+	if ($rows.length > 1) {
+		$rows.last().remove(); // 마지막 행 제거
+	} else {
+		alert("더 이상 삭제할 수 없습니다.");
+	}
+}
+
+	    
+
+		if (event.keyCode === 106){
+			event.preventDefault();
+			alert("데이터가 저장되었습니다.");
+			$("#formTeg").submit();
+		}
+
+	    // + 버튼을 누르면 리스트가 하나 새로 추가
+if (event.keyCode == 107) {
+    event.preventDefault();
+
+    addNewRowWithToday();
+}
+
+	});
+ 	document.addEventListener("input", function (event) {
+	    if (event.target.classList.contains("DeliveryDate")) {
+	        let input = event.target.value.replace(/[^0-9]/g, ""); // 숫자 외 제거
+	        let formatted = "";
+
+	        if (input.length > 2) {
+	            formatted += input.substring(0, 2) + "/"; // 첫 번째 슬래시 추가
+	        } else {
+	            formatted += input;
+	        }
+
+	        if (input.length > 4) {
+	            formatted += input.substring(2, 4) + "/"; // 두 번째 슬래시 추가
+	            formatted += input.substring(4, 6); // 나머지 추가
+	        } else if (input.length > 2) {
+	            formatted += input.substring(2); // 첫 슬래시 뒤 나머지 추가
+	        }
+	        event.target.value = formatted.slice(0, 8); // 최대 8자리 유지
+	    }
+	});
+ 	document.addEventListener("keydown", function (event) {
+	    // Enter 키와 PageDown 키 감지
+	    if (event.keyCode === 34) {
+	        event.preventDefault(); // 기본 동작 방지
+
+	        const currentInput = event.target;
+
+	        // 현재 input의 부모 td 요소 찾기
+	        const currentTd = currentInput.closest("td");
+	        if (!currentTd) return; // td가 없으면 종료
+
+	        // 현재 td의 이전 형제 td 찾기
+	        const prevTd = currentTd.previousElementSibling;
+
+	        // 이전 td에 input 요소가 있는지 확인 후 포커스 이동
+	        if (prevTd) {
+	            const prevInput = prevTd.querySelector("input");
+	            if (prevInput) {
+	                prevInput.focus();
+	            }
+	        }
+	    }
+	});
+
+	document.addEventListener("keydown", function(event) {
+	    // Enter 키 확인
+	    if (event.key === "Enter") {
+	        const currentInput = document.activeElement;
+
+	        // .SerialNumber는 제외
+	        if (currentInput.classList.contains("SerialNumber")) {
+	            return; // SerialNumber 필드는 기본 동작 유지
+	        }
+
+	        // 현재 입력 필드의 부모 <td>에서 다음 <td>를 찾음
+	        const nextTd = currentInput.closest("td").nextElementSibling;
+	        if (nextTd) {
+	            const nextInput = nextTd.querySelector("input, select"); // 다음 <td> 안의 input 또는 select 찾기
+	            if (nextInput) {
+	                event.preventDefault(); // 기본 Enter 키 동작 방지
+	                nextInput.focus(); // 다음 입력 필드로 포커스 이동
+	            }
+	        } else {
+	            // 마지막 필드인 경우 추가적인 동작(필요 시 구현)
+	            event.preventDefault();
+	        }
+	    }
+	});
+	// 방향키로 행 이동
+document.addEventListener("keydown", function(event) {
+    // 위쪽(ArrowUp)과 아래쪽(ArrowDown) 키만 처리
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+        event.preventDefault(); // 기본 화살표 동작 방지
+
+        const currentInput = event.target; // 현재 포커스된 input 요소
+        const currentTd = currentInput.closest("td"); // 현재 input이 속한 td
+        const currentTr = currentTd.closest("tr"); // 현재 td가 속한 tr
+        const currentTable = currentTr.closest("table"); // 현재 tr이 속한 table
+
+        let targetTd; // 이동할 대상 td를 변수로 설정
+
+        // 방향키에 따른 이동
+        if (event.key === "ArrowDown") {
+            const targetTr = currentTr.nextElementSibling; // 다음 행
+            if (targetTr) {
+                targetTd = targetTr.children[currentTd.cellIndex]; // 현재 td의 같은 위치
+            } else {
+                // 마지막 행일 경우 첫 번째 행으로 이동
+                const firstRow = currentTable.querySelector("tbody tr:first-child");
+                targetTd = firstRow.children[currentTd.cellIndex];
+            }
+        }
+        else if (event.key === "ArrowUp") {
+            const targetTr = currentTr.previousElementSibling; // 이전 행
+            if (targetTr) {
+                targetTd = targetTr.children[currentTd.cellIndex]; // 현재 td의 같은 위치
+            } else {
+                // 첫 번째 행일 경우 마지막 행으로 이동
+                const lastRow = currentTable.querySelector("tbody tr:last-child");
+                targetTd = lastRow.children[currentTd.cellIndex];
+            }
+        }
+
+        // 이동할 td가 존재하면, 해당 td의 input 요소로 포커스 이동
+        if (targetTd) {
+            const targetInput = targetTd.querySelector("input"); // 대상 td의 input 요소 찾기
+            if (targetInput) {
+                targetInput.focus(); // 해당 input 요소에 포커스 이동
+            }
+        }
+    }
+
+    // 좌우 방향키 (ArrowLeft, ArrowRight)에 대한 처리를 하지 않음
+    else if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+        event.preventDefault(); // 좌우 키 동작 방지
+    }
+});
+
+
+
+
+	$(document).ready(function(){
+	 	// SerialNumber에서 Enter 키 입력 시 데이터 가져오기
+$("#wrap #table_input").on("keypress", ".SerialNumber", function(event) {
+    if (event.which == 13) {  // Enter 키를 감지
+        var currentRow = $(this).closest("tr");  // 현재 행을 찾음
+        var serialNumber = $(this).val();  // 입력된 serialNumber
+
+        // AJAX 요청
+        $.ajax({
+            type: "POST",
+            url: "fetchDataFromDB.jsp",  // 데이터를 가져올 서버 파일 경로
+            data: { serialNumber: serialNumber },
+            dataType: "json",  // 응답을 JSON 형식으로 받음
+            success: function(response) {
+                if (response.error) {
+                    alert(response.error);  // 오류가 있으면 알림 표시
+                } else {
+                    // 서버 응답으로 현재 행의 값을 설정
+                    currentRow.find(".medicineName").val(response.medicineName);
+                    currentRow.find(".DeliveryDate").val(response.DeliveryDate);
+                    currentRow.find(".receiptDate").val(response.DeliveryDate);
+                    currentRow.find(".inventory").val(response.inventory);
+                    currentRow.find(".price").val(response.price);
+                    currentRow.find(".kind").val(response.kind);
+                    currentRow.find(".Buyingprice").val(response.Buyingprice);
+                    currentRow.find(".companyName").val(response.companyName);
+                    currentRow.find(".standard").val(response.standard);
+
+                    // DeliveryDate 값을 설정하고 포커스
+                    var deliveryDateInput = currentRow.find(".DeliveryDate");
+                    deliveryDateInput.val(response.DeliveryDate).focus(); // 값 설정 후 포커스
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error("AJAX 요청 에러:", error);  // 요청 에러 처리
+            }
+        });
+
+        event.preventDefault(); // 기본 Enter 동작 방지
+    }
+});
+
+	    $("#wrap #table_input").on("keypress", ".DeliveryDate", function(event) {
+	        var inputField = $(this);
+	        if (!inputField.data("cleared")) {
+	            // 기존 값 삭제
+	            inputField.val("");
+	            inputField.data("cleared", true); // 값을 한번만 삭제하도록 설정
+	        }
+	    });
+
+	    // 포커스가 취소되면 상태 초기화
+	    $("#wrap #table_input").on("blur", ".DeliveryDate", function() {
+	        $(this).data("cleared", false); // 다시 입력 시 기존 값 삭제 가능
+	    });
+	});
+	
+	$(document).on('keydown', function(event) {
+	    if (event.ctrlKey && (event.key === 's' || event.key === 'S')) {
+	        event.preventDefault();
+	        $('#formTeg').submit();
+	    }
+	    if(event.keyCode == 118){
+	        event.preventDefault();
+	        window.location.href="Product_Registration.jsp";
+	    }
+	    if(event.keyCode == 122){
+	        event.preventDefault();
+	        $('#formTeg').submit();
+	    }
+	    if(event.keyCode == 116){
+	        event.preventDefault();
+	    }
+	});
+		// 입력란 변수
+		var $SerialNumber = $("#table_input .SerialNumber");
+		var $medicineName = $("#table_input .medicineName");
+		var $Buyingprice = $("#table_input .Buyingprice");
+		var $price = $("#table_input .price");
+		var $inventory = $("#table_input .inventory");
+		var $companyName = $("#table_input .companyName");
+		var $standard = $("#table_input .standard");
+		var $receiptDate = $("#table_input .receiptDate");
+		var $DeliveryDate = $("#table_input .DeliveryDate");
+
+		
+		function medicine() {
+			// 입력란 정규식
+			//제품이름이 공백일 때
+			if ($medicineName.val() == null || $medicineName.val() == "") {
+				alert("제품명을 입력하세요");
+				$medicineName.focus();
+				return false;
+			}
+			//가격이 공백일 때
+			if ($price.val() == null || $price.val() == "") {
+				alert("가격을 입력하세요");
+				$price.focus();
+				return false;
+			}
+			//수량이 공백일 때
+			if ($inventory.val() == null || $inventory.val() == "") {
+				alert("입고 수량을 입력하세요"); // 수정: "수량을 입력하세요" -> "입고 수량을 입력하세요"
+				$inventory.focus();
+				return false;
+			}
+			//입고 날짜가 공백일 때
+			if ($receiptDate.val() == null || $receiptDate.val() == "") {
+				alert("입고 날짜를 입력하세요");
+				$receiptDate.focus();
+				return false;
+			}
+			//유통기한이 공백일 때
+			if ($DeliveryDate.val() == null || $DeliveryDate.val() == "") {
+				alert("유통기한을 입력하세요");
+				$DeliveryDate.focus();
+				return false;
+			}
+			$("#wrap #table_input").find(".price, .inventory, .Buyingprice").each(function () {
+				let cleanVal = $(this).val().replace(/,/g, "");
+				$(this).val(cleanVal);
+			});
+		}
+		$("#wrap #table_input .receiptDate").val(new Date().toISOString().split('T')[0]);
+	</script>
+</body>
+</html>

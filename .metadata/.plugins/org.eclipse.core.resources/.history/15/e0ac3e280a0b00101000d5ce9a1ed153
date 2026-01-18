@@ -1,0 +1,32 @@
+package frameProject;
+import java.awt.*;
+
+import javax.swing.*; //스윙 클래스
+
+public class frame {
+	public static void main(String[] args) {
+		JFrame f = new JFrame("Frame");
+		JPanel jp = new JPanel();
+		JLabel jl = new JLabel("Some Text");
+		JButton jb1 = new JButton("Click here!");
+		JTextArea jta = new JTextArea();//글자 입력칸(여러 줄의 내용을 작성할 경우)
+		JTextField jtf = new JTextField();//글자 입력칸(한줄 혹은 간결하게 내용을 작성할 경우)
+		
+		jp.setLayout(new BorderLayout());
+		//커스텀 디자인
+		//BorderLayout : 위치에 관한 명령어
+		
+		jp.add(jl, BorderLayout.NORTH);//jp에 Label를 이용해 글자를 추가 | NORTH : 북쪽 방향에 지정
+		jp.add(jb1, BorderLayout.EAST);//EAST : 동쪽에 추가
+		jp.add(jta, BorderLayout.CENTER);//CENTER : 중앙에 추가
+		jp.add(jtf, BorderLayout.SOUTH);//CENTER : 중앙에 추가
+		
+		f.add(jp);//add를 통해 f에 jp를 추가
+		
+		f.setSize(600, 400);//크기
+		f.setLocationRelativeTo(null);//출력될 위치(null = 중앙)
+		f.setResizable(false);//크기 조정 유무(true: 가능, false: 불가능)
+		f.setVisible(true);//프래임 호출
+	}
+
+}

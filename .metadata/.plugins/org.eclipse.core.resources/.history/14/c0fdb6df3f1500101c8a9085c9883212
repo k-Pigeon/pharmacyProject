@@ -1,0 +1,57 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8"
+    pageEncoding="UTF-8"%>
+<%@ page import="java.io.*, java.util.*, com.google.gson.*, java.sql.*" %>
+<%@ page import="java.sql.*"%>
+<%@ include file="sessionManager.jsp"%>
+<%@ include file="DBconnection.jsp"%>
+<%
+String dbName = (session != null) ? (String) session.getAttribute("dbName") : null;
+String id = (session != null) ? (String) session.getAttribute("id") : null;
+String password = (session != null) ? (String) session.getAttribute("password") : null;
+
+if (id == null || dbName == null) {
+	response.sendRedirect("login.jsp");
+	return;
+}
+
+jdbcDriver = dbName;
+%>
+<%
+request.setCharacterEncoding("UTF-8");
+
+BufferedReader reader = request.getReader();
+StringBuilder sb = new StringBuilder();
+String line;
+while ((line = reader.readLine()) != null) {
+    sb.append(line);
+}
+
+String json = sb.toString();
+
+JsonObject obj = JsonParser.parseString(json).getAsJsonObject();
+String medicineName = obj.get("medicineName").getAsString();
+JsonArray products = obj.getAsJsonArray("products");
+
+Class.forName("com.mysql.cj.jdbc.Driver");
+conn = DriverManager.getConnection(jdbcDriver, dbUser, dbPwd);
+
+// 일단 기존 데이터 삭제 후 재삽입 (또는 UPDATE 방식으로도 가능)
+String deleteSql = "DELETE FROM testTable WHERE medicineName = ?";
+PreparedStatement deleteStmt = conn.prepareStatement(deleteSql);
+deleteStmt.setString(1, medicineName);
+deleteStmt.executeUpdate();
+
+String insertSql = "INSERT INTO testTable (medicineName, standard, buyingPrice, price) VALUES (?, ?, ?, ?)";
+PreparedStatement insertStmt = conn.prepareStatement(insertSql);
+
+for (int i = 0; i < products.size(); i++) {
+    JsonObject product = products.get(i).getAsJsonObject();
+    insertStmt.setString(1, medicineName);
+    insertStmt.setString(2, product.get("standard").getAsString());
+    insertStmt.setDouble(3, product.get("buyingPrice").getAsDouble());
+    insertStmt.setDouble(4, product.get("price").getAsDouble());
+    insertStmt.executeUpdate();
+}
+
+out.print("success");
+%>

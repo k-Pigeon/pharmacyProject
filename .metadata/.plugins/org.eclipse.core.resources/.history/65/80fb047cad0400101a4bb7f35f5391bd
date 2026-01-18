@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?><project-modules id="moduleCoreId" project-version="1.5.0">
+    <wb-module deploy-name="commons-fileupload2-portlet-2.0.0-M2">
+        <wb-resource deploy-path="/" source-path="/src/main/java"/>
+    </wb-module>
+</project-modules>

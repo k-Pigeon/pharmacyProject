@@ -1,0 +1,22 @@
+<%@ page language="java" pageEncoding="UTF-8" %>
+<%@ page import="java.sql.*" %>
+
+<%-- 데이터베이스 연결용 JSP --%>
+<%
+	request.setCharacterEncoding("UTF-8");
+    // 세션에서 데이터베이스 연결 정보를 가져오기
+    String dbUser = (String) session.getAttribute("id");
+    String jdbcDriver = (String) session.getAttribute("dbName");
+    String dbPwd = (String) session.getAttribute("password");
+    String programID = (String) session.getAttribute("programID");
+    String role = (String) session.getAttribute("role");
+    Connection conn = null;
+
+    try {
+        // JDBC 드라이버 로드
+        Class.forName("com.mysql.cj.jdbc.Driver");
+        conn = DriverManager.getConnection(jdbcDriver, dbUser, dbPwd);
+    } catch (Exception e) {
+        e.printStackTrace();
+    }
+%>

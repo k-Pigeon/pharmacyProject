@@ -1,0 +1,52 @@
+<%@ page language="java" contentType="application/json; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ page import="java.sql.*, org.json.*" %>
+<%@ include file="sessionManager.jsp"%>
+<%@ include file="DBconnection.jsp"%>
+
+<%
+response.setContentType("application/json; charset=UTF-8");
+request.setCharacterEncoding("UTF-8");
+
+String idSortation = (session != null) ? (String) session.getAttribute("idSortation") : null;
+String tableName = "SalesRecord";
+if (idSortation != null && !idSortation.isEmpty()) tableName += idSortation;
+
+String month = request.getParameter("month"); // yyyy-mm
+JSONObject result = new JSONObject();
+JSONArray days = new JSONArray();
+
+if (month == null || !month.matches("^\\d{4}-\\d{2}$")) {
+    result.put("error","invalid month").write(response.getWriter());
+    return;
+}
+
+PreparedStatement pstmt = null;
+ResultSet rs = null;
+
+try {
+    String sql = "SELECT DISTINCT DATE(saleDate) AS day " +
+                 "FROM " + tableName +
+                 " WHERE DATE_FORMAT(saleDate, '%Y-%m') = ? " +
+                 " ORDER BY day ASC";
+    pstmt = conn.prepareStatement(sql);
+    pstmt.setString(1, month);
+    rs = pstmt.executeQuery();
+
+    while (rs.next()) {
+        JSONObject o = new JSONObject();
+        o.put("day", rs.getString("day")); // yyyy-mm-dd
+        days.put(o);
+    }
+
+    result.put("month", month);
+    result.put("days", days);
+    result.write(response.getWriter());
+
+} catch(Exception e){
+    result.put("error", e.getMessage()).write(response.getWriter());
+} finally {
+    if (rs != null) try { rs.close(); } catch(Exception ig){}
+    if (pstmt != null) try { pstmt.close(); } catch(Exception ig){}
+    if (conn != null) try { conn.setAutoCommit(true);} catch(Exception ig){}
+}
+%>

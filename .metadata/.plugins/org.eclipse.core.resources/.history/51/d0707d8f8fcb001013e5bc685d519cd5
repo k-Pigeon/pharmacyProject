@@ -1,0 +1,495 @@
+<%@ page language="java" contentType="application/json; charset=UTF-8"
+	pageEncoding="UTF-8"%>
+<%@ page
+	import="java.io.*, java.util.*, java.sql.*, javax.servlet.*, javax.servlet.http.*, org.json.JSONArray, org.json.JSONObject, java.util.regex.Pattern, java.util.regex.Matcher"%>
+<%@ include file="sessionManager.jsp"%>
+<%@ include file="DBconnection.jsp"%>
+
+<%
+String dbName = (session != null) ? (String) session.getAttribute("dbName") : null;
+String id = (session != null) ? (String) session.getAttribute("id") : null;
+String idSortation = (session != null) ? (String) session.getAttribute("idSortation") : null;
+if (id == null || dbName == null) {
+	response.sendRedirect("login.jsp");
+	return;
+}
+request.setCharacterEncoding("UTF-8");
+boolean prevAutoCommit = conn.getAutoCommit();
+conn.setAutoCommit(false);
+%>
+
+<%!private String formatDate(String inputDate) {
+		try {
+			if (inputDate == null)
+				return null;
+			String s = inputDate.trim();
+			if (s.isEmpty() || "null".equalsIgnoreCase(s) || "undefined".equalsIgnoreCase(s))
+				return null;
+
+			s = s.replace('T', ' ');
+
+			// yyyy-MM-dd HH:mm:ss
+			if (s.matches("\\d{4}-\\d{2}-\\d{2}\\s+\\d{2}:\\d{2}:\\d{2}"))
+				return s;
+
+			// yyyy-MM-dd → 자정
+			if (s.matches("\\d{4}-\\d{2}-\\d{2}"))
+				return s + " 00:00:00";
+
+			// yy/MM/dd 또는 yyyy/MM/dd → 자정
+			if (s.matches("\\d{2,4}/\\d{1,2}/\\d{1,2}")) {
+				String[] p = s.split("/");
+				int y = Integer.parseInt(p[0]);
+				int m = Integer.parseInt(p[1]);
+				int d = Integer.parseInt(p[2]);
+				if (y < 100)
+					y += 2000;
+				return String.format("%04d-%02d-%02d 00:00:00", y, m, d);
+			}
+			return null;
+		} catch (Exception e) {
+			System.err.println("날짜 변환 오류: " + inputDate + " / " + e.getMessage());
+			return null;
+		}
+	}
+
+	/**
+	 * 주어진 baseTs가 이미 존재하면 1ms씩 더해 유일한 saleDate를 반환.
+	 * 세 테이블(SalesRecord{idSortation}.saleDate, priceRecord{idSortation}.saleDate, discountedDB.sale_date) 검사
+	 */
+	private Timestamp findUniqueSaleDate(Connection conn, String idSortation, Timestamp baseTs) throws SQLException {
+		Timestamp ts = baseTs;
+
+		final String sqlSales = "SELECT 1 FROM SalesRecord" + idSortation + " WHERE saleDate = ? LIMIT 1";
+		final String sqlPrice = "SELECT 1 FROM priceRecord" + idSortation + " WHERE saleDate = ? LIMIT 1";
+		final String sqlDisc = "SELECT 1 FROM discountedDB WHERE sale_date = ? LIMIT 1";
+
+		while (true) {
+			boolean exists = false;
+
+			try (PreparedStatement ps = conn.prepareStatement(sqlSales)) {
+				ps.setTimestamp(1, ts);
+				try (ResultSet rs = ps.executeQuery()) {
+					if (rs.next())
+						exists = true;
+				}
+			}
+			if (!exists) {
+				try (PreparedStatement ps = conn.prepareStatement(sqlPrice)) {
+					ps.setTimestamp(1, ts);
+					try (ResultSet rs = ps.executeQuery()) {
+						if (rs.next())
+							exists = true;
+					}
+				}
+			}
+			if (!exists) {
+				try (PreparedStatement ps = conn.prepareStatement(sqlDisc)) {
+					ps.setTimestamp(1, ts);
+					try (ResultSet rs = ps.executeQuery()) {
+						if (rs.next())
+							exists = true;
+					}
+				}
+			}
+
+			if (!exists)
+				break;
+			ts = new Timestamp(ts.getTime() + 1); // 1ms 증가
+		}
+		return ts;
+	}%>
+
+<%
+try {
+	// ------------------ 요청 본문 파싱 ------------------
+	StringBuilder sb = new StringBuilder();
+	try (BufferedReader br = request.getReader()) {
+		String line;
+		while ((line = br.readLine()) != null)
+	sb.append(line);
+	}
+
+	JSONArray jsonArr = new JSONArray(sb.toString());
+	JSONObject meta = jsonArr.getJSONObject(jsonArr.length() - 1);
+	JSONArray warnList = new JSONArray();
+	System.out.println(meta);
+
+	String medicinePrice = meta.getString("medicinePrice");
+	String generalPrice = meta.getString("generalPrice");
+	String clientName = meta.getString("discounted");
+
+	String raw = meta.has("ScheduleDate") ? meta.optString("ScheduleDate", "") : meta.optString("scheduleDate", "");
+	raw = (raw == null) ? "" : raw.trim();
+
+	// 날짜 표준화 및 saleDate 유일값 확보
+	String formatted = formatDate(raw);
+	Timestamp baseNow = (formatted == null || formatted.isEmpty()) ? new Timestamp(System.currentTimeMillis())
+	: Timestamp.valueOf(formatted);
+	Timestamp now = findUniqueSaleDate(conn, idSortation, baseNow);
+
+	System.out.println("now(final) : " + now + " \nraw : " + raw + " \nformatted : " + formatted);
+
+	// ------------------ priceRecord / discountedDB 기록 ------------------
+	try (PreparedStatement ps = conn.prepareStatement(
+	"INSERT INTO priceRecord" + idSortation + " (saleDate, maxmedicinePrice, generalPrice) VALUES (?, ?, ?)")) {
+		ps.setTimestamp(1, now);
+		ps.setString(2, medicinePrice);
+		ps.setString(3, generalPrice);
+		ps.executeUpdate();
+	}
+
+	try (PreparedStatement ps = conn
+	.prepareStatement("INSERT INTO discountedDB (sale_date, discounted) VALUES (?, ?)")) {
+		ps.setTimestamp(1, now);
+		ps.setString(2, clientName);
+		ps.executeUpdate();
+	}
+
+	// ------------------ 재고 차감용 쿼리 템플릿 ------------------
+	final String selBySerial = "SELECT DeliveryDate, inventory FROM testTable" + idSortation
+	+ " WHERE SerialNumber = ? AND medicineName = ? AND returnInv='0' AND inventory>0 ORDER BY DeliveryDate ASC LIMIT 1";
+	final String selByName = "SELECT DeliveryDate, inventory FROM testTable" + idSortation
+	+ " WHERE medicineName = ? AND returnInv='0' AND inventory>0 ORDER BY DeliveryDate ASC LIMIT 1";
+	final String updBySerial = "UPDATE testTable" + idSortation
+	+ " SET inventory = inventory - ? WHERE SerialNumber = ? AND medicineName = ? AND DeliveryDate = ? AND returnInv='0'";
+	final String updByName = "UPDATE testTable" + idSortation
+	+ " SET inventory = inventory - ? WHERE medicineName = ? AND DeliveryDate = ? AND returnInv='0'";
+
+	// ------------------ 아이템 루프 ------------------
+	for (int i = 0; i < jsonArr.length() - 1; i++) {
+		JSONObject item = jsonArr.getJSONObject(i);
+
+		String serial = item.optString("serialNumber", "").trim(); // 세트/단품 구분 마커(예: "한약세트")
+		String medName = item.optString("medicineName", "").trim(); // 실제 약품명 혹은 세트명
+		int qtySale = item.optInt("inventory");
+
+		String priceStr = item.optString("price", "0").replaceAll("[^\\d.]", "");
+		String buyStr = item.optString("Buyingprice", "0").replaceAll("[^\\d.]", "");
+		boolean bySerial = !serial.isEmpty();
+
+		double salePrice = 0.0, buyPrice = 0.0;
+		try {
+	salePrice = Double.parseDouble(priceStr);
+		} catch (NumberFormatException ignore) {
+		}
+		try {
+	buyPrice = Double.parseDouble(buyStr);
+		} catch (NumberFormatException ignore) {
+		}
+
+		// 표준계수 factor (예: 10mg * 30정)
+		double factor = 1.0;
+		try {
+	Matcher m = Pattern.compile("\\d+(\\.\\d+)?").matcher(item.optString("standard", ""));
+	double n1 = 1.0, n2 = 1.0;
+	if (m.find())
+		n1 = Double.parseDouble(m.group());
+	if (m.find())
+		n2 = Double.parseDouble(m.group());
+	factor = n1 * n2;
+		} catch (Exception ignore) {
+		}
+
+		// -------- A) productSet 기반 세트 (이미 존재하는 로직 유지) --------
+		boolean isSet = false;
+		try (PreparedStatement ck = conn.prepareStatement("SELECT 1 FROM productSet WHERE setName = ? LIMIT 1")) {
+	ck.setString(1, medName);
+	try (ResultSet rs = ck.executeQuery()) {
+		if (rs.next())
+			isSet = true;
+	}
+		}
+
+		if (isSet) {
+	try (PreparedStatement setQ = conn
+			.prepareStatement("SELECT psd.medicineName, psd.standard " + "FROM productSet_detail psd "
+					+ "JOIN productSet ps ON ps.id = psd.productSet_id " + "WHERE ps.setName = ?")) {
+		setQ.setString(1, medName);
+		try (ResultSet rsSet = setQ.executeQuery()) {
+			while (rsSet.next()) {
+				String inner = rsSet.getString("medicineName");
+				String standard = rsSet.getString("standard");
+				if (inner == null || inner.trim().isEmpty())
+					continue;
+
+				double innerFactor = 1.0;
+				try {
+					Matcher m = Pattern.compile("\\d+(\\.\\d+)?").matcher(standard);
+					double n1 = 1.0, n2 = 1.0;
+					if (m.find())
+						n1 = Double.parseDouble(m.group());
+					if (m.find())
+						n2 = Double.parseDouble(m.group());
+					innerFactor = n1 * n2;
+				} catch (Exception ignore) {
+				}
+
+				double remain = qtySale; // 세트 판매 수량
+				while (remain > 0.0001) {
+					try (PreparedStatement sel = conn.prepareStatement(selByName)) {
+						sel.setString(1, inner);
+						try (ResultSet rs = sel.executeQuery()) {
+							if (!rs.next())
+								break;
+
+							String dDate = rs.getString("DeliveryDate");
+							double stock = rs.getDouble("inventory");
+							if (stock <= 0.00001)
+								break;
+
+							double needDb = remain * innerFactor;
+							double useDb = Math.min(needDb, stock);
+							if (useDb <= 0.00001)
+								break;
+
+							double usedSaleUnit = useDb / innerFactor;
+
+							try (PreparedStatement upd = conn.prepareStatement(updByName)) {
+								upd.setDouble(1, useDb);
+								upd.setString(2, inner);
+								upd.setString(3, dDate);
+								int affected = upd.executeUpdate();
+								if (affected == 0)
+									throw new SQLException("세트 구성품 차감 실패");
+							}
+
+							remain -= usedSaleUnit;
+							if (remain < 0.0001)
+								break;
+						}
+					}
+				}
+			}
+		}
+	}
+
+	// -------- B) regularSet 기반(세트 마커) : JOIN UPDATE 한 방 처리 --------
+	// -------- B1) 한약세트 기반 세트 --------
+		} else if ("한약세트".equals(serial)) {
+	try (PreparedStatement s = conn
+			.prepareStatement("SELECT medicineName, standard, inventory FROM regularSet WHERE setName=?")) {
+		s.setString(1, medName);
+		try (ResultSet r = s.executeQuery()) {
+			while (r.next()) {
+				String med = r.getString("medicineName");
+				String std = r.getString("standard");
+				double inv = r.getDouble("inventory");
+
+				if (med == null || med.trim().isEmpty())
+					continue;
+				if (std == null)
+					std = "";
+
+				// standard 숫자 추출 (예: 500mg*10정 → 500*10)
+				Matcher m = Pattern.compile("\\d+(\\.\\d+)?").matcher(std);
+				double f1 = 1.0, f2 = 1.0;
+				if (m.find())
+					f1 = Double.parseDouble(m.group());
+				if (m.find())
+					f2 = Double.parseDouble(m.group());
+				factor = f1 * f2 * inv * qtySale;
+
+				// 재고 차감
+				String updSql = "UPDATE testTable" + idSortation + " SET inventory = inventory - ? "
+						+ "WHERE medicineName = ? AND returnInv='0' AND inventory > 0";
+				try (PreparedStatement ps = conn.prepareStatement(updSql)) {
+					ps.setDouble(1, factor);
+					ps.setString(2, med);
+					int updated = ps.executeUpdate();
+					System.out.printf("[한약세트 차감] %s: %.2f 감소 (%d행)\n", med, factor, updated);
+				}
+			}
+		}
+	}
+
+	// -------- B2) 일반세트 기반 세트 --------
+		} else if ("일반세트".equals(serial)) {
+	try (PreparedStatement ps = conn
+			.prepareStatement("SELECT psd.medicineName, psd.standard " + "FROM productSet_detail psd "
+					+ "JOIN productSet ps ON ps.id = psd.productSet_id " + "WHERE ps.setName = ?")) {
+		ps.setString(1, medName);
+		try (ResultSet rs = ps.executeQuery()) {
+			while (rs.next()) {
+				String inner = rs.getString("medicineName");
+				String standard = rs.getString("standard");
+				if (inner == null || inner.trim().isEmpty())
+					continue;
+
+				Matcher m = Pattern.compile("\\d+(\\.\\d+)?").matcher(standard);
+				double f1 = 1.0, f2 = 1.0;
+				if (m.find())
+					f1 = Double.parseDouble(m.group());
+				if (m.find())
+					f2 = Double.parseDouble(m.group());
+				double innerFactor = f1 * f2 * qtySale;
+
+				String updSql = "UPDATE testTable" + idSortation + " SET inventory = inventory - ? "
+						+ "WHERE medicineName = ? AND returnInv='0' AND inventory > 0";
+				try (PreparedStatement upd = conn.prepareStatement(updSql)) {
+					upd.setDouble(1, innerFactor);
+					upd.setString(2, inner);
+					int updated = upd.executeUpdate();
+					System.out.printf("[일반세트 차감] %s: %.2f 감소 (%d행)\n", inner, innerFactor, updated);
+				}
+			}
+		}
+	}
+
+	// -------- C) 그 외: 단품 차감 (기존 단품 로직) --------
+		} else {
+	double remain = qtySale;
+	while (remain > 0.0001) {
+		try (PreparedStatement sel = conn.prepareStatement(bySerial ? selBySerial : selByName)) {
+			if (bySerial) {
+				sel.setString(1, serial);
+				sel.setString(2, medName);
+			} else {
+				sel.setString(1, medName);
+			}
+
+			try (ResultSet rs = sel.executeQuery()) {
+				if (!rs.next())
+					break;
+
+				String dDate = rs.getString("DeliveryDate");
+				double stock = rs.getDouble("inventory");
+				if (stock <= 0.00001)
+					break;
+
+				double needDb = remain * factor;
+				double useDb = Math.min(needDb, stock);
+				if (useDb <= 0.00001)
+					break;
+
+				double usedSaleUnit = useDb / factor;
+
+				try (PreparedStatement upd = conn.prepareStatement(bySerial ? updBySerial : updByName)) {
+					int p = 1;
+					upd.setDouble(p++, useDb);
+					if (bySerial)
+						upd.setString(p++, serial);
+					upd.setString(p++, medName);
+					upd.setString(p, dDate);
+
+					int affected = upd.executeUpdate();
+					if (affected == 0)
+						throw new SQLException("단품 차감 실패");
+				}
+
+				// ✅ 재고 차감 후 최종 재고 확인
+				double currentInv = 0.0;
+				String checkSql = "SELECT inventory, standard FROM testTable" + idSortation
+						+ " WHERE medicineName=? AND DeliveryDate=? AND returnInv='0' LIMIT 1";
+				// ------------------ 매출 기록 후 재고 부족 검사 ------------------
+				try (PreparedStatement chk = conn.prepareStatement(
+				    "SELECT SUM(inventory) AS totalInv, standard, quantity " +
+				    "FROM testTable" + idSortation + " " +
+				    "WHERE medicineName = ? AND returnInv='0' GROUP BY standard, quantity LIMIT 1")) {
+
+				    chk.setString(1, medName);
+
+				    try (ResultSet chkRs = chk.executeQuery()) {
+				        if (chkRs.next()) {
+				            double inv = chkRs.getDouble("totalInv"); // ✅ 합산된 재고
+				            String standard = chkRs.getString("standard");
+				            double qty = chkRs.getDouble("quantity");
+
+				            // 표준계수 계산 (중간에 문자 포함 시 곱셈)
+				            double standardFactor = 1.0;
+				            try {
+				                Pattern p = Pattern.compile("\\d+(\\.\\d+)?");
+				                Matcher m = p.matcher(standard == null ? "" : standard);
+				                List<Double> nums = new ArrayList<>();
+				                while (m.find())
+				                    nums.add(Double.parseDouble(m.group()));
+				                if (nums.size() >= 2) {
+				                    standardFactor = 1.0;
+				                    for (double n : nums)
+				                        standardFactor *= n;
+				                } else if (nums.size() == 1) {
+				                    standardFactor = nums.get(0);
+				                }
+				            } catch (Exception ignore) {
+				                standardFactor = 1.0;
+				            }
+
+				            // 환산 재고
+				            double realInv = inv / standardFactor;
+				            realInv = Math.round(realInv * 100.0) / 100.0;
+
+				            // 🚨 비교: 환산 재고가 수량보다 적으면 경고
+				            if (realInv < qty) {
+				                JSONObject warn = new JSONObject();
+				                warn.put("medicineName", medName);
+				                warn.put("standard", standard);
+				                warn.put("realInv", realInv);
+				                warn.put("quantity", qty);
+				                warnList.put(warn);
+
+				                System.out.println("[경고 발생] " + warn);
+				            }
+				        }
+				    }
+				}
+
+				remain -= usedSaleUnit;
+				if (remain < 0.0001)
+					break;
+			}
+		}
+	}
+		}
+
+		// ------------------ 매출 기록 ------------------
+		try (PreparedStatement ps = conn.prepareStatement("INSERT INTO SalesRecord" + idSortation
+		+ " (saleDate, medicineName, Buyingprice, price, inventory, SerialNumber, DeliveryDate, standard, memberName) "
+		+ " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")) {
+	ps.setTimestamp(1, now);
+	ps.setString(2, medName);
+	ps.setDouble(3, buyPrice);
+	ps.setDouble(4, salePrice);
+	ps.setString(5, item.optString("inventory", "")); // 필요시 String -> qtySale 로 교체 가능
+	ps.setString(6, serial);
+	ps.setString(7, item.optString("deliveryDate", ""));
+	ps.setString(8, item.optString("standard", ""));
+	ps.setString(9, item.optString("memberName", ""));
+	ps.executeUpdate();
+		}
+
+		// 이름 빈 행 청소
+		String deleteQuery = "DELETE FROM SalesRecord" + idSortation + " WHERE medicineName = ''";
+		try (PreparedStatement deleteTmt = conn.prepareStatement(deleteQuery)) {
+	deleteTmt.executeUpdate();
+		}
+	} // for loop end
+
+	conn.commit();
+	JSONObject result = new JSONObject();
+	result.put("result", "success");
+	result.put("warnings", warnList);
+
+	String ajaxHeader = request.getHeader("X-Requested-With");
+	boolean isAjax = (ajaxHeader != null && ajaxHeader.equals("XMLHttpRequest"));
+
+	if (isAjax) {
+		// AJAX 요청이면 JSON만 반환
+		response.setContentType("application/json; charset=UTF-8");
+		out.print(result.toString());
+	}
+
+} catch (Exception e) {
+	if (conn != null)
+		try {
+	conn.rollback();
+		} catch (SQLException ignore) {
+		}
+	e.printStackTrace();
+	out.println("{\"result\":\"error\", \"message\":\"" + e.getMessage().replace("\"", "'") + "\"}");
+} finally {
+	try {
+		conn.setAutoCommit(prevAutoCommit);
+	} catch (SQLException ignore) {
+	}
+}
+%>

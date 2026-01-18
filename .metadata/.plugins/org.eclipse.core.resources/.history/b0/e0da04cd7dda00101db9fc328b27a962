@@ -1,0 +1,131 @@
+<%@ page contentType="application/json; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ page import="java.io.*, java.sql.*, org.json.*, java.util.*, java.util.regex.*" %>
+<%@ include file="sessionManager.jsp" %>
+<%@ include file="DBconnection.jsp" %>
+
+<%!
+/* 쉼표 제거 함수 */
+private String cleanNumber(String value) {
+    if (value == null) return null;
+    return value.replaceAll(",", "").trim();
+}
+
+/* 날짜 형식 변환 (yy/MM/dd → yyyy-MM-dd) */
+private String formatDate(String inputDate) {
+    if (inputDate == null || inputDate.trim().isEmpty()) return null;
+    inputDate = inputDate.trim();
+
+    try {
+        // 이미 yyyy-MM-dd 형태
+        if (inputDate.matches("^20\\d{2}-\\d{2}-\\d{2}$")) 
+            return inputDate;
+
+        // yy/MM/dd 형태
+        if (inputDate.matches("^\\d{2}/\\d{2}/\\d{2}$")) {
+            String[] p = inputDate.split("/");
+            return "20" + p[0] + "-" + p[1] + "-" + p[2];
+        }
+
+        return inputDate;
+    } catch (Exception e) {
+        return inputDate; // 실패해도 원본 리턴
+    }
+}
+%>
+
+<%
+request.setCharacterEncoding("UTF-8");
+
+String idSortation = (session != null) ? (String) session.getAttribute("idSortation") : null;
+
+// 요청 JSON 읽기
+StringBuilder sb = new StringBuilder();
+String line;
+BufferedReader reader = request.getReader();
+while ((line = reader.readLine()) != null) sb.append(line);
+
+try {
+    JSONObject data = new JSONObject(sb.toString());
+
+    conn.setAutoCommit(false);
+
+    for (String key : data.keySet()) {
+
+        JSONObject row = data.getJSONObject(key);
+
+        String[] parts = key.split("\\|");
+        if (parts.length < 3) continue;
+
+        String medicineName = parts[0];
+        String deliveryDate = formatDate(parts[1]);
+        String standard = parts[2];
+
+        /* -------------------------------
+           1. inventory 계산 (표시 수치 → 실제 수치)
+        -------------------------------- */
+        if (row.has("inventory")) {
+            row.put("inventory", cleanNumber(row.getString("inventory")));
+        }
+
+        /* -------------------------------
+           2. 숫자형 필드 쉼표 제거
+        -------------------------------- */
+        String[] numericFields = { "inventory", "price", "buyingPrice" };
+        for (String f : numericFields) {
+            if (row.has(f)) {
+                row.put(f, cleanNumber(row.getString(f)));
+            }
+        }
+
+        /* -------------------------------
+           3. 날짜 필드 자동 변환
+        -------------------------------- */
+        if (row.has("receiptDate")) {
+            row.put("receiptDate", formatDate(row.getString("receiptDate")));
+        }
+        
+        if (row.has("DeliveryDate")) {
+            row.put("DeliveryDate", formatDate(row.getString("DeliveryDate")));
+        }
+
+        /* -------------------------------
+           4. UPDATE SQL 생성 (안전한 방식)
+        -------------------------------- */
+        StringBuilder sql = new StringBuilder(
+            "UPDATE testTable" + idSortation + " SET "
+        );
+
+        List<String> colNames = new ArrayList<>();
+        for (String col : row.keySet()) colNames.add(col + "=?");
+
+        sql.append(String.join(",", colNames));
+        sql.append(" WHERE medicineName=? AND DeliveryDate=? AND standard=?");
+
+        PreparedStatement pstmt = conn.prepareStatement(sql.toString());
+
+        // SET '?' 파라미터
+        int idx = 1;
+        for (String col : row.keySet()) {
+            pstmt.setString(idx++, row.getString(col));
+        }
+
+        // WHERE 파라미터
+        pstmt.setString(idx++, medicineName);
+        pstmt.setString(idx++, deliveryDate);
+        pstmt.setString(idx, standard);
+
+        pstmt.executeUpdate();
+        pstmt.close();
+    }
+
+    conn.commit();
+    conn.setAutoCommit(true);
+
+    out.print("{\"status\":\"success\"}");
+
+} catch (Exception e) {
+    conn.rollback();
+    e.printStackTrace();
+    out.print("{\"status\":\"error\", \"message\":\"" + e.getMessage() + "\"}");
+}
+%>

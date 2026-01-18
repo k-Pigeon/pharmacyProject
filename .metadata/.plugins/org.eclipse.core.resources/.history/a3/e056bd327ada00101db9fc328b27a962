@@ -1,0 +1,75 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ page import="java.sql.*" %>
+<%@ include file="DBconnection.jsp" %>
+<%@ include file="sessionManager.jsp" %>
+
+<%
+String dbName = (session != null) ? (String) session.getAttribute("dbName") : null;
+String id = (session != null) ? (String) session.getAttribute("id") : null;
+
+String idSortation = (session != null) ? (String) session.getAttribute("idSortation") : null; if (id == null || dbName == null) {
+	response.sendRedirect("login.jsp");
+	return;
+}
+
+jdbcDriver = dbName;
+String medicineName = request.getParameter("medicineName");
+PreparedStatement pstmt = null;
+ResultSet rs = null;
+
+try {
+    Class.forName("com.mysql.cj.jdbc.Driver");
+    String sql = " SELECT standard, FORMAT(buyingPrice, 0) AS buyingPrice, "
+    		   + " FORMAT(price, 0) AS price FROM RegistTable "
+    		   + " WHERE medicineName = ?";
+    PreparedStatement pstmt = conn.prepareStatement(sql);
+    pstmt.setString(1, medicineName);
+    ResultSet rs = pstmt.executeQuery();
+%>
+	<table style="width: 100%; border-collapse: collapse;" class="productTable">
+		<tr style="background-color:#f5f5f5;">
+			<th>규격</th>
+			<th>사입가</th>
+			<th>판매가</th>
+			<th>삭제</th>
+		</tr>
+	<%
+	while (rs.next()) {
+	%>
+		<tr>
+			<td><input type="text" class="standards" value="<%=rs.getString("standard")%>" style="width: 100%;"></td>
+			<td><input type="text" class="buyingPrice" value="<%=rs.getString("buyingPrice")%>" style="width: 100%;"></td>
+			<td><input type="text" class="price" value="<%=rs.getString("price")%>" style="width: 100%;"></td>
+			<td><input type="button" class="removeproduct" value="X" style="width: 100%;"></td>
+		</tr>
+	<%
+	}
+	%>
+	</table>
+<%
+} catch (Exception e) {
+	out.println("<p>에러 발생: " + e.getMessage() + "</p>");
+} finally {
+    try { if (pstmt != null) pstmt.close(); } catch (Exception ignored) {}
+}
+%>
+<script src="jquery-3.7.1.min.js"></script>
+<script>
+	$(document).ready(function(){
+		function addComma(num) {
+		    return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+		}
+		$("#editModal").on("input", ".buyingPrice, .price", function() {
+	        let raw = $(this).val();
+	        let numberOnly = raw.replace(/[^0-9]/g, "");
+	        let formatted = addComma(numberOnly);
+	        $(this).val(formatted);
+	    });
+		$("#editModal").find(".removeproduct").on("click", function(){
+			if($("#editModal").find(".productTable tr").length == 2){
+				return false;
+			}
+			$(this).closest("tr").remove();
+		});
+	});
+</script>

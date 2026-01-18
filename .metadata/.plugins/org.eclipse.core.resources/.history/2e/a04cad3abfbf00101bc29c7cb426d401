@@ -1,0 +1,25 @@
+<%@ page contentType="application/json; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ page import="java.io.*, java.sql.*, org.json.*, java.util.*" %>
+<%@ include file="DBconnection.jsp" %>
+<%
+request.setCharacterEncoding("UTF-8");
+StringBuilder sb = new StringBuilder();
+String line;
+BufferedReader reader = request.getReader();
+while((line = reader.readLine()) != null) sb.append(line);
+JSONObject data = new JSONObject(sb.toString());
+
+for (String id : data.keySet()) {
+	JSONObject row = data.getJSONObject(id);
+	StringBuilder sql = new StringBuilder("UPDATE testTable SET ");
+	List<String> cols = new ArrayList<>();
+	for (String key : row.keySet()) cols.add(key + "=?");
+	sql.append(String.join(",", cols)).append(" WHERE medicineName=?");
+	PreparedStatement pstmt = conn.prepareStatement(sql.toString());
+	int i = 1;
+	for (String key : row.keySet()) pstmt.setString(i++, row.getString(key));
+	pstmt.setString(i, id);
+	pstmt.executeUpdate();
+}
+out.print("{\"status\":\"ok\"}");
+%>

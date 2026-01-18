@@ -1,0 +1,253 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8"
+	pageEncoding="UTF-8"%>
+<%@ page import="java.sql.*"%>
+<%@ include file="sessionManager.jsp"%>
+<%@ include file="DBconnection.jsp"%>
+<%
+request.setCharacterEncoding("UTF-8");
+
+String dbName = (session != null) ? (String) session.getAttribute("dbName") : null;
+String id = (session != null) ? (String) session.getAttribute("id") : null;
+if (id == null || dbName == null) {
+	response.sendRedirect("login.jsp");
+	return;
+}
+jdbcDriver = dbName;
+
+boolean isSubmitted = "true".equals(request.getParameter("submitted"));
+%>
+
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="style.css">
+<title>제품 등록</title>
+<style>
+body {
+	font-family: '맑은 고딕', sans-serif;
+	background-color: #f9f9f9;
+}
+
+.container {
+	width: 600px;
+	height: 68vh;
+	margin: 7% auto;
+	background: white;
+	border: 1px solid #ccc;
+	border-radius: 10px;
+	padding: 20px 30px;
+	box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+	overflow: scroll;
+}
+
+table {
+	width: 100%;
+}
+
+td {
+	padding: 8px;
+}
+
+input {
+	width: 100%;
+	padding: 6px;
+	box-sizing: border-box;
+}
+
+button.submitNew {
+	padding: 10px 20px;
+	font-size: 15px;
+	background-color: #4CAF50;
+	color: white;
+	border: none;
+	border-radius: 6px;
+	cursor: pointer;
+}
+
+button.submitNew:hover {
+	background-color: #45a049;
+}
+
+#wrap .container .backLocal {
+	display: block;
+	position: relative;
+	float: right;
+	border: 1px solid black;
+	border-radius: 20px;
+	padding: 10px;
+}
+
+#wrap .container .backLocal:hover {
+	cursor: pointer;
+	background-color: RGBA(127, 127, 127, 0.6);
+}
+</style>
+</head>
+<body>
+
+	<%
+	if (isSubmitted) {
+		String medicineName = request.getParameter("medicineName");
+		String companyName = request.getParameter("companyName");
+		String standard = request.getParameter("standard");
+		String kind = request.getParameter("kind");
+		String serialNumber = request.getParameter("serialNumber");
+		String receiptDate = request.getParameter("receiptDate");
+		String deliveryDate = request.getParameter("deliveryDate");
+		String buyingPrice = request.getParameter("buyingPrice");
+		String price = request.getParameter("price");
+		String inventoryStr = request.getParameter("inventory");
+
+		try {
+			Class.forName("com.mysql.cj.jdbc.Driver");
+			String sql = "INSERT INTO testTable (medicineName, companyName, standard, kind, serialNumber, receiptDate, deliveryDate, buyingPrice, price, inventory) "
+			+ "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+			PreparedStatement pstmt = conn.prepareStatement(sql);
+
+			pstmt.setObject(1, (medicineName == null || medicineName.trim().isEmpty()) ? null : medicineName,
+			Types.VARCHAR);
+			pstmt.setObject(2, (companyName == null || companyName.trim().isEmpty()) ? null : companyName, Types.VARCHAR);
+			pstmt.setObject(3, (standard == null || standard.trim().isEmpty()) ? null : standard, Types.VARCHAR);
+			pstmt.setObject(4, (kind == null || kind.trim().isEmpty()) ? null : kind, Types.VARCHAR);
+			pstmt.setObject(5, (serialNumber == null || serialNumber.trim().isEmpty()) ? null : serialNumber,
+			Types.VARCHAR);
+			pstmt.setObject(6,
+			(receiptDate == null || receiptDate.trim().isEmpty()) ? null : java.sql.Date.valueOf(receiptDate),
+			Types.DATE);
+			pstmt.setObject(7,
+			(deliveryDate == null || deliveryDate.trim().isEmpty()) ? null : java.sql.Date.valueOf(deliveryDate),
+			Types.DATE);
+			pstmt.setObject(8,
+			(buyingPrice == null || buyingPrice.trim().isEmpty()) ? null : Double.parseDouble(buyingPrice),
+			Types.DOUBLE);
+			pstmt.setObject(9, (price == null || price.trim().isEmpty()) ? null : Double.parseDouble(price), Types.DOUBLE);
+			pstmt.setObject(10,
+			(inventoryStr == null || inventoryStr.trim().isEmpty()) ? null : Double.parseDouble(inventoryStr),
+			Types.DOUBLE);
+
+			int result = pstmt.executeUpdate();
+
+		} catch (Exception e) {
+	%>
+	<p style="color: red;">
+		에러:
+		<%=e.getMessage()%></p>
+	<%
+	} finally {
+	if (conn != null)
+		conn.close();
+	}
+	} else {
+	String medicineName = request.getParameter("medicineName") != null ? request.getParameter("medicineName") : "";
+	%>
+
+	<div id="wrap">
+		<header>
+			<jsp:include page="header.jsp"></jsp:include>
+		</header>
+		<div class="container">
+			<h2 style="text-align: center;">제품 등록</h2>
+			<h3 class="backLocal">뒤로 가기</h3>
+			<table>
+				<tr>
+					<td>제품명</td>
+					<td><input type="text" id="medicineName"
+						value="<%=medicineName%>"></td>
+				</tr>
+				<tr>
+					<td>제조사</td>
+					<td><input type="text" id="companyName"></td>
+				</tr>
+				<tr>
+					<td>규격</td>
+					<td><input type="text" id="standard"></td>
+				</tr>
+				<tr>
+					<td>종류</td>
+					<td><input type="text" id="kind"></td>
+				</tr>
+				<tr>
+					<td>바코드</td>
+					<td><input type="text" id="serialNumber"></td>
+				</tr>
+				<tr>
+					<td>입고일</td>
+					<td><input type="date" id="receiptDate"></td>
+				</tr>
+				<tr>
+					<td>유통기한</td>
+					<td><input type="date" id="deliveryDate"></td>
+				</tr>
+				<tr>
+					<td>사입가</td>
+					<td><input type="number" id="buyingPrice"></td>
+				</tr>
+				<tr>
+					<td>판매가</td>
+					<td><input type="number" id="price"></td>
+				</tr>
+				<tr>
+					<td>재고수량</td>
+					<td><input type="number" id="inventory"></td>
+				</tr>
+				<tr>
+					<td colspan="2" style="text-align: center;"><button
+							class="submitNew">등록하기</button></td>
+				</tr>
+			</table>
+		</div>
+	</div>
+	<script src="jquery-3.7.1.min.js"></script>
+	<script>
+	$(document).ready(function(){
+		$("#wrap .container .submitNew").on("click", function(e) {
+		    var $formData = $("#wrap .container");
+		    var nameVal = $formData.find("#medicineName").val();
+
+		    if (!$formData.find("#medicineName").val(); || $formData.find("#medicineName").val(); === "") {
+		        alert("제품명을 입력하세요");
+		        $formData.find("#medicineName").focus();
+		        return; // 여기서 바로 끝내야 함
+		    }
+		    if (!$formData.find("#standard").val(); || $formData.find("#standard").val(); === "") {
+		        alert("규격 입력하세요");
+		        $formData.find("#standard").focus();
+		        return; // 여기서 바로 끝내야 함
+		    }
+		    if (!$formData.find("#buyingPrice").val(); || $formData.find("#buyingPrice").val(); === "") {
+		        alert("사입가를 입력하세요");
+		        $formData.find("#buyingPrice").focus();
+		        return; // 여기서 바로 끝내야 함
+		    }
+
+		    // 조건을 통과한 경우에만 아래 실행
+		    const params = new URLSearchParams();
+		    params.append("submitted", "true");
+		    params.append("medicineName", document.getElementById("medicineName").value);
+		    params.append("companyName", document.getElementById("companyName").value);
+		    params.append("standard", document.getElementById("standard").value);
+		    params.append("kind", document.getElementById("kind").value);
+		    params.append("serialNumber", document.getElementById("serialNumber").value);
+		    params.append("receiptDate", document.getElementById("receiptDate").value);
+		    params.append("deliveryDate", document.getElementById("deliveryDate").value);
+		    params.append("buyingPrice", document.getElementById("buyingPrice").value);
+		    params.append("price", document.getElementById("price").value);
+		    params.append("inventory", document.getElementById("inventory").value);
+
+		    location.href = "addProduct.jsp?" + params.toString();
+		});
+
+	
+		$(".backLocal").on("click", function(){
+			history.back();
+		});
+	});
+</script>
+
+	<%
+	}
+	%>
+
+</body>
+</html>

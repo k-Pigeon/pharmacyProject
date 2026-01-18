@@ -1,0 +1,19 @@
+import java.sql.*;
+
+import javax.swing.*;
+
+@SuppressWarnings("serial")
+public class MainFrame extends JFrame {
+    public MainFrame() {
+        setTitle("메인 화면");
+        setBounds(600, 300, 400, 300);
+        setLayout(null);
+
+        JLabel welcomeLabel = new JLabel("의약품 리스트");
+        welcomeLabel.setBounds(100, 100, 200, 30);
+        add(welcomeLabel);
+
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setVisible(true);
+    }
+}

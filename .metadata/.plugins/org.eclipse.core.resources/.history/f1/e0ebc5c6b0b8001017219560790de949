@@ -1,0 +1,170 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>재고 부족 알림 시스템</title>
+
+<!-- ✅ jQuery CDN -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+<!-- ✅ 기본 스타일 -->
+<style>
+body {
+    font-family: "Noto Sans KR", sans-serif;
+    background-color: #f9f9f9;
+    margin: 0;
+    padding: 20px;
+}
+
+/* 버튼 스타일 */
+button {
+    background-color: #2b6cb0;
+    color: white;
+    border: none;
+    padding: 10px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 15px;
+}
+button:hover {
+    background-color: #2c5282;
+}
+
+/* 알림창 전체 박스 */
+#stockWarningBox {
+    position: fixed;
+    right: 30px;
+    bottom: -300px; /* 처음엔 화면 밖에 숨김 */
+    background: #fff7f7;
+    border: 1px solid #ffb3b3;
+    border-radius: 10px;
+    width: 340px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    padding: 20px;
+    opacity: 0;
+    transition: all 0.6s ease; /* 부드러운 등장 애니메이션 */
+    z-index: 9999;
+}
+
+/* 등장 시 클래스 */
+#stockWarningBox.show {
+    bottom: 30px;
+    opacity: 1;
+}
+
+/* 제목 */
+#stockWarningBox h3 {
+    color: #cc0000;
+    margin: 0 0 12px 0;
+    font-size: 18px;
+    font-weight: 700;
+}
+
+/* 리스트 항목 */
+#warningList div {
+    margin-bottom: 10px;
+    padding: 8px;
+    background: #fff;
+    border-radius: 5px;
+    border-left: 4px solid #ff6666;
+    line-height: 1.5;
+}
+#warningList b {
+    color: #333;
+}
+#warningList span {
+    color: #d60000;
+}
+
+/* 닫기 버튼 */
+#closeWarning {
+    margin-top: 10px;
+    background: #d60000;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 6px 10px;
+    float: right;
+    cursor: pointer;
+}
+#closeWarning:hover {
+    background: #b30000;
+}
+</style>
+</head>
+<body>
+
+<h2>💊 재고 부족 알림 테스트 페이지</h2>
+<p>판매 후 재고 부족이 있는 경우, 하단에 알림창이 뜹니다.</p>
+<button id="runTest">판매 처리 실행</button>
+
+<!-- 알림창 -->
+<div id="stockWarningBox">
+    <h3>⚠ 재고 부족 경고</h3>
+    <div id="warningList"></div>
+    <button id="closeWarning">닫기</button>
+    <div style="clear:both;"></div>
+</div>
+
+<script>
+/* 🔔 알림창 표시 함수 */
+function showStockWarnings(warnings) {
+    const box = $("#stockWarningBox");
+    const listDiv = $("#warningList");
+    listDiv.empty();
+
+    warnings.forEach(w => {
+        listDiv.append(`
+            <div>
+                <b>${w.medicineName}</b> (${w.standard})<br>
+                남은 재고: <span>${w.realInv}</span> / 필요 수량: ${w.quantity}
+            </div>
+        `);
+    });
+
+    // 부드럽게 등장
+    box.addClass("show");
+
+    // 7초 후 자동 닫기
+    setTimeout(() => box.removeClass("show"), 7000);
+}
+
+/* 닫기 버튼 */
+$("#closeWarning").click(() => {
+    $("#stockWarningBox").removeClass("show");
+});
+
+/* 🚀 판매 실행 (AJAX로 setDataSave.jsp 호출) */
+$("#runTest").click(() => {
+    const dummyData = [
+        { medicineName: "타이레놀", inventory: 10, price: "1200", Buyingprice: "900", standard: "500mg*10정" },
+        { medicineName: "아스피린", inventory: 20, price: "1500", Buyingprice: "1000", standard: "20g 4포" },
+        { medicinePrice: "1500", generalPrice: "2000", discounted: "약국A" } // meta
+    ];
+
+    $.ajax({
+        url: "setDataSave.jsp",
+        type: "POST",
+        data: JSON.stringify(dummyData),
+        contentType: "application/json; charset=UTF-8",
+        success: function(res) {
+            if (res.result === "success") {
+                if (res.warnings && res.warnings.length > 0) {
+                    showStockWarnings(res.warnings);
+                } else {
+                    alert("판매 처리 완료 ✅");
+                }
+            } else {
+                alert("❌ 오류: " + res.message);
+            }
+        },
+        error: function(xhr, status, err) {
+            alert("서버 통신 실패: " + err);
+        }
+    });
+});
+</script>
+
+</body>
+</html>

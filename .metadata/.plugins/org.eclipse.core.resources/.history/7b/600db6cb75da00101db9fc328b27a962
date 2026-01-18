@@ -1,0 +1,10 @@
+<%@ page language="java" pageEncoding="UTF-8" %>
+<%@ page import="java.sql.*" %>
+<%
+Connection conn = (Connection) pageContext.getAttribute("conn");
+try {
+    if (conn != null && !conn.isClosed()) {
+        conn.close();
+    }
+} catch (Exception ignored) {}
+%>

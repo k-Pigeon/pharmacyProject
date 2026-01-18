@@ -1,0 +1,21 @@
+import java.sql.*;
+import javax.swing.*;
+import java.awt.*;
+
+@SuppressWarnings("serial")
+public class MainFrame extends JFrame {
+    public MainFrame() {
+        setTitle("메인 화면");
+        setBounds(600, 300, 900, 600);
+        setLayout(null);
+
+        JLabel welcomeLabel = new JLabel("의약품 리스트");
+        welcomeLabel.setBounds(400, 50, 200, 30);
+        welcomeLabel.setFont(new Font("Arial", Font.PLAIN, size));
+        출처: https://whiteit.tistory.com/entry/자바-소스코드-키-이벤트를-이용한-글자-크기-조정 [소스코드 저장소:: For Example:티스토리]
+        add(welcomeLabel);
+
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setVisible(true);
+    }
+}

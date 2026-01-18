@@ -1,0 +1,198 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8"
+	pageEncoding="UTF-8"%>
+<%@ page import="java.sql.*"%>
+<%@ include file="sessionManager.jsp"%>
+<%@ include file="DBconnection.jsp"%>
+<%
+    request.setCharacterEncoding("UTF-8");
+
+    String dbName = (session != null) ? (String) session.getAttribute("dbName") : null;
+    String id = (session != null) ? (String) session.getAttribute("id") : null;
+    if (id == null || dbName == null) {
+        response.sendRedirect("login.jsp");
+        return;
+    }
+    jdbcDriver = dbName;
+
+    boolean isSubmitted = "true".equals(request.getParameter("submitted"));
+%>
+
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="style.css">
+<title>제품 등록</title>
+<style>
+body {
+	font-family: '맑은 고딕', sans-serif;
+	background-color: #f9f9f9;
+}
+
+.container {
+    width: 600px;
+    height: 68vh;
+    margin: 7% auto;
+    background: white;
+    border: 1px solid #ccc;
+    border-radius: 10px;
+    padding: 20px 30px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    overflow: scroll;
+}
+
+table {
+	width: 100%;
+}
+
+td {
+	padding: 8px;
+}
+
+input {
+	width: 100%;
+	padding: 6px;
+	box-sizing: border-box;
+}
+
+button.submitNew {
+	padding: 10px 20px;
+	font-size: 15px;
+	background-color: #4CAF50;
+	color: white;
+	border: none;
+	border-radius: 6px;
+	cursor: pointer;
+}
+
+button.submitNew:hover {
+	background-color: #45a049;
+}
+</style>
+</head>
+<body>
+
+	<%
+    if (isSubmitted) {
+        String medicineName = request.getParameter("medicineName");
+        String companyName = request.getParameter("companyName");
+        String standard = request.getParameter("standard");
+        String kind = request.getParameter("kind");
+        String serialNumber = request.getParameter("serialNumber");
+        String receiptDate = request.getParameter("receiptDate");
+        String deliveryDate = request.getParameter("deliveryDate");
+        String buyingPrice = request.getParameter("buyingPrice");
+        String price = request.getParameter("price");
+        Double inventory = Double.parseDouble(request.getParameter("inventory"));
+
+        try {
+            Class.forName("com.mysql.cj.jdbc.Driver");
+            String sql = "INSERT INTO testTable (medicineName, companyName, standard, kind, serialNumber, receiptDate, deliveryDate, buyingPrice, price, inventory) "
+                       + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            PreparedStatement pstmt = conn.prepareStatement(sql);
+            pstmt.setString(1, medicineName);
+            pstmt.setString(2, companyName);
+            pstmt.setString(3, standard);
+            pstmt.setString(4, kind);
+            pstmt.setString(5, serialNumber);
+            pstmt.setString(6, receiptDate);
+            pstmt.setString(7, deliveryDate);
+            pstmt.setString(8, buyingPrice);
+            pstmt.setString(9, price);
+            pstmt.setDouble(10, inventory);
+
+            int result = pstmt.executeUpdate();
+        } catch (Exception e) {
+%>
+	<p style="color: red;">
+		에러:
+		<%= e.getMessage() %></p>
+	<%
+        } finally {
+            if (conn != null) conn.close();
+        }
+    } else {
+        String medicineName = request.getParameter("medicineName") != null ? request.getParameter("medicineName") : "";
+%>
+
+	<div id="wrap">
+		<header>
+			<jsp:include page="header.jsp"></jsp:include>
+		</header>
+		<div class="container">
+			<h2 style="text-align: center;">📝 제품 등록</h2>
+			<table>
+				<tr>
+					<td>제품명</td>
+					<td><input type="text" id="medicineName"
+						value="<%= medicineName %>"></td>
+				</tr>
+				<tr>
+					<td>제조사</td>
+					<td><input type="text" id="companyName"></td>
+				</tr>
+				<tr>
+					<td>규격</td>
+					<td><input type="text" id="standard"></td>
+				</tr>
+				<tr>
+					<td>종류</td>
+					<td><input type="text" id="kind"></td>
+				</tr>
+				<tr>
+					<td>바코드</td>
+					<td><input type="text" id="serialNumber"></td>
+				</tr>
+				<tr>
+					<td>입고일</td>
+					<td><input type="date" id="receiptDate"></td>
+				</tr>
+				<tr>
+					<td>유통기한</td>
+					<td><input type="date" id="deliveryDate"></td>
+				</tr>
+				<tr>
+					<td>사입가</td>
+					<td><input type="number" id="buyingPrice"></td>
+				</tr>
+				<tr>
+					<td>판매가</td>
+					<td><input type="number" id="price"></td>
+				</tr>
+				<tr>
+					<td>재고수량</td>
+					<td><input type="number" id="inventory"></td>
+				</tr>
+				<tr>
+					<td colspan="2" style="text-align: center;">
+						<button onclick="submitProduct()" class="submitNew">등록하기</button>
+					</td>
+				</tr>
+			</table>
+		</div>
+
+	</div>
+
+	<script>
+function submitProduct() {
+    const params = new URLSearchParams();
+    params.append("submitted", "true");
+    params.append("medicineName", document.getElementById("medicineName").value);
+    params.append("companyName", document.getElementById("companyName").value);
+    params.append("standard", document.getElementById("standard").value);
+    params.append("kind", document.getElementById("kind").value);
+    params.append("serialNumber", document.getElementById("serialNumber").value);
+    params.append("receiptDate", document.getElementById("receiptDate").value);
+    params.append("deliveryDate", document.getElementById("deliveryDate").value);
+    params.append("buyingPrice", document.getElementById("buyingPrice").value);
+    params.append("price", document.getElementById("price").value);
+    params.append("inventory", document.getElementById("inventory").value);
+
+    location.href = "addProduct.jsp?" + params.toString();
+}
+</script>
+
+	<% } %>
+
+</body>
+</html>

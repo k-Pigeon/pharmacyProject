@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<section name="Workbench">
+	<item key="hasShownOverlayPopupBefore" value="true"/>
+	<section name="org.eclipse.ui.texteditor.FindReplaceDialog">
+		<item key="wrap" value="true"/>
+		<item key="casesensitive" value="false"/>
+		<item key="wholeword" value="false"/>
+		<item key="incremental" value="false"/>
+		<item key="isRegEx" value="false"/>
+		<item key="selection" value="bottom"/>
+		<list key="findhistory">
+			<item value="bottom"/>
+			<item value="table_line"/>
+			<item value="1"/>
+			<item value="shake"/>
+			<item value="custVal"/>
+			<item value="selectRegist"/>
+			<item value="Result"/>
+			<item value="Prepare"/>
+			<item value="ResultSet"/>
+			<item value="PreparedStatement"/>
+			<item value="Prepapre"/>
+			<item value="Preprae"/>
+			<item value="psMain"/>
+			<item value="close"/>
+			<item value="conn"/>
+		</list>
+		<list key="replacehistory">
+			<item value=";"/>
+			<item value=""/>
+		</list>
+	</section>
+	<section name="org.eclipse.ui.texteditor.FindReplaceDialog_dialogBounds">
+		<item key="DIALOG_X_ORIGIN" value="1167"/>
+		<item key="DIALOG_Y_ORIGIN" value="312"/>
+		<item key="DIALOG_WIDTH" value="322"/>
+		<item key="DIALOG_HEIGHT" value="392"/>
+		<item key="DIALOG_FONT_NAME" value="1|맑은 고딕|9.0|0|WINDOWS|1|-12|0|0|0|400|0|0|0|1|0|0|0|0|맑은 고딕"/>
+	</section>
+	<section name="java.lang.Class">
+		<item key="replaceBarOpen" value="false"/>
+		<list key="findhistory">
+			<item value="dataU"/>
+			<item value="getData"/>
+			<item value="handleRowEdit"/>
+			<item value="updateInfo"/>
+			<item value="수정"/>
+			<item value="쉉ㅈ"/>
+			<item value=".medicine-edit-page h1"/>
+			<item value=".medicine-edit-page .widthScroll"/>
+			<item value=".table_line"/>
+			<item value="style"/>
+			<item value="medicine-edit-page"/>
+			<item value="medicineTotal"/>
+			<item value="baseDate"/>
+			<item value="&lt;ul id=&quot;dayList&quot; class=&quot;day-list&quot;&gt;&lt;/ul&gt;"/>
+			<item value="&lt;div class=&quot;modal-body modal-flex&quot;&gt;"/>
+		</list>
+	</section>
+</section>

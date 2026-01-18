@@ -1,0 +1,46 @@
+import java.sql.*;
+import javax.swing.*;
+import javax.swing.table.*;
+import java.awt.*;
+
+@SuppressWarnings("serial")
+public class MainFrame extends JFrame {
+    public MainFrame() {
+        setTitle("메인 화면");
+        setBounds(600, 300, 900, 600);
+        setLayout(null); // 레이아웃을 null로 설정
+
+        JLabel welcomeLabel = new JLabel("의약품 리스트");
+        welcomeLabel.setBounds(400, 50, 200, 30);
+        add(welcomeLabel);
+
+        // 컬럼명 정의
+        String[] columnNames = {"제품명", "수량", "가격"};
+
+        // 샘플 데이터
+        Object[][] data = {
+            {"타이레놀", 10, 5000},
+            {"판콜", 20, 3500},
+            {"아스피린", 15, 4000}
+        };
+
+        // 데이터들을 하나의 변수로 지정
+        DefaultTableModel model = new DefaultTableModel(data, columnNames);
+
+        // 테이블 객체 생성
+        JTable jt = new JTable(model);
+
+        // JScrollPane에 JTable 추가 (스크롤 가능하도록)
+        JScrollPane scrollPane = new JScrollPane(jt);
+        scrollPane.setBounds(30, 100, 860, 400); // 위치와 크기 지정
+
+        add(scrollPane); // JScrollPane을 JFrame에 추가
+
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setVisible(true);
+    }
+
+    public static void main(String[] args) {
+        new MainFrame();
+    }
+}

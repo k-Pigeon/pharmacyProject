@@ -1,0 +1,32 @@
+<%@ page language="java" contentType="text/plain; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ page import="java.sql.*" %>
+<%@ include file="sessionManager.jsp"%>
+<%@ include file="DBconnection.jsp"%>
+
+<%
+response.setContentType("text/plain; charset=UTF-8");
+
+String idSortation = (session != null) ? (String) session.getAttribute("idSortation") : null;
+
+// standard는 이제 안 쓰니까 SELECT 에서도 제거
+String sql = "SELECT inventory, quantity FROM testTable" + idSortation + " WHERE returnInv='0'";
+PreparedStatement ps = conn.prepareStatement(sql);
+ResultSet rs = ps.executeQuery();
+
+boolean warning = false;
+
+while(rs.next()){
+    double inventory = rs.getDouble("inventory");
+    double quantity  = rs.getDouble("quantity");
+
+    if (quantity > inventory) {
+        warning = true;
+        break;
+    }
+}
+
+rs.close();
+ps.close();
+
+out.print(warning ? "Y" : "N");
+%>

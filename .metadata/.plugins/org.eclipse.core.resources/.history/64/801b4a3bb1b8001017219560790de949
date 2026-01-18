@@ -1,0 +1,164 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>재고 부족 알림 시스템</title>
+
+<!-- ✅ jQuery CDN -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+<style>
+body {
+    font-family: "Noto Sans KR", sans-serif;
+    background-color: #f7f9fc;
+    padding: 40px;
+    margin: 0;
+}
+
+button {
+    background-color: #0066cc;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 10px 18px;
+    font-size: 15px;
+    cursor: pointer;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+button:hover {
+    background-color: #004c99;
+}
+
+/* 🧩 알림창 스타일 */
+#stockWarningBox {
+    position: fixed;
+    right: 25px;
+    bottom: -400px; /* 시작은 화면 아래 */
+    background: #fff8f8;
+    border: 1px solid #ffb3b3;
+    border-radius: 12px;
+    width: 350px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    padding: 20px;
+    opacity: 0;
+    transition: all 0.6s ease;
+    z-index: 9999;
+}
+#stockWarningBox.show {
+    bottom: 25px;
+    opacity: 1;
+}
+#stockWarningBox h3 {
+    color: #cc0000;
+    margin: 0 0 12px 0;
+    font-size: 18px;
+    font-weight: bold;
+}
+#warningList div {
+    background: #fff;
+    border-left: 4px solid #ff6666;
+    border-radius: 6px;
+    margin-bottom: 10px;
+    padding: 8px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+#warningList b {
+    color: #222;
+}
+#warningList span {
+    color: #d60000;
+    font-weight: bold;
+}
+#closeWarning {
+    background: #d60000;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 5px 10px;
+    margin-top: 10px;
+    float: right;
+    cursor: pointer;
+}
+#closeWarning:hover {
+    background: #b30000;
+}
+
+/* ⚙️ 애니메이션 (슬라이드 + 페이드) */
+@keyframes slideUp {
+    from { bottom: -300px; opacity: 0; }
+    to { bottom: 25px; opacity: 1; }
+}
+@keyframes slideDown {
+    from { bottom: 25px; opacity: 1; }
+    to { bottom: -300px; opacity: 0; }
+}
+</style>
+</head>
+
+<body>
+
+<h2>💊 재고 부족 알림 테스트 페이지</h2>
+<p>판매 처리나 특정 이벤트 후, 부족한 재고가 있으면 하단에 알림창이 나타납니다.</p>
+<button id="simulate">🚀 재고 부족 테스트</button>
+
+<!-- 🧩 알림창 -->
+<div id="stockWarningBox">
+    <h3>⚠ 재고 부족 경고</h3>
+    <div id="warningList"></div>
+    <button id="closeWarning">닫기</button>
+    <div style="clear:both;"></div>
+</div>
+
+<script>
+// ======================
+// 🔔 알림창 표시 함수
+// ======================
+function showStockWarnings(warnings) {
+    const box = $("#stockWarningBox");
+    const listDiv = $("#warningList");
+    listDiv.empty();
+
+    warnings.forEach(w => {
+        listDiv.append(`
+            <div>
+                <b>${w.medicineName}</b> (${w.standard})<br>
+                남은 재고: <span>${w.realInv}</span> /
+                필요 수량: ${w.quantity}
+            </div>
+        `);
+    });
+
+    // 부드럽게 등장
+    box.addClass("show");
+
+    // 6초 후 자동 닫기
+    setTimeout(() => {
+        box.removeClass("show");
+    }, 6000);
+}
+
+// ======================
+// 🧹 닫기 버튼
+// ======================
+$("#closeWarning").click(() => {
+    $("#stockWarningBox").removeClass("show");
+});
+
+// ======================
+// 🚀 테스트 버튼 클릭 시 동작
+// ======================
+$("#simulate").click(() => {
+    // 실제로는 AJAX로 서버에서 받아오겠지만, 테스트용으로 임의 데이터 생성
+    const testWarnings = [
+        { medicineName: "타이레놀", standard: "500mg*10정", realInv: 5.2, quantity: 10 },
+        { medicineName: "아스피린", standard: "20g 4포", realInv: 3.5, quantity: 6 },
+        { medicineName: "게보린", standard: "250mg*8정", realInv: 1.0, quantity: 5 }
+    ];
+
+    showStockWarnings(testWarnings);
+});
+</script>
+
+</body>
+</html>

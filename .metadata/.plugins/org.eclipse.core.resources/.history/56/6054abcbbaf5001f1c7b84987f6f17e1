@@ -1,0 +1,75 @@
+<%@page import="com.mysql.cj.x.protobuf.MysqlxPrepare.Prepare"%>
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ page import="java.sql.*"%>
+<%@ include file="sessionManager.jsp"%>
+<%@ include file="DBconnection.jsp"%>
+<%
+String dbName = (session != null) ? (String) session.getAttribute("dbName") : null;
+String id = (session != null) ? (String) session.getAttribute("id") : null;
+String password = (session != null) ? (String) session.getAttribute("password") : null;
+
+/* out.println(password);
+out.println(dbName);
+out.println(id);
+out.println(password); */
+
+if (id == null || dbName == null) {
+    response.sendRedirect("login.jsp");
+    return;
+}
+
+jdbcDriver = dbName;
+    String memberName = request.getParameter("memberName");
+    PreparedStatement stmt = null;
+    ResultSet rs = null;
+
+    try {
+        // 데이터베이스 연결
+        Class.forName("com.mysql.cj.jdbc.Driver");
+
+        // memberName을 조건으로 검색하는 쿼리
+        String query = "SELECT * FROM members WHERE memberName LIKE ?";
+        stmt = conn.prepareStatement(query);
+        stmt.setString(1, "%" + memberName + "%");
+        rs = stmt.executeQuery();
+
+        // 검색 결과 출력
+        if (rs.next()) {
+            out.println("<table class='table_line' border='1' cellpadding='5' cellspacing='0'>");
+            out.println("<thead>");
+            out.println("<tr>");
+            out.println("<th>회원 이름</th>");
+            out.println("<th>회원 이메일</th>");
+            out.println("<th>전화번호</th>");
+            out.println("<th>가입일</th>");
+            out.println("</tr>");
+            out.println("</thead>");
+            out.println("<tbody>");
+
+            // 검색 결과를 테이블로 출력
+            do {
+                out.println("<tr>");
+                out.println("<td>" + rs.getString("memberName") + "</td>");
+                out.println("<td>" + rs.getString("email") + "</td>");
+                out.println("<td>" + rs.getString("phone") + "</td>");
+                out.println("<td>" + rs.getString("joinDate") + "</td>");
+                out.println("</tr>");
+            } while (rs.next());
+
+            out.println("</tbody>");
+            out.println("</table>");
+        } else {
+            out.println("<p>검색 결과가 없습니다.</p>");
+        }
+    } catch (Exception e) {
+        e.printStackTrace();
+    } finally {
+        try {
+            if (rs != null) rs.close();
+            if (stmt != null) stmt.close();
+            if (conn != null) conn.close();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+%>

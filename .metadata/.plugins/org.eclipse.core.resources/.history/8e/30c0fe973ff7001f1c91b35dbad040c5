@@ -1,0 +1,71 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ page import="java.sql.*"%>
+<%@ page import="java.util.*"%>
+<%@ page import="java.text.*"%>
+<%@ include file="sessionManager.jsp"%>
+<%@ include file="DBconnection.jsp"%>
+<%
+String dbName = (session != null) ? (String) session.getAttribute("dbName") : null;
+String id = (session != null) ? (String) session.getAttribute("id") : null;
+String password = (session != null) ? (String) session.getAttribute("password") : null;
+
+if (id == null || dbName == null) {
+    response.sendRedirect("login.jsp");
+    return;
+}
+
+jdbcDriver = dbName;
+    PreparedStatement ps = null;
+    ResultSet rs = null;
+
+    try {
+        // DB 연결
+        Class.forName("com.mysql.cj.jdbc.Driver");
+
+        // 고객 번호 받기
+        String customerId = request.getParameter("custNumber");
+
+        // 판매 테이블에 판매 기록 삽입
+        String[] medicineNames = request.getParameterValues("medicineName[]");
+        String[] inventories = request.getParameterValues("inventory[]");
+        String[] standards = request.getParameterValues("standard[]");
+        String[] prices = request.getParameterValues("price[]");
+        String[] totalPrices = request.getParameterValues("totalPrice[]");
+        
+        String saleDate = new java.text.SimpleDateFormat("yyyy-MM-dd").format(new java.util.Date());
+
+        // 약품별로 판매 기록을 삽입
+        for (int i = 0; i < medicineNames.length; i++) {
+            String medicineName = medicineNames[i];
+            String inventory = inventories[i];
+            String standard = standards[i];
+            String price = prices[i];
+            String totalPrice = totalPrices[i];
+
+            // 판매 기록 삽입
+            String saleInsertQuery = "INSERT INTO Sales (sale_date, customer_id, medicine_name, inventory, standard, price, total_price) VALUES (?, ?, ?, ?, ?, ?, ?)";
+            ps = conn.prepareStatement(saleInsertQuery);
+            ps.setString(1, saleDate);
+            ps.setString(2, customerId);
+            ps.setString(3, medicineName);
+            ps.setInt(4, Integer.parseInt(inventory));
+            ps.setString(5, standard);
+            ps.setDouble(6, Double.parseDouble(price));
+            ps.setDouble(7, Double.parseDouble(totalPrice));
+            ps.executeUpdate();
+        }
+        
+        out.println("Data inserted successfully.");
+    } catch (Exception e) {
+        e.printStackTrace();
+        out.println("Error: " + e.getMessage());
+    } finally {
+        try {
+            if (rs != null) rs.close();
+            if (ps != null) ps.close();
+            if (conn != null) conn.close();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+%>

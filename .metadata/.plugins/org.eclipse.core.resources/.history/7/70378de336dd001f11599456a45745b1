@@ -1,0 +1,12 @@
+import javax.swing.JFrame;
+public class JLabelText01 {
+
+	public static void main(String[] args) {
+		// TODO Auto-generated method stub
+		JFrame jf = new JFrame();
+		jf.setBounds(600, 300, 300, 300);
+		jf.setTitle("서가종로온누리약국");
+		
+	}
+
+}

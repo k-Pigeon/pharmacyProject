@@ -1,0 +1,459 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8"
+	pageEncoding="UTF-8"%>
+<%@ page import="java.sql.*"%>
+<%@ page import="java.util.*"%>
+<%@ page import="java.text.*"%>
+<%@ include file="sessionManager.jsp"%>
+<%@ include file="DBconnection.jsp"%>
+<%
+String dbName = (session != null) ? (String) session.getAttribute("dbName") : null;
+String id = (session != null) ? (String) session.getAttribute("id") : null;
+String password = (session != null) ? (String) session.getAttribute("password") : null;
+
+/* out.println(password);
+out.println(dbName);
+out.println(id);
+out.println(password); */
+
+String idSortation = (session != null) ? (String) session.getAttribute("idSortation") : null; if (id == null || dbName == null) {
+	response.sendRedirect("login.jsp");
+	return;
+}
+
+jdbcDriver = dbName;
+%>
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sales Record</title>
+<link rel="stylesheet" href="record/style.css">
+</head>
+<body>
+	<div id="wrap">
+		<header>
+			<jsp:include page="header.jsp"></jsp:include>
+		</header>
+
+		<h1 class="title">결제 내역</h1>
+		<div class="filter_line">
+			<div>
+				<input type="date" class="startDate selectDate" id="startDate">
+				<input type="date" class="endDate" id="endDate">
+			</div>
+			<div>
+				<input type="text" id="searchName" placeholder="이름 검색">
+				<input type="text" id="searchPhone" placeholder="전화번호 검색">
+			</div>
+		</div>
+		<!-- 테이블과 사이드 패널을 포함하는 컨테이너 -->
+		<div id="content">
+			<!-- 테이블 컨테이너 -->
+			<div id="tableContainer">
+				<table class="table_line">
+					<colgroup>
+						<col style="width: 50%;">
+						<col style="width: 50%;">
+					</colgroup>
+					<thead>
+						<tr>
+							<th>일자/시간</th>
+							<th>수정 / 삭제</th>
+						</tr>
+					</thead>
+					<tbody id="inventory_list">
+						<%
+						PreparedStatement pstmt = null;
+						ResultSet rs = null;
+						try {
+							request.setCharacterEncoding("UTF-8");
+
+							String sql = "SELECT A.saleDate AS Dates FROM SalesRecord"  + idSortation + "  A " + "JOIN priceRecord"  + idSortation + "  B ON A.saleDate = B.saleDate";
+
+							pstmt = conn.prepareStatement(sql);
+							rs = pstmt.executeQuery();
+
+							int count = 0;
+							while (rs.next()) {
+								String saleDate = rs.getString("Dates");
+								count++;
+						%>
+						<tr data-date="<%=rs.getString("Dates")%>">
+							<td><%=saleDate%></td>
+							<td>
+								<button class="updateBtn custom-btn btn-16">수정</button>
+								<button class="deleteBtn custom-btn btn-16">삭제</button>
+							</td>
+						</tr>
+						<%
+						}
+						if (count == 0) {
+						%>
+						<tr>
+							<td colspan="2">데이터가 없습니다.</td>
+						</tr>
+						<%
+						}
+						} catch (Exception e) {
+							e.printStackTrace();
+							out.println("<tr><td colspan='2'>오류 발생: " + e.getMessage() + "</td></tr>");
+						} finally {
+				            try { if (rs != null) rs.close(); } catch (Exception ignored) {}
+				            try { if (pstmt != null) pstmt.close(); } catch (Exception ignored) {}
+						}
+						%>
+						<%@ include file="DBclose.jsp"%>
+
+					</tbody>
+
+				</table>
+				<ul class="pagination"></ul>
+			</div>
+
+			<!-- 사이드 패널 -->
+			<div id="sidePanel">
+				<div id="panel_content"></div>
+			</div>
+		</div>
+	</div>
+
+	<script src="jquery-3.7.1.min.js"></script>
+	<script src="script.js"></script>
+	<script>
+        function showSidePanel(saleDate) {
+            var xhr = new XMLHttpRequest();
+            xhr.open("POST", "detailRecord2.jsp?saleDate=" + saleDate, true);
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState == 4 && xhr.status == 200) {
+                    var panelContent = document.getElementById("panel_content");
+                    panelContent.innerHTML = xhr.responseText;
+                } else if (xhr.readyState == 4) {
+                    console.error("AJAX request failed with status " + xhr.status);
+                }
+            };
+            xhr.send();
+        }
+
+        $(document).ready(function() {
+        	setDefaultDateFilter();
+        	
+        	let now = new Date();
+            let today = now.toISOString().split('T')[0];
+
+            now.setDate(now.getDate() - 1);
+            let yesterday = now.toISOString().split('T')[0];
+
+            $("#startDate").val(yesterday);
+            $("#endDate").val(today);
+            
+            var numPerPage = 10;
+            var currentPage = 1;
+            var selectedRowIndex = -1;
+            
+            document.addEventListener('keydown', function(e) {
+                let $startDate = $("#startDate");
+                let $endDate = $("#endDate");
+
+                // `#startDate`나 `#endDate` 둘 중 하나라도 `.selectDate` 클래스가 있어야 동작
+                if (!$startDate.hasClass("selectDate") && !$endDate.hasClass("selectDate")) return;
+
+                if (e.keyCode == 37) { // 왼쪽 방향키 (-1일)
+                    e.preventDefault();
+
+                    if ($startDate.hasClass("selectDate")) {
+                        let dateInputStart = new Date($startDate.val());
+                        dateInputStart.setDate(dateInputStart.getDate() - 1);
+                        let resultDateS = dateInputStart.toISOString().split("T")[0];
+
+                        if (dateInputStart > new Date($endDate.val())) return false;
+                        $startDate.val(resultDateS);
+                    }
+
+                    if ($endDate.hasClass("selectDate")) {
+                        let dateInputEnd = new Date($endDate.val());
+                        dateInputEnd.setDate(dateInputEnd.getDate() - 1);
+                        let resultDateE = dateInputEnd.toISOString().split("T")[0];
+
+                        if (dateInputEnd < new Date($startDate.val())) return false;
+                        $endDate.val(resultDateE);
+                    }
+                }
+
+                if (e.keyCode == 39) { // 오른쪽 방향키 (+1일)
+                    e.preventDefault();
+
+                    if ($startDate.hasClass("selectDate")) {
+                        let dateInputStart = new Date($startDate.val());
+                        dateInputStart.setDate(dateInputStart.getDate() + 1);
+                        let resultDateS = dateInputStart.toISOString().split("T")[0];
+
+                        if (dateInputStart > new Date($endDate.val())) return false;
+                        $startDate.val(resultDateS);
+                    }
+
+                    if ($endDate.hasClass("selectDate")) {
+                        let dateInputEnd = new Date($endDate.val());
+                        dateInputEnd.setDate(dateInputEnd.getDate() + 1);
+                        let resultDateE = dateInputEnd.toISOString().split("T")[0];
+
+                        if (dateInputEnd < new Date($startDate.val())) return false;
+                        $endDate.val(resultDateE);
+                    }
+                }
+                // 날짜 변경 후 필터 적용
+                filterRows();
+
+            });
+            
+         	// 전역 변수로 `dateChange` 선언
+            let dateChange = "0";
+
+            document.addEventListener('keydown', function(e) {
+            	e.preventDefault();
+                if (e.keyCode == 25) { // 방향키 아래(40)
+                    if (dateChange == "0") {
+                        $("#startDate").removeClass("selectDate");
+                        $("#endDate").addClass("selectDate");
+                        dateChange = "1"; // ✅ 값 변경 (전역 변수이므로 유지됨)
+                    } else {
+                        $("#endDate").removeClass("selectDate");
+                        $("#startDate").addClass("selectDate");
+                        dateChange = "0"; // ✅ 값 변경
+                    }
+                }
+                // 날짜 변경 후 필터 적용
+                filterRows();
+            });
+            function filterRows() {
+                let startDate = $('#startDate').val();
+                let endDate = $('#endDate').val();
+
+                $.ajax({
+                    url: "filterSalesRecord.jsp",
+                    type: "GET",
+                    data: {
+                        startDate: startDate,
+                        endDate: endDate
+                    },
+                    success: function(response) {
+                        $("#inventory_list").html(response); // ✅ 받은 HTML을 바로 삽입
+                        updatePagination();
+                        showPage(1);
+                    },
+                    error: function(xhr, status, error) {
+                        console.error("AJAX 필터링 오류:", error);
+                    }
+                });
+            }
+
+
+            filterRows();
+
+            // 날짜 필터, 검색 필터 변경 시 실행
+            $('#startDate, #endDate, #searchName, #searchPhone').on('input', function() {
+                filterRows();
+            });
+            
+
+            function showPage(page) {
+                var allRows = $('#inventory_list tr');
+                allRows.hide(); // 전체 숨김
+                allRows.slice((page - 1) * numPerPage, page * numPerPage).show();
+            }
+
+
+            function updatePagination() {
+                var numRows = $('#inventory_list tr').length;
+                var numPages = Math.ceil(numRows / numPerPage);
+                $('.pagination').empty();
+
+                if (numPages <= 1) return;
+
+                for (let i = 1; i <= numPages; i++) {
+                    let pageBtn = $('<li>' + i + '</li>');
+                    if (i === 1) pageBtn.addClass('active');
+                    pageBtn.on('click', function () {
+                        changePage(i);
+                    });
+                    $('.pagination').append(pageBtn);
+                }
+            }
+
+
+            var selectedRowIndex = -1;
+
+            function setSelectedRow(index) {
+                var visibleRows = $('#inventory_list tr:visible');
+                
+                if (index < 0 || index >= visibleRows.length) return;
+
+                selectedRowIndex = index;
+                visibleRows.removeClass('recordList'); // 기존 선택된 행 초기화
+                visibleRows.eq(index).addClass('recordList'); // 새로운 행 선택
+            }
+
+            
+            function changePage(newPage) {
+                currentPage = newPage;
+                showPage(currentPage);
+                setSelectedRow((currentPage - 1) * numPerPage);
+                $('.pagination li').removeClass('active');
+                $('.pagination li').eq(currentPage - 1).addClass('active');
+            }
+
+            $(document).on('click', '.pagination li', function() {
+                var pageIndex = $(this).index();
+                changePage(pageIndex + 1);
+            });
+
+            $('#inventory_list').on('click', 'tr', function() {
+                var saleDate = $(this).data('date');
+                $(this).addClass('recordList').siblings().removeClass('recordList');
+                showSidePanel(saleDate);
+            });
+
+            $(document).on('keydown', function(e) {
+            	 if(e.keyCode == 116){
+                 	e.preventDefault();
+                 } if(e.keyCode == 118){
+                 	e.preventDefault();
+                 	location.reload();
+                 }
+                var visibleRows = $('#inventory_list tr:visible');
+                var totalRows = visibleRows.length;
+                var totalPages = Math.ceil(totalRows / numPerPage);
+                if (totalRows === 0) return;
+
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    if (selectedRowIndex === -1) {
+                        setSelectedRow(0);
+                    } else {
+                        var newIndex = selectedRowIndex + 1;
+                        if (newIndex >= totalRows) {
+                            newIndex = 0;
+                            changePage(1);
+                        } else if (newIndex >= currentPage * numPerPage) {
+                            changePage(currentPage + 1);
+                        }
+                        setSelectedRow(newIndex);
+                    }
+            		$('#inventory_list tr:visible').eq(selectedRowIndex).click();
+                } if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    if (selectedRowIndex === -1) {
+                        setSelectedRow(0);
+                    } else {
+                        var newIndex = selectedRowIndex - 1;
+                        if (newIndex < 0) {
+                            newIndex = totalRows - 1;
+                            changePage(totalPages);
+                        } else if (newIndex < (currentPage - 1) * numPerPage) {
+                            changePage(currentPage - 1);
+                        }
+                        setSelectedRow(newIndex);
+                    }
+                    $('#inventory_list tr:visible').eq(selectedRowIndex).click();
+                }
+            });
+
+            function setDefaultDateFilter() {
+                var today = new Date().toISOString().split('T')[0]; // ISO 문자열의 날짜 부분만 추출
+                $('#startDate').val(today);
+                $('#endDate').val(today);
+                filterRows(); // 페이지 로딩 시 필터링 적용
+                updatePagination(); // 페이지네이션 업데이트
+                showPage(currentPage); // 현재 페이지 표시
+            }
+
+            $('#searchName, #searchPhone, #startDate, #endDate').on('input', function() {
+                currentPage = 1; // 필터링 후 페이지를 첫 페이지로 이동
+                filterRows(); // 필터링 적용
+                updatePagination(); // 페이지네이션 업데이트
+                showPage(currentPage); // 현재 페이지 표시
+            });
+
+            setDefaultDateFilter(); // 페이지 로딩 시 기본 날짜 필터 설정
+        });
+       
+        $(document).on("click", ".updateBtn", function (e) {
+        	  e.preventDefault();
+
+        	  const $tr = $(this).closest("tr");
+        	  const saleDate = $tr.data("date"); // <tr data-date="..."> 값 사용
+
+        	  if (!saleDate) {
+        	    alert("선택된 행의 일자 정보를 찾을 수 없습니다.");
+        	    return;
+        	  }
+
+        	  if (confirm(saleDate + " 데이터를 수정하시겠습니까?")) {
+        	    $.ajax({
+        	      url: "checkSaleDate.jsp",
+        	      type: "POST",
+        	      data: { saleDate: saleDate },
+        	      success: function (res) {
+        	        let data;
+        	        try { data = typeof res === "string" ? JSON.parse(res) : res; }
+        	        catch { data = {}; }
+
+        	        if (data.exists) {
+        	          alert("해당 날짜의 데이터를 수정합니다.");
+        	          // encodeURIComponent 제거
+        	          location.href = "checkSaleDate.jsp?saleDate=" + saleDate;
+        	        } else {
+        	          alert("해당 날짜에 데이터가 없습니다.");
+        	        }
+        	      },
+        	      error: function (xhr, status, err) {
+        	        console.error(err);
+        	        alert("수정 확인 중 오류가 발생했습니다.");
+        	      }
+        	    });
+        	  } else {
+        	    alert("수정이 취소되었습니다.");
+        	  }
+        	});
+
+
+
+        $(document).on("click",".deleteBtn", function(event){
+        		event.preventDefault();
+
+        	  const $tr = $(this).closest("tr");
+        	  const saleDate = $tr.data("date");
+
+        	  if (!saleDate) {
+        	    alert("선택된 행의 일자 정보를 찾을 수 없습니다.");
+        	    return;
+        	  }
+
+        	  if (confirm(saleDate + " 데이터를 삭제하시겠습니까?")) {
+        		  $.ajax({
+        			  url: "deleteSaleDate.jsp",
+        			  type: "POST",
+        			  data: { saleDate: saleDate },
+        			  success: function (res) {
+        			    var data = typeof res === "string" ? JSON.parse(res) : res;
+        			    if (data.ok) {
+        			      alert(
+        			        "재고 복귀 " + data.updated + "건 / 삭제(Sales:" +
+        			        data.deletedSales + ", Client:" + data.deletedClient + ") 완료"
+        			      );
+        			      $tr.remove();
+        			      if (typeof filterRows === "function") filterRows();
+        			    } else {
+        			      alert("삭제 실패: " + (data.error || "알 수 없는 오류"));
+        			    }
+        			  },
+        			  error: function () { alert("통신 오류"); }
+        			});
+
+        	  } else {
+        	    alert("삭제가 취소되었습니다.");
+        	  }
+        });
+    </script>
+</body>
+</html>

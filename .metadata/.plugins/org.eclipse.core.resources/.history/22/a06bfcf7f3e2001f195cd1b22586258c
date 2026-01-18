@@ -1,0 +1,20 @@
+import javax.swing.*;
+import java.awt.*;
+
+public class HeaderPanel extends JPanel {
+    /**
+	 * 
+	 */
+	private static final long serialVersionUID = 1L;
+
+	public HeaderPanel() {
+        setLayout(new FlowLayout(FlowLayout.LEFT));
+        setBackground(Color.LIGHT_GRAY);
+
+        JButton homeButton = new JButton("약품 정보");
+        JButton aboutButton = new JButton("약품 등록");
+
+        add(homeButton);
+        add(aboutButton);
+    }
+}

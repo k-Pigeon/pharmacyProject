@@ -1,0 +1,45 @@
+<%@ page language="java" contentType="text/plain; charset=UTF-8" %>
+<%@ page import="java.sql.*, java.util.regex.*" %>
+<%@ include file="DBconnection.jsp" %> 
+<%
+/*
+    ⚠ 매우 중요
+    - 이 파일은 include로 사용하면 안 됨
+    - AJAX로 호출하는 용도로만 사용해야 DBconnection.jsp와 변수 충돌이 없음
+*/
+
+boolean warningFound = false;
+String idSortation = (session != null) ? (String) session.getAttribute("idSortation") : null;
+
+
+String sql = "SELECT inventory, standard, quantity FROM testTable" + idSortation + " WHERE returnInv='0'";
+PreparedStatement ps = conn.prepareStatement(sql);
+ResultSet rs = ps.executeQuery();
+
+while (rs.next()) {
+    double inv = rs.getDouble("inventory");
+    String standard = rs.getString("standard");
+    double qty = rs.getDouble("quantity");
+
+    double std = 1;
+    if (standard != null) {
+        java.util.regex.Matcher m = java.util.regex.Pattern
+            .compile("\\d+(\\.\\d+)?").matcher(standard);
+        while (m.find()) std *= Double.parseDouble(m.group());
+    }
+
+    if (qty > inv * std) {
+        warningFound = true;
+        break;
+    }
+}
+
+rs.close();
+ps.close();
+
+// ---- 최종 출력 Y or N ----
+out.print(warningFound ? "Y" : "N");
+
+// ---- JSP 자동 개행 방지 ----
+out.flush();
+%>

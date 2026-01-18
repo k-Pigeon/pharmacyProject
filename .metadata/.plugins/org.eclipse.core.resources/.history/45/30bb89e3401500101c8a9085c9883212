@@ -1,0 +1,89 @@
+<%@ page contentType="text/html; charset=UTF-8" language="java" %>
+<%@ include file="DBconnection.jsp" %>
+<%@ include file="sessionManager.jsp" %>
+<%@ page import="java.sql.*" %>
+
+<%
+String dbName = (String) session.getAttribute("dbName");
+if (dbName == null) {
+    response.sendRedirect("login.jsp");
+    return;
+}
+
+jdbcDriver = dbName;
+
+request.setCharacterEncoding("UTF-8");
+
+String medicineName = request.getParameter("medicineName");
+String[] standards = request.getParameterValues("standardList[]");
+String[] buyingPrices = request.getParameterValues("buyingPriceList[]");
+String[] prices = request.getParameterValues("priceList[]");
+
+Connection conn = null;
+PreparedStatement deleteStmt = null;
+PreparedStatement insertTestStmt = null;
+PreparedStatement insertRegistStmt = null;
+PreparedStatement countStmt = null;
+ResultSet countRs = null;
+
+try {
+    Class.forName("com.mysql.cj.jdbc.Driver");
+    conn = DriverManager.getConnection(jdbcDriver, dbUser, dbPwd);
+
+    // 1. 기존 testTable 데이터 삭제
+    String deleteSql = "DELETE FROM testTable WHERE medicineName = ?";
+    deleteStmt = conn.prepareStatement(deleteSql);
+    deleteStmt.setString(1, medicineName);
+    deleteStmt.executeUpdate();
+
+    // 2. RegistTable의 현재 MAX(countNumber) 조회
+    int nextCount = 1;
+    String countSql = "SELECT MAX(CAST(countNumber AS UNSIGNED)) FROM RegistTable";
+    countStmt = conn.prepareStatement(countSql);
+    countRs = countStmt.executeQuery();
+    if (countRs.next()) {
+        nextCount = countRs.getInt(1) + 1;
+    }
+
+    // 3. INSERT 쿼리 준비
+    String insertTestSql = "INSERT INTO testTable (medicineName, standard, buyingPrice, price) VALUES (?, ?, ?, ?)";
+    insertTestStmt = conn.prepareStatement(insertTestSql);
+
+    String insertRegistSql = "INSERT INTO RegistTable (medicineName, standard, buyingPrice, price, countNumber) VALUES (?, ?, ?, ?, ?)";
+    insertRegistStmt = conn.prepareStatement(insertRegistSql);
+
+    // 4. 반복 삽입
+    for (int i = 0; i < standards.length; i++) {
+        String std = standards[i];
+        double buyPrice = Double.parseDouble(buyingPrices[i]);
+        double price = Double.parseDouble(prices[i]);
+
+        // testTable insert
+        insertTestStmt.setString(1, medicineName);
+        insertTestStmt.setString(2, std);
+        insertTestStmt.setDouble(3, buyPrice);
+        insertTestStmt.setDouble(4, price);
+        insertTestStmt.executeUpdate();
+
+        // registTable insert
+        insertRegistStmt.setString(1, medicineName);
+        insertRegistStmt.setString(2, std);
+        insertRegistStmt.setDouble(3, buyPrice);
+        insertRegistStmt.setDouble(4, price);
+        insertRegistStmt.setString(5, String.valueOf(nextCount++));
+        insertRegistStmt.executeUpdate();
+    }
+
+    out.print("success");
+} catch (Exception e) {
+    e.printStackTrace();
+    out.print("error: " + e.getMessage());
+} finally {
+    if (countRs != null) countRs.close();
+    if (countStmt != null) countStmt.close();
+    if (deleteStmt != null) deleteStmt.close();
+    if (insertTestStmt != null) insertTestStmt.close();
+    if (insertRegistStmt != null) insertRegistStmt.close();
+    if (conn != null) conn.close();
+}
+%>

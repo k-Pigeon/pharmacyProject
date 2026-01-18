@@ -1,0 +1,9 @@
+import java.sql.*;
+
+import javax.swing.JFrame;
+
+public class MainFrame extends JFrame {
+	public MainFrame(){
+		setTitle("서가종로온누리약국");
+	}
+}

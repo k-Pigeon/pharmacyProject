@@ -1,0 +1,61 @@
+<%@ page language="java" contentType="application/json; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ page import="java.sql.*, org.json.*" %>
+<%@ include file="sessionManager.jsp"%>
+<%@ include file="DBconnection.jsp"%>
+
+<%
+response.setContentType("application/json; charset=UTF-8");
+request.setCharacterEncoding("UTF-8");
+
+
+String tableName = "SalesRecord";
+if (idSortation != null && !idSortation.isEmpty()) tableName += idSortation;
+
+String saleDate = request.getParameter("saleDate");  // ✅ 무조건 saleDate 사용
+JSONObject result = new JSONObject();
+JSONArray rows = new JSONArray();
+
+System.out.println(saleDate);
+
+if (saleDate == null || !saleDate.matches("^\\d{4}-\\d{2}-\\d{2}$")) {
+    result.put("error","invalid date").write(response.getWriter());
+    return;
+}
+
+PreparedStatement ps = null;
+ResultSet rs = null;
+
+try {
+    String sql = "SELECT medicineName, " +
+                 " SUM(CAST(Buyingprice AS DECIMAL)) AS buyingPrice, " +
+                 " SUM(CAST(price AS DECIMAL)) AS price, " +
+                 " SUM(CAST(price AS DECIMAL) - CAST(Buyingprice AS DECIMAL)) AS margin, " +
+                 " ROUND((SUM(CAST(price AS DECIMAL) - CAST(Buyingprice AS DECIMAL)) / NULLIF(SUM(CAST(price AS DECIMAL)),0))*100,2) AS marginRate " +
+                 " FROM " + tableName +
+                 " WHERE saleDate = ? " +
+                 " GROUP BY medicineName";
+
+    ps = conn.prepareStatement(sql);
+    ps.setString(1, saleDate);
+    rs = ps.executeQuery();
+
+    while (rs.next()) {
+        JSONObject row = new JSONObject();
+        row.put("medicineName", rs.getString("medicineName"));
+        row.put("buyingPrice", rs.getBigDecimal("buyingPrice"));
+        row.put("price", rs.getBigDecimal("price"));
+        row.put("margin", rs.getBigDecimal("margin"));
+        row.put("marginRate", rs.getBigDecimal("marginRate"));
+        rows.put(row);
+    }
+
+    result.put("rows", rows);
+    result.write(response.getWriter());
+
+} catch(Exception e){
+    result.put("error", e.getMessage()).write(response.getWriter());
+} finally {
+    if (rs != null) try{rs.close();}catch(Exception ig){}
+    if (ps != null) try{ps.close();}catch(Exception ig){}
+}
+%>

@@ -1,0 +1,580 @@
+<%@ page import="javax.servlet.http.*, javax.servlet.*"%>
+<%@ page import = "java.sql.*" %>
+<%@ page contentType="text/html;charset=UTF-8" language="java"%>
+<%
+// 세션에서 데이터 가져오기
+HttpSession userSession = request.getSession(); // 'session' 대신 'userSession' 사용
+
+String serialNumber = (String) userSession.getAttribute("SerialNumber");
+String medicineName = (String) userSession.getAttribute("medicineName");
+String buyingPrice = (String) userSession.getAttribute("Buyingprice");
+String price = (String) userSession.getAttribute("price");
+String inventory = (String) userSession.getAttribute("inventory");
+String companyName = (String) userSession.getAttribute("companyName");
+String standard = (String) userSession.getAttribute("standard");
+String receiptDate = (String) userSession.getAttribute("receiptDate");
+String deliveryDate = (String) userSession.getAttribute("DeliveryDate");
+
+// 데이터베이스 연결 설정
+String url = "jdbc:mysql://localhost:3306/tutorial2?useUnicode=true&characterEncoding=utf8";
+String user = "root";
+String password = "pharmacy@1234";
+
+Connection conn = null;
+PreparedStatement pstmt = null;
+ResultSet rs = null;
+%>
+
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>약품 수정 페이지</title>
+<link rel="stylesheet" href="style.css">
+<style>
+body {
+	font-family: Arial, sans-serif;
+}
+
+.container {
+	display: block;
+	max-width: 600px;
+	min-width: 600px;
+	height: 65vh;
+	margin: auto;
+	padding: 20px;
+	border: 1px solid #ccc;
+	border-radius: 10px;
+	background-color: #f9f9f9;
+	overflow: scroll;
+}
+
+.form-group {
+	margin-bottom: 15px;
+}
+
+label {
+	display: block;
+	margin-bottom: 5px;
+}
+
+input[type="text"] {
+	width: 100%;
+	padding: 8px;
+	box-sizing: border-box;
+}
+
+input[type="submit"] {
+	background-color: #4CAF50;
+	color: white;
+	border: none;
+	padding: 10px 15px;
+	cursor: pointer;
+}
+
+input[type="submit"]:hover {
+	background-color: #45a049;
+}
+
+.custom-btn {
+	width: 130px;
+	height: 40px;
+	color: #fff;
+	border-radius: 5px;
+	padding: 10px 25px;
+	font-family: 'Lato', sans-serif;
+	font-weight: 500;
+	background: transparent;
+	cursor: pointer;
+	transition: all 0.3s ease;
+	position: relative;
+	display: inline-block;
+	box-shadow: inset 2px 2px 2px 0px rgba(255, 255, 255, .5), 7px 7px 20px
+		0px rgba(0, 0, 0, .1), 4px 4px 5px 0px rgba(0, 0, 0, .1);
+	outline: none;
+	left: 50%;
+	transform: translateX(-65px);
+}
+
+.btn-3 {
+	background: rgb(0, 172, 238);
+	background: linear-gradient(0deg, rgba(0, 172, 238, 1) 0%,
+		rgba(2, 126, 251, 1) 100%);
+	width: 130px;
+	height: 40px;
+	line-height: 42px;
+	padding: 0;
+	border: none;
+}
+
+.btn-3 span {
+	position: relative;
+	display: block;
+	width: 100%;
+	height: 100%;
+}
+
+.btn-3:before, .btn-3:after {
+	position: absolute;
+	content: "";
+	right: 0;
+	top: 0;
+	background: rgba(2, 126, 251, 1);
+	transition: all 0.3s ease;
+}
+
+.btn-3:before {
+	height: 0%;
+	width: 2px;
+}
+
+.btn-3:after {
+	width: 0%;
+	height: 2px;
+}
+
+.btn-3:hover {
+	background: transparent;
+	box-shadow: none;
+}
+
+.btn-3:hover:before {
+	height: 100%;
+}
+
+.btn-3:hover:after {
+	width: 100%;
+}
+
+.btn-3 span:hover {
+	color: rgba(2, 126, 251, 1);
+}
+
+.btn-3 span:before, .btn-3 span:after {
+	position: absolute;
+	content: "";
+	left: 0;
+	bottom: 0;
+	background: rgba(2, 126, 251, 1);
+	transition: all 0.3s ease;
+}
+
+.btn-3 span:before {
+	width: 2px;
+	height: 0%;
+}
+
+.btn-3 span:after {
+	width: 0%;
+	height: 2px;
+}
+
+.btn-3 span:hover:before {
+	height: 100%;
+}
+
+.btn-3 span:hover:after {
+	width: 100%;
+}
+    /* 부모 컨테이너 스타일 */
+    .table-container {
+        display: flex;
+        flex-direction: column; /* 위아래로 정렬 */
+        align-items: center; /* 양옆 가운데 정렬 */
+        justify-content: center;
+        width: 100%; /* 부모 너비를 전체로 설정 */
+        margin: 0 auto;
+    }
+
+    /* 테이블 공통 스타일 */
+    .table_line {
+        border-collapse: collapse; /* 테이블 경계를 합침 */
+        width: 90%; /* 테이블 너비 설정 */
+        margin-bottom: 20px; /* 두 테이블 사이 간격 */
+        text-align: center;
+    }
+
+    .table_line th, .table_line td {
+        border: 1px solid #ddd; /* 테두리 설정 */
+        padding: 10px; /* 셀 내부 여백 */
+    }
+
+    .table_line thead {
+        background-color: #f4f4f4; /* 헤더 배경색 */
+        font-weight: bold;
+    }
+</style>
+
+
+</head>
+<body>
+	<header>
+		<jsp:include page="header.jsp"></jsp:include>
+	</header>
+	<div id="wrap" class="table-container">
+		<h1 style="transform: translateY(-32vh);">약품 수정</h1>
+		<table class="container table_line" id="tableScript" style="min-width: 95%;height: 28vh;position: fixed;transform: translateY(-85%);">
+			<thead>
+                <tr>
+                    <th>일련번호</th>
+                    <th style="width:350px;">약품명</th>
+                    <th>재고</th>
+                    <th>유통기한</th>
+                    <th>도매상</th>
+                    <th>입고 날짜</th>
+                    <th>구매가</th>
+                    <th>판매가</th>
+                    <th>제조사</th>
+                    <th>규격</th>
+                    <th>삭제</th>
+                </tr>
+            </thead>
+            <tbody>
+                <%
+                    try {
+                        // 데이터베이스 연결
+                        Class.forName("com.mysql.cj.jdbc.Driver");
+                        conn = DriverManager.getConnection(url, user, password);
+
+                        // SQL 쿼리 실행 (LIKE 검색)
+                        String query = " SELECT * FROM testTable WHERE medicineName LIKE ? AND inventory > 0 "
+                        			 + " order by DeliveryDate ASC ";
+                        pstmt = conn.prepareStatement(query);
+                        pstmt.setString(1, "%" + medicineName + "%");
+                        rs = pstmt.executeQuery();
+
+                        // 검색 결과 출력
+                        while (rs.next()) {
+                %>
+                <tr class="updateList">
+                    <td><input type="text" class="serialNumber" value="<%= rs.getString("SerialNumber") %>" readonly></td>
+                    <td><input type="text" class="medicineName" value="<%= rs.getString("medicineName") %>"></td>
+                    <td><input type="text" class="inventory" value="<%= rs.getString("inventory") %>" autofocus = "autofocus"></td>
+                    <td><input type="text" class="DeliveryDate" value="<%= rs.getString("DeliveryDate") %>"></td>
+                    <td><input type="text" class="wholesaler" value="<%= rs.getString("wholesaler") %>"></td>
+                    <td><input type="text" class="receiptDate" value="<%= rs.getString("receiptDate") %>"></td>
+                    <td><input type="text" class="buyingPrice" value="<%= rs.getString("Buyingprice") %>"></td>
+                    <td><input type="text" class="price" value="<%= rs.getString("price") %>"></td>
+                    <td><input type="text" class="companyName" value="<%= rs.getString("companyName") %>"></td>
+                    <td><input type="text" class="standard" value="<%= rs.getString("standard") %>"></td>
+                    <td style="display: none"><input type="text" class="testName" value="<%=medicineName%>" readonly> <input type="text" class="testStandard" value="<%=standard%>" readonly> <input type="text" class="testDate" value="<%=rs.getString("DeliveryDate")%>" readonly></td>
+                    <td><input type="button" class="removeTR" value="---------"></td>
+                </tr>
+                <%
+                        }
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                        out.println("<tr><td colspan='9'>오류 발생: " + e.getMessage() + "</td></tr>");
+                    } finally {
+                        // 자원 해제
+                        if (rs != null) try { rs.close(); } catch (SQLException e) { e.printStackTrace(); }
+                        if (pstmt != null) try { pstmt.close(); } catch (SQLException e) { e.printStackTrace(); }
+                        if (conn != null) try { conn.close(); } catch (SQLException e) { e.printStackTrace(); }
+                    }
+                %>
+            </tbody>
+		</table>
+		<h1>약품 추가</h1>
+		<br><h3 style="transform: translateY(-30px);">필요한 경우</h3>
+		<table class="container table_line" id="tableScript2" style="min-width: 95%;height: 28vh;position: fixed;transform: translateY(60%);">
+			<thead>
+                <tr>
+                    <th>일련번호</th>
+                    <th style="width:350px;">약품명</th>
+                    <th>재고</th>
+                    <th>유통기한</th>
+                    <th>도매상</th>
+                    <th>입고날짜</th>
+                    <th>구매가</th>
+                    <th>판매가</th>
+                    <th>제조사</th>
+                    <th>기준</th>
+                    <th>삭제</th>
+                </tr>
+            </thead>
+            <tbody class="InsertTbody">
+				
+            </tbody>
+		</table>
+	</div>
+
+	<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+	<script>
+	$(document).ready(function () {
+		//현재 모든 단축키
+		document.addEventListener("keydown", function(event){
+			//PageUp을 이용한 뒤로가기
+			if(event.key === "PageUp"){
+				event.preventDefault();
+				history.back();
+			}
+			// Enter 키 감지
+		    if (event.key === "Enter") {
+		        event.preventDefault(); // 기본 Enter 동작 방지
+
+		        const currentInput = event.target;
+
+		        // 현재 input의 부모 td 요소 찾기
+		        const currentTd = currentInput.closest("td");
+		        if (!currentTd) return; // td가 없으면 종료
+
+		        // 현재 td의 다음 형제 td 찾기
+		        const nextTd = currentTd.nextElementSibling;
+
+		        if (nextTd) {
+		            // 다음 td에 있는 input 요소에 포커스 이동
+		            const nextInput = nextTd.querySelector("input");
+		            if (nextInput) {
+		                nextInput.focus();
+		            }
+		        }
+		    }
+		 	// Enter 키와 PageDown 키 감지
+		    if (event.keyCode === 34) {
+		        event.preventDefault(); // 기본 동작 방지
+
+		        const currentInput = event.target;
+
+		        // 현재 input의 부모 td 요소 찾기
+		        const currentTd = currentInput.closest("td");
+		        if (!currentTd) return; // td가 없으면 종료
+
+		        // 현재 td의 이전 형제 td 찾기
+		        const prevTd = currentTd.previousElementSibling;
+
+		        // 이전 td에 input 요소가 있는지 확인 후 포커스 이동
+		        if (prevTd) {
+		            const prevInput = prevTd.querySelector("input");
+		            if (prevInput) {
+		                prevInput.focus();
+		            }
+		        }
+		    }
+		    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+		        event.preventDefault(); // 기본 화살표 동작 방지
+
+		        const currentInput = event.target; // 현재 포커스된 input 요소
+		        const currentTd = currentInput.closest("td"); // 현재 input이 속한 td
+		        const currentTr = currentTd.closest("tr"); // 현재 td가 속한 tr
+		        const currentTable = currentTr.closest("table"); // 현재 tr이 속한 table
+		        const currentIndex = Array.from(currentTr.children).indexOf(currentTd); // 현재 열 인덱스
+
+		        let targetTr;
+
+		        // 화살표 아래 키 처리
+		        if (event.key === "ArrowDown") {
+		            targetTr = currentTr.nextElementSibling;
+
+		            // 현재 테이블의 마지막 행이면 #tableScript2로 이동
+		            if (!targetTr && currentTable.id === "tableScript") {
+		                targetTr = document.querySelector("#tableScript2 tbody tr:first-child");
+		            }
+		        }
+		        // 화살표 위 키 처리
+		        else if (event.key === "ArrowUp") {
+		            targetTr = currentTr.previousElementSibling;
+
+		            // 현재 테이블의 첫 번째 행이면 #tableScript로 이동
+		            if (!targetTr && currentTable.id === "tableScript2") {
+		                targetTr = document.querySelector("#tableScript tbody tr:last-child");
+		            }
+		        }
+
+		        // 목표 행이 존재하면 같은 열의 input에 포커스 이동
+		        if (targetTr) {
+		            const targetTd = targetTr.children[currentIndex]; // 목표 행의 같은 열
+		            if (targetTd) {
+		                const targetInput = targetTd.querySelector("input");
+		                if (targetInput) {
+		                    targetInput.focus(); // 포커스 이동
+		                }
+		            }
+		        }
+		    }
+		    if (event.keyCode == '109') { // '-' 키
+				const table = document.getElementById("tableScript");
+				const table2 = document.getElementById("tableScript2");
+				const rows = table2.querySelectorAll('.updateList'); // 모든 행 가져오기
+
+				if (rows.length > 0) { // 최소 1개의 행은 남겨두기
+    				const lastRow = rows[rows.length - 1]; // 마지막 행 선택
+    				lastRow.remove(); // 마지막 행 삭제
+				} else {
+    				alert("더 이상 삭제할 수 없습니다."); // 모든 행을 삭제하지 않도록 경고
+				}
+			}
+
+		    // + 버튼을 누르면 리스트가 하나 새로 추가
+			if(event.keyCode == '107'){
+				event.preventDefault();
+		    	const table = document.getElementById("tableScript");
+		    	const table2 = document.getElementById("tableScript2");
+		    	const firstRow = table.querySelector('.updateList');
+		    	const clonedRow = firstRow.cloneNode(true);
+		    	table2.querySelector("tbody").appendChild(clonedRow);
+		    }
+		    //* 버튼을 누르면 데이터가 DB로 가 갱신
+			if (event.keyCode === 106) {
+		        event.preventDefault(); // 기본 동작 방지
+
+		        let rows = [];
+		        let rows2 = [];
+		        
+		        $('#tableScript .updateList').each(function () {
+		            let rowData = {
+		                serialNumber: $(this).find('.serialNumber').val()?.trim() || "",
+		                medicineName: $(this).find('.medicineName').val()?.trim() || "",
+		                buyingPrice: $(this).find('.buyingPrice').val()?.trim() || "0",
+		                price: $(this).find('.price').val()?.trim() || "0",
+						wholesaler: $(this).find('.wholesaler').val()?.trim() || "0",
+		                inventory: $(this).find('.inventory').val()?.trim() || "0",
+		                companyName: $(this).find('.companyName').val()?.trim() || "",
+		                standard: $(this).find('.standard').val()?.trim() || "",
+		                receiptDate: $(this).find('.receiptDate').val()?.trim() || "",
+		                deliveryDate: $(this).find('.DeliveryDate').val()?.trim() || "",
+		                tipMedicineName: $(this).find('.testName').val()?.trim() || "",
+		                tipstandard: $(this).find('.testStandard').val()?.trim() || "",
+		                tipDeliveryDate: $(this).find('.testDate').val()?.trim() || ""
+		            };
+
+		            // 디버깅
+		            console.log("Row Data:", rowData);
+
+		            rows.push(rowData);
+		        });
+
+		        // AJAX 요청
+		        $.ajax({
+		            url: 'updateData.jsp',
+		            type: 'POST',
+		            contentType: 'application/json', // JSON 형식으로 전송
+		            data: JSON.stringify(rows), // 배열 데이터를 JSON으로 변환하여 전송
+		            success: function(response) {
+		                console.log("Server Response:", response);
+		                alert("변경이 완료되었습니다.");
+		                location.href="index2.jsp";
+		            },
+		            error: function(xhr, status, error) {
+		                console.error("Error:", error);
+		                console.log("Response:", xhr.responseText);
+		            }
+		        });
+		        
+		        //2번째 테이블(추가 우선, 수정 이후)
+		        $('#tableScript2').find(".updateList").each(function () {
+		            let rowData2 = {
+		                serialNumber: $(this).find('.serialNumber').val()?.trim() || "",
+		                medicineName: $(this).find('.medicineName').val()?.trim() || "",
+		                buyingPrice: $(this).find('.buyingPrice').val()?.trim() || "0",
+		                price: $(this).find('.price').val()?.trim() || "0",
+		                wholesaler: $(this).find('.wholesaler').val()?.trim() || "0",
+		                inventory: $(this).find('.inventory').val()?.trim() || "0",
+		                companyName: $(this).find('.companyName').val()?.trim() || "",
+		                standard: $(this).find('.standard').val()?.trim() || "",
+		                receiptDate: $(this).find('.receiptDate').val()?.trim() || "",
+		                deliveryDate: $(this).find('.DeliveryDate').val()?.trim() || ""
+		            };
+
+		            // 디버깅
+		            console.log("Row Data:", rowData2);
+
+		            rows2.push(rowData2);
+		        });
+		        
+		     	// AJAX 요청
+		        $.ajax({
+		            url: 'updateData2.jsp',
+		            type: 'POST',
+		            contentType: 'application/json', // JSON 형식으로 전송
+		            data: JSON.stringify(rows2), // 배열 데이터를 JSON으로 변환하여 전송
+		            success: function(response) {
+		                console.log("Server Response:", response);
+		                alert("변경이 완료되었습니다.");
+		                location.href="index2.jsp";
+		            },
+		            error: function(xhr, status, error) {
+		                console.error("Error:", error);
+		                console.log("Response:", xhr.responseText);
+		            }
+		        });
+		    }
+		})
+        // 숫자만 입력 (정규식: /^[0-9]*$/)
+        $(".serialNumber").on("input", function () {
+            let value = $(this).val();
+            // 숫자가 아닌 문자 제거
+            $(this).val(value.replace(/[^0-9]/g, ''));
+        });
+        //테이블 행 삭제 버튼
+        $("#tableScript").on("click", ".removeTR", function() {
+            if($("#tableScript").find(".updateList").length < 2){
+            	alert("더 이상 삭제할 수 없습니다.");
+            	return false;	
+            }
+            // 클릭된 버튼이 포함된 행을 찾고 삭제
+            $(this).closest("tr").remove();
+        });
+    });
+
+	document.addEventListener("focus", function (event) {
+	    if (event.target.classList.contains("DeliveryDate") || event.target.classList.contains("receiptDate")) {
+	        if (!event.target.dataset.isEdited) {
+	            event.target.dataset.isEdited = "false"; // 초기에 편집 여부 설정
+	        }
+	    }
+	}, true);
+	
+	document.addEventListener("focus", function (event) {
+	    if (event.target.classList.contains("inventory")) {
+	        // 포커스를 얻을 때마다 'isEdited'를 초기화
+	        event.target.dataset.isEdited = "false";
+	    }
+	}, true);
+
+	document.addEventListener("input", function (event) {
+	    if (event.target.classList.contains("inventory")) {
+	        if (event.target.dataset.isEdited === "false") {
+	            // 첫 입력 시 기존 값을 지우고 새 값으로 시작
+	            event.target.value = event.data || ""; 
+	            event.target.dataset.isEdited = "true"; // 입력 상태 변경
+	        }
+	    }
+	}, true);
+
+
+
+	
+
+	document.addEventListener("input", function (event) {
+	    if (event.target.classList.contains("DeliveryDate") || event.target.classList.contains("receiptDate")) {
+	        if (event.target.dataset.isEdited === "false") {
+	            // 기존 값을 비우고 새로 입력한 값을 넣음
+	            let newValue = event.data || ""; // 현재 입력된 문자
+	            event.target.value = newValue;
+	            event.target.dataset.isEdited = "true"; // 편집 상태 변경
+	        } else {
+	            // 이후 입력값을 숫자로만 필터링하고 포맷 적용
+	            let input = event.target.value.replace(/[^0-9]/g, ""); // 숫자 이외 제거
+	            let formatted = "";
+
+	            if (input.length > 2) {
+	                formatted += input.substring(0, 2) + "/"; // 첫 번째 슬래시 추가
+	            } else {
+	                formatted += input;
+	            }
+
+	            if (input.length > 4) {
+	                formatted += input.substring(2, 4) + "/"; // 두 번째 슬래시 추가
+	                formatted += input.substring(4, 6); // 나머지 추가
+	            } else if (input.length > 2) {
+	                formatted += input.substring(2); // 첫 슬래시 뒤 나머지 추가
+	            }
+
+	            event.target.value = formatted.slice(0, 8); // 최대 8자리 유지
+	        }
+	    }
+	}, true);
+	</script>
+</body>
+</html>
+

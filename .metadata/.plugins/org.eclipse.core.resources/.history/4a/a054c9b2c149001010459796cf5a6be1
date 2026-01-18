@@ -1,0 +1,166 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ page import="java.sql.*" %>
+<%@ page import="java.util.*" %>
+<%@ page import="java.io.*" %>
+<%@ include file="sessionManager.jsp" %>
+<%@ include file="DBconnection.jsp" %>
+<%
+String dbName   = (session != null) ? (String) session.getAttribute("dbName") : null;
+String id       = (session != null) ? (String) session.getAttribute("id")     : null;
+if (id == null || dbName == null) {
+    response.sendRedirect("login.jsp");
+    return;
+}
+jdbcDriver = dbName;
+%>
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>에스팜</title>
+  <style>
+    /* ────────── 기존 CSS 그대로 (생략) ────────── */
+    /* … 기존 스타일은 그대로 뒀음 … */
+  </style>
+</head>
+<body>
+  <div id="wrap">
+    <header>
+      <jsp:include page="header.jsp" />
+    </header>
+    <section id="section">
+      <h1>매출</h1>
+      <div class="salesfilter">
+        <div class="datePicker">
+          결재일 : <input type="date" class="startSales"> ~
+          <input type="date" class="endSales">
+          <input type="checkbox" class="toggleSwitch" checked>
+        </div>
+        <div class="dateBtn">
+          <button type="button" class="dateBtnfilter" value="1주일">1주일</button>
+          <button type="button" class="dateBtnfilter" value="1개월">1개월</button>
+          <button type="button" class="dateBtnfilter" value="3개월">3개월</button>
+          <button type="button" class="dateBtnfilter" value="6개월">6개월</button>
+          <button type="button" class="dateBtnfilter" value="1년">1년</button>
+          <input type="text" class="medicineTotal" placeholder="제품명 입력">
+        </div>
+        <button type="button" class="excelDownload">Excel 다운로드</button>
+      </div>
+      <div class="tableWrapper">
+        <table class="salesTable">
+          <thead>
+            <tr>
+              <th>날짜</th><th>판매액</th><th>사입가</th><th>마진</th><th>마진률</th>
+            </tr>
+          </thead>
+          <tbody class="totalSales"></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <script src="jquery-3.7.1.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script>
+    $(function () {
+      /* =============== 전역 유틸 =============== */
+      const fmt = d => d.toISOString().split("T")[0];
+
+      function classification () {
+        $(".salesTable tbody tr:visible").each(function (idx) {
+          $(this).css("background-color", idx % 2 ? "#bbb" : "#ddd");
+        });
+      }
+
+      function applyView () {
+        const grouped     = $(".toggleSwitch").is(":checked");
+        $(".glanceSummary").toggle(!grouped);
+        $(".group-summary").toggle(grouped);
+        classification();
+      }
+
+      /* =============== 기간 버튼 =============== */
+      $(document).on("click", ".dateBtnfilter", function () {
+        $(".dateBtnfilter.filterSelect").removeClass("filterSelect");
+        $(this).addClass("filterSelect");
+
+        const label = $(this).val();
+        let months = 0, days = 0;
+        if (label === "1주일") days = 7;
+        else if (label === "1개월") months = 1;
+        else if (label === "3개월") months = 3;
+        else if (label === "6개월") months = 6;
+        else if (label === "1년")  months = 12;
+
+        const end   = new Date();
+        const start = new Date();
+        if (months) end.setMonth(end.getMonth() - months);
+        if (days)   end.setDate (end.getDate()  - days);
+
+        $(".startSales").val(fmt(start));
+        $(".endSales").val(fmt(end)).trigger("change");
+
+        /* 기간만 바꾼 경우 전체 매출 조회 */
+        $.post("filterSales.jsp", { filterValue: months || -days })
+          .done(resp => { $(".totalSales").html(resp); applyView(); })
+          .fail(xhr => alert("기간 필터 실패: " + xhr.status));
+      });
+
+      /* =============== 제품 검색 (Enter) =============== */
+      $(document).on("keyup", ".medicineTotal", function (e) {
+        if (e.key !== "Enter") return;
+        const medicine = this.value.trim();
+        if (!medicine) return alert("제품명을 입력하세요.");
+
+        const sel = $(".dateBtnfilter.filterSelect").val() || "1개월"; // 기본
+        let months = 0; if (sel !== "1주일") months = parseInt(sel);
+
+        $.post("filterMedicine.jsp", {
+          medicineTotal: medicine,
+          startDate: $(".startSales").val(),
+          endDate  : $(".endSales").val(),
+          checkedState: $(".toggleSwitch").is(":checked") ? "1" : "0",
+          filterValue : months
+        })
+        .done(resp => { $(".totalSales").html(resp); applyView(); })
+        .fail(xhr => alert("제품 필터 실패: " + xhr.status));
+      });
+
+      /* 실시간 입력 변화 시 뷰만 갱신 */
+      $(document).on("input", ".medicineTotal", applyView);
+
+      /* =============== 날짜 직접 변경 =============== */
+      $(document).on("change", ".startSales, .endSales", function () {
+        const s = $(".startSales").val();
+        const e = $(".endSales").val();
+        if (!s || !e) return;
+        $.post("filterDate.jsp", { startDate: s, endDate: e, checkedState: $(".toggleSwitch").is(":checked") ? "1" : "0" })
+          .done(resp => { $(".totalSales").html(resp); applyView(); })
+          .fail(xhr => alert("날짜 필터 실패: " + xhr.status));
+      });
+
+      /* =============== 토글 스위치 =============== */
+      $(document).on("change", ".toggleSwitch", function () {
+        // 소폭 날짜 변화를 줘서 서버측 캐싱 회피(원 코드 로직 유지)
+        const $s = $(".startSales"), $e = $(".endSales");
+        const os = new Date($s.val()), oe = new Date($e.val());
+        os.setDate(os.getDate() - 1); oe.setDate(oe.getDate() - 1);
+        $s.val(fmt(os)); $e.val(fmt(oe));
+        setTimeout(() => { $s.val(fmt(new Date(os.getTime()+86400000))); $e.val(fmt(new Date(oe.getTime()+86400000))); $s.trigger("change"); }, 100);
+        applyView();
+      });
+
+      /* =============== 초기 상태 =============== */
+      const today = new Date();
+      $(".startSales, .endSales").val(fmt(today));
+
+      /* =============== Excel 다운로드 =============== */
+      $(document).on("click", ".excelDownload", function () {
+        const wb = XLSX.utils.table_to_book(document.querySelector(".salesTable"), { sheet: "Sheet1" });
+        const d  = new Date(); const file = `${d.getFullYear()}.${d.getMonth()+1}.${d.getDate()}_판매매출현황.xlsx`;
+        XLSX.writeFile(wb, file);
+      });
+    });
+  </script>
+</body>
+</html>

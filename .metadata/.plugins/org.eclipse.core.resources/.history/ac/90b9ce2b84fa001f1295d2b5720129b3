@@ -1,0 +1,47 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ page import="java.sql.*" %>
+
+<%
+request.setCharacterEncoding("UTF-8");
+
+// 파라미터 받기
+String medicineName = request.getParameter("medicineName");
+String Buyingprice = request.getParameter("Buyingprice");
+String price = request.getParameter("price");
+double inventory = 1; // 무조건 1로 설정
+String saleInventory = request.getParameter("saleInventory");
+
+// DB 연결 정보
+String url = "jdbc:mysql://localhost:3306/tutorial";
+String user = "root";
+String password = "pharmacy@1234";
+
+Connection conn = null;
+PreparedStatement pstmt = null;
+
+try {
+    Class.forName("com.mysql.cj.jdbc.Driver");
+    conn = DriverManager.getConnection(url, user, password);
+    
+    String sql = "INSERT INTO regularSet (medicineName, Buyingprice, price, inventory, saleInventory) VALUES (?, ?, ?, ?, ?)";
+    pstmt = conn.prepareStatement(sql);
+    pstmt.setString(1, medicineName);
+    pstmt.setString(2, Buyingprice);
+    pstmt.setString(3, price);
+    pstmt.setDouble(4, inventory);
+    pstmt.setString(5, saleInventory);
+    
+    int result = pstmt.executeUpdate();
+    
+    if (result > 0) {
+        out.print("success");
+    } else {
+        out.print("fail");
+    }
+} catch (Exception e) {
+    e.printStackTrace();
+} finally {
+    if (pstmt != null) try { pstmt.close(); } catch (Exception e) {}
+    if (conn != null) try { conn.close(); } catch (Exception e) {}
+}
+%>

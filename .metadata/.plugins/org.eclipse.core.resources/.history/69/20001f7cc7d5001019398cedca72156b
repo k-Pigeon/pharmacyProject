@@ -1,0 +1,37 @@
+<%@ page language="java" contentType="text/plain; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ page import="java.sql.*, java.util.regex.*" %>
+<%@ include file="sessionManager.jsp"%>
+<%@ include file="DBconnection.jsp"%>
+
+<%
+response.setContentType("text/plain; charset=UTF-8");
+
+String idSortation = (session != null) ? (String) session.getAttribute("idSortation") : null;
+String sql = "SELECT inventory, quantity, standard FROM testTable" + idSortation + " WHERE returnInv='0'";
+PreparedStatement ps = conn.prepareStatement(sql);
+ResultSet rs = ps.executeQuery();
+
+boolean warning = false;
+
+while(rs.next()){
+    double inventory = rs.getDouble("inventory");
+    double quantity  = rs.getDouble("quantity");
+    String standard  = rs.getString("standard");
+
+    double std = 1;
+    if(standard != null){
+        Matcher m = Pattern.compile("\\d+(\\.\\d+)?").matcher(standard);
+        while(m.find()) std *= Double.parseDouble(m.group());
+    }
+
+    if(quantity > inventory / std){
+        warning = true;
+        break;
+    }
+}
+
+rs.close();
+ps.close();
+
+out.print(warning ? "Y" : "N");
+%>

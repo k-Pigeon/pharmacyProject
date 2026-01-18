@@ -1,0 +1,55 @@
+<%@ page contentType="text/html; charset=UTF-8" language="java" %>
+<%@ include file="DBconnection.jsp" %>
+<%@ include file="sessionManager.jsp" %>
+<%@ page import="java.sql.*" %>
+
+<%
+String dbName = (String) session.getAttribute("dbName");
+if (dbName == null) {
+    response.sendRedirect("login.jsp");
+    return;
+}
+
+jdbcDriver = dbName;
+
+request.setCharacterEncoding("UTF-8");
+
+String medicineName = request.getParameter("medicineName");
+String[] standards = request.getParameterValues("standardList[]");
+String[] buyingPrices = request.getParameterValues("buyingPriceList[]");
+String[] prices = request.getParameterValues("priceList[]");
+
+Connection conn = null;
+PreparedStatement deleteStmt = null;
+PreparedStatement insertStmt = null;
+
+try {
+    Class.forName("com.mysql.cj.jdbc.Driver");
+    conn = DriverManager.getConnection(jdbcDriver, dbUser, dbPwd);
+
+    String deleteSql = "DELETE FROM testTable WHERE medicineName = ?";
+    deleteStmt = conn.prepareStatement(deleteSql);
+    deleteStmt.setString(1, medicineName);
+    deleteStmt.executeUpdate();
+
+    String insertSql = "INSERT INTO testTable (medicineName, standard, buyingPrice, price) VALUES (?, ?, ?, ?)";
+    insertStmt = conn.prepareStatement(insertSql);
+
+    for (int i = 0; i < standards.length; i++) {
+        insertStmt.setString(1, medicineName);
+        insertStmt.setString(2, standards[i]);
+        insertStmt.setDouble(3, Double.parseDouble(buyingPrices[i]));
+        insertStmt.setDouble(4, Double.parseDouble(prices[i]));
+        insertStmt.executeUpdate();
+    }
+
+    out.print("success");
+} catch (Exception e) {
+    e.printStackTrace();
+    out.print("error: " + e.getMessage());
+} finally {
+    if (deleteStmt != null) deleteStmt.close();
+    if (insertStmt != null) insertStmt.close();
+    if (conn != null) conn.close();
+}
+%>
