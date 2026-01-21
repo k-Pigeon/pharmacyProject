@@ -5,9 +5,9 @@
     String password = request.getParameter("password");
 
     // 데이터베이스 연결 정보
-    String jdbcDriver = "로컬DB";
-    String dbUser = "로컬DB아이디";
-    String dbPwd = "로컬DB비밀번호";
+    String jdbcDriver = "jdbc:mysql://localhost:3306/tutorial2?useUnicode=true&characterEncoding=utf8";
+    String dbUser = "root";
+    String dbPwd = "pharmacy@1234";
 
     Connection conn = null;
     PreparedStatement pstmt = null;
