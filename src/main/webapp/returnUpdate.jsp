@@ -1,0 +1,65 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8"
+    pageEncoding="UTF-8"%>
+<%@ page import="java.sql.*" %>
+<%@ include file="sessionManager.jsp"%>
+<%@ include file="DBconnection.jsp"%>
+<%
+String dbName = (session != null) ? (String) session.getAttribute("dbName") : null;
+String id = (session != null) ? (String) session.getAttribute("id") : null;
+String password = (session != null) ? (String) session.getAttribute("password") : null;
+
+/* out.println(password);
+out.println(dbName);
+out.println(id);
+out.println(password); */
+
+String domainType = (session != null) ? (String) session.getAttribute("domainType") : null; if (id == null || dbName == null) {
+    response.sendRedirect("login.jsp");
+    return;
+}
+
+jdbcDriver = dbName;
+%>
+<%
+    request.setCharacterEncoding("UTF-8");
+    String medicineName = request.getParameter("medicineName");
+    String DeliveryDate = request.getParameter("DeliveryDate");
+    String standard = request.getParameter("standard");
+    String returnText = request.getParameter("returnText");
+    
+    PreparedStatement pstmt = null;
+    
+    try {
+    	String sql = "";
+
+        if("반품됨".equals(returnText)) {
+            sql = "UPDATE testTable SET returnInv = '0' WHERE medicineName = ? AND DeliveryDate = ? AND standard = ? AND domain_type = ? ";
+        } else if("반품하기".equals(returnText)) {
+            sql = "UPDATE testTable SET returnInv = '1' WHERE medicineName = ? AND DeliveryDate = ? AND standard = ? AND domain_type = ? ";
+        }
+        
+        if (!sql.isEmpty()) {
+            pstmt = conn.prepareStatement(sql);
+            pstmt.setString(1, medicineName);
+            pstmt.setString(2, DeliveryDate);
+            pstmt.setString(3, standard);
+            pstmt.setString(4, domainType);
+            pstmt.executeUpdate();
+        }
+    } catch (Exception e) {
+        e.printStackTrace();
+    } finally {
+        if (pstmt != null) try { pstmt.close(); } catch (SQLException e) { e.printStackTrace(); }
+    }
+%>
+
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Insert title here</title>
+</head>
+<body>
+<!-- 여기에 필요한 HTML 내용을 추가 -->
+</body>
+</html>

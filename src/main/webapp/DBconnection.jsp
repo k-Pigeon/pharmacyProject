@@ -1,0 +1,21 @@
+<%@ page language="java" pageEncoding="UTF-8" %>
+<%@ page import="java.sql.*" %>
+<%
+String dbUser = (String) session.getAttribute("id");
+String jdbcDriver = (String) session.getAttribute("dbName");
+String dbPwd = (String) session.getAttribute("password");
+
+if (dbUser == null || jdbcDriver == null || dbPwd == null) {
+    response.sendRedirect("login.jsp");
+    return;
+}
+
+Connection conn = null;
+
+try {
+    Class.forName("com.mysql.cj.jdbc.Driver");
+    conn = DriverManager.getConnection(jdbcDriver, dbUser, dbPwd);
+} catch (Exception e) {
+    e.printStackTrace();
+}
+%>

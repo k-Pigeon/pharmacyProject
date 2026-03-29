@@ -1,0 +1,1066 @@
+@charset "UTF-8";
+
+* {
+	padding: 0;
+	margin: 0;
+	box-sizing: border-box;
+}
+
+a {
+	text-decoration: none;
+}
+
+ul {
+	list-style: none;
+}
+/* ===============================
+   Inventory Header Scoped CSS
+   =============================== */
+
+/* header 기본 */
+
+/* ===============================
+   Inventory Header (scoped)
+   =============================== */
+
+#header.inv-header-scope {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    line-height: 40px;
+    font-size: 20px;
+    z-index: 5000;
+    overflow: visible;
+    color: #000;
+    background: #fff;
+}
+
+/* ===============================
+   Menu Layout
+   =============================== */
+
+#header.inv-header-scope ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+}
+
+#header.inv-header-scope ul > li {
+    position: relative;
+}
+
+#header.inv-header-scope ul > li > a {
+    display: block;
+    width: 189px;
+    padding: 0 10px;
+    text-align: center;
+    font-weight: bold;
+    text-decoration: none;
+    color: #000;
+    transition: background 0.3s;
+}
+
+/* ===============================
+   Hover / Active
+   =============================== */
+
+#header.inv-header-scope ul > li:hover {
+    background: rgba(255,255,255,1);
+}
+
+#header.inv-header-scope a.selectLabel,
+#header.inv-header-scope a.pageShow {
+    color: red;
+    border-bottom: 2px solid #000;
+}
+
+/* ===============================
+   Sub Menu
+   =============================== */
+
+#header.inv-header-scope ul li ul {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 189px;
+    background: rgba(127,127,127,0.6);
+    border-radius: 0 0 6px 6px;
+    z-index: 6000;
+}
+
+#header.inv-header-scope ul li:hover > ul {
+    display: block;
+}
+
+#header.inv-header-scope ul li ul li a {
+    display: block;
+    width: 100%;
+    text-align: center;
+    padding: 6px 0;
+    color: #000;
+}
+
+#header.inv-header-scope ul li ul li a:hover {
+    background: #fff;
+}
+
+/* ===============================
+   Manager Button
+   =============================== */
+
+#header.inv-header-scope #ManagerAccount {
+    border: none;
+    outline: none;
+    background-color: #6c5ce7;
+    padding: 10px 20px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #fff;
+    border-radius: 5px;
+    box-shadow: 0 5px 0 #a29bfe;
+    cursor: pointer;
+}
+
+#header.inv-header-scope #ManagerAccount:active {
+    transform: translateY(5px);
+    box-shadow: none;
+}
+
+/* ===============================
+   Logout Button (btn-4)
+   =============================== */
+
+#header.inv-header-scope .btn-4 {
+    width: 200px;
+    font-size: 18px;
+    line-height: 40px;
+    position: relative;
+    color: #000;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+}
+
+#header.inv-header-scope .btn-4::before,
+#header.inv-header-scope .btn-4::after {
+    content: "";
+    position: absolute;
+    width: 0;
+    height: 0;
+    border: 2px solid #000;
+    transition: 0.3s;
+}
+
+#header.inv-header-scope .btn-4::before {
+    top: 0;
+    left: 0;
+    border-right-color: transparent;
+    border-bottom-color: transparent;
+}
+
+#header.inv-header-scope .btn-4::after {
+    bottom: 0;
+    right: 0;
+    border-left-color: transparent;
+    border-top-color: transparent;
+}
+
+#header.inv-header-scope .btn-4:hover::before,
+#header.inv-header-scope .btn-4:hover::after {
+    width: 100%;
+    height: 100%;
+}
+
+/* ===============================
+   userInfo popup
+   =============================== */
+
+#header.inv-header-scope #userInfo {
+    position: absolute;
+    width: 250px;
+    height: 150px;
+    display: none;
+    background: #fff;
+    border: 1px solid #000;
+    z-index: 7000;
+}
+
+
+@media (max-width: 800px) {
+    header#header.inv-header-scope {
+        font-size: 16px;
+    }
+}
+/* ===============================
+   Admin Account Popup (scoped)
+   =============================== */
+
+section#changeBG.inv-admin-popup-scope {
+    position: fixed;
+    inset: 0;
+    display: none;
+    background: rgba(0,0,0,0.6);
+    z-index: 10000;
+}
+
+/* 중앙 박스 */
+
+section#changeBG.inv-admin-popup-scope .changeAcc {
+    position: fixed;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 400px;
+    background: #fff;
+    border-radius: 10px;
+}
+
+/* 컨테이너 */
+
+section#changeBG.inv-admin-popup-scope .form-container {
+    width: 100%;
+    min-height: 300px;
+    padding: 32px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    font-size: 14px;
+    color: #212121;
+    border-radius: 10px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    position: relative;
+}
+
+/* 타이틀 */
+
+section#changeBG.inv-admin-popup-scope .logo-container {
+    text-align: center;
+    font-weight: 600;
+    font-size: 18px;
+}
+
+/* 닫기 버튼 */
+
+section#changeBG.inv-admin-popup-scope .closePopup {
+    position: absolute;
+    right: 12px;
+    top: 12px;
+    width: 90px;
+    height: 34px;
+    line-height: 34px;
+    text-align: center;
+    border: 1px solid #333;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+/* 폼 */
+
+section#changeBG.inv-admin-popup-scope .form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+section#changeBG.inv-admin-popup-scope .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+section#changeBG.inv-admin-popup-scope input {
+    padding: 10px 12px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+}
+
+section#changeBG.inv-admin-popup-scope input::placeholder {
+    opacity: 0.5;
+}
+
+section#changeBG.inv-admin-popup-scope input:focus {
+    outline: none;
+    border-color: #1778f2;
+}
+
+/* 실행 버튼 */
+
+section#changeBG.inv-admin-popup-scope .form-submit-btn {
+    margin-top: 10px;
+    padding: 12px;
+    border: none;
+    border-radius: 6px;
+    background: #212121;
+    color: #fff;
+    cursor: pointer;
+}
+
+section#changeBG.inv-admin-popup-scope .form-submit-btn:hover {
+    background: #313131;
+}
+
+section#changeBG.inv-admin-popup-scope .form-submit-btn:active {
+    transform: scale(0.96);
+}
+
+/* 로딩 영역 */
+
+section#changeBG.inv-admin-popup-scope .loadingAcc {
+    display: none;
+    text-align: center;
+    margin-top: 20px;
+}
+
+section#changeBG.inv-admin-popup-scope #loadingBarWrapper {
+    width: 100%;
+    height: 10px;
+    background: #eee;
+    border-radius: 5px;
+    overflow: hidden;
+    margin-bottom: 10px;
+}
+
+section#changeBG.inv-admin-popup-scope #loadingBar {
+    width: 0%;
+    height: 100%;
+    background: #3498db;
+    transition: width 0.4s ease;
+}
+
+section#changeBG.inv-admin-popup-scope .managerAcc {
+    font-size: 18px;
+    font-weight: bold;
+}
+/* ===============================
+   Admin Warning Popup (scoped)
+   =============================== */
+
+div#warningLetter.inv-admin-warning-scope {
+    position: fixed;
+    inset: 0;
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 11000;
+    background: radial-gradient(ellipse at center, #2d1f1f 0%, #000 80%);
+    font-family: Arial, sans-serif;
+}
+
+div#warningLetter.inv-admin-warning-scope .Phrase {
+    position: relative;
+    padding: 40px 50px;
+    border: 3px solid red;
+    border-radius: 10px;
+    background: rgba(0,0,0,0.85);
+    color: #fff;
+    text-align: center;
+    box-shadow: 0 0 30px red;
+    animation: inv-flicker 1.2s infinite;
+}
+
+div#warningLetter.inv-admin-warning-scope h1 {
+    font-size: 48px;
+    color: #ff2d2d;
+    margin-bottom: 10px;
+}
+
+div#warningLetter.inv-admin-warning-scope h3 {
+    font-size: 22px;
+    color: #ffd700;
+}
+
+/* 닫기 버튼 */
+
+div#warningLetter.inv-admin-warning-scope .warningClose {
+    position: absolute;
+    right: 10px;
+    top: 10px;
+    width: 110px;
+    height: 34px;
+    line-height: 34px;
+    border: 1px solid red;
+    color: red;
+    cursor: pointer;
+    border-radius: 4px;
+}
+
+/* 애니메이션 */
+
+@keyframes inv-flicker {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+.table_line th, .table_line td {
+	white-space: normal; /* 줄 바꿈 허용 */
+	line-height: 40px; /* 셀 높이 조정 */
+}
+
+#wrap {
+	position: relative;
+	width: 100%;
+	min-height: 100vh;
+	background-color: RGBA(127, 127, 127, 0.2);
+	overflow-x: auto;
+	z-index: 1; /* header보다 낮음 */
+}
+
+#wrap #data, #wrap #setData {
+	flex: 1;
+}
+
+#wrap #barcodeInput {
+	float: right;
+}
+
+#wrap #formTeg {
+	height: 25px;
+	margin: 0 auto;
+	padding: 15px;
+	max-width: 1000px;
+}
+
+#wrap #formTeg #barcodeInput {
+	float: right;
+	opacity: 0;
+	position: fixed;
+	transform: translateX(410%);
+}
+
+#wrap .table_line {
+	width: 1000px;
+	table-layout: fixed;
+	border: 1px solid black;
+	margin: 0 auto;
+	text-align: center;
+	margin-top: 5%;
+	max-width: 1200px;
+}
+
+#wrap #table_input {
+	min-width: 1000px;
+	table-layout: fixed;
+	border: 1px solid black;
+	margin: 0 auto;
+	text-align: center;
+	margin-top: 5%;
+	max-width: 1000px;
+}
+
+#wrap .table_line colgroup {
+	width: auto;
+}
+
+#wrap .table_line th {
+	background-color: RGBA(127, 127, 127, 0.3);
+}
+
+#wrap #table_input th {
+	background-color: RGBA(127, 127, 127, 0.3);
+}
+
+#wrap .indexTable th, #wrap #inventory_list {
+	border: 1px solid white !important;
+	box-shadow: 5px 5px 10px;
+}
+
+#wrap #inventory_list tr.recordList td {
+	background-color: #F0F8FF;
+}
+
+#wrap #inventory_list .evenTR {
+	background-color: #F0F8FF !important;
+}
+
+#wrap .indexTable td {
+	border: 1px solid white !important;
+}
+
+#wrap .indexTable #inventory_list tr:nth-child(even) {
+	background-color: #F0F8FF;
+}
+
+#wrap .table_line th {
+	border: 1px solid black;
+	border-collapse: collapse;
+	height: 40px;
+	line-height: 30px;
+	white-space: nowrap;
+	overflow: hidden; /* 수정: 텍스트 넘침 처리 */
+	text-align: center;
+}
+
+#wrap .table_line td {
+	border: 1px solid black;
+	border-collapse: collapse;
+	height: 40px;
+	line-height: 40px;
+	white-space: nowrap;
+	overflow: hidden; /* 수정: 텍스트 넘침 처리 */
+	text-align: center;
+}
+
+#wrap #table_input th, #wrap #table_input td {
+	border: 1px solid black;
+	border-collapse: collapse;
+	height: 40px;
+	line-height: 40px;
+	white-space: nowrap;
+	overflow: hidden; /* 수정: 텍스트 넘침 처리 */
+	text-align: center;
+	padding: 10px;
+}
+
+#listWrap {
+	display: none;
+	position: fixed;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	background-color: rgba(255, 255, 255, 1);
+	padding: 20px;
+	border-radius: 10px;
+	z-index: 1000;
+	max-width: 90%;
+	overflow-x: scroll;
+}
+
+#listWrap .table_line th, #listWrap .table_line td {
+	border: 1px solid black;
+	width: auto; /* 수정: 테이블 너비를 자동으로 조정 */
+}
+
+#listWrap .table_line input {
+	border: none;
+	background: transparent;
+}
+
+.ascendingOrder, .descendingOrder {
+	cursor: pointer;
+	font-size: 12px;
+}
+
+.ascendingOrder:hover, .descendingOrder:hover {
+	background-color: rgba(0, 0, 0, 0.1);
+}
+
+.ascendingOrder:active, .descendingOrder:active {
+	color: blue;
+}
+
+.wrap .table_line, .listWrap .table_line {
+	text-align: center;
+}
+
+.set_line td {
+	line-height: 20px;
+}
+
+.container.addProduct {
+	width: 100%;
+	padding: 20px;
+}
+
+.container.addProduct #productForm input {
+	margin-bottom: 10px;
+	width: 23%;
+	padding: 10px;
+	font-size: 15px;
+	border: 1px solid #ccc;
+}
+
+.container.addProduct #productForm #standardPriceContainer .standardPriceGroup
+	{
+	display: flex;
+	gap: 10px;
+	margin: 1% 0;
+}
+
+.container.addProduct #productForm #standardPriceContainer .standardPriceGroup input[type="text"]
+	{
+	border: 2px solid transparent;
+	width: 15em;
+	height: 2.5em;
+	padding-left: 0.8em;
+	outline: none;
+	overflow: hidden;
+	background-color: #DCDCDC;
+	border-radius: 10px;
+	transition: all 0.5s;
+}
+
+.container.addProduct #productForm #standardPriceContainer .standardPriceGroup input[type="text"]:focus
+	{
+	border: 2px solid #4A9DEC;
+	box-shadow: 0px 0px 0px 7px rgb(74, 157, 236, 20%);
+	background-color: white;
+}
+
+.container.addProduct #productForm #standardPriceContainer .standardPriceGroup .removeStandardPrice
+	{
+	background: red;
+	color: white;
+	border: none;
+	cursor: pointer;
+	width: 35px;
+	height: 35px;
+	line-height: 35px;
+	border-radius: 100%;
+	font-size: 30px;
+}
+
+.container.addProduct #productForm .submitNew, .container.addProduct #productForm #addStandardPrice
+	{
+	position: absolute;
+	color: #090909;
+	padding: 0.7em 1.7em;
+	font-size: 18px;
+	border-radius: 0.5em;
+	background: #e8e8e8;
+	cursor: pointer;
+	border: 1px solid #e8e8e8;
+	transition: all 0.3s;
+	box-shadow: 6px 6px 12px #c5c5c5, -6px -6px 12px #ffffff;
+	left: 50%;
+	transform: translateX(-50%);
+}
+
+.container.addProduct #productForm .submitNew:active, .container.addProduct #productForm #addStandardPrice:active
+	{
+	color: #666;
+	box-shadow: 0px 0px 0px #c5c5c5, 0px 0px 0px #ffffff, inset 4px 4px 12px
+		#c5c5c5, inset -4px -4px 12px #ffffff;
+}
+
+.container.addProduct #productForm #addStandardPrice {
+	position: relative;
+	left: 10%;
+}
+
+.container.addProduct #productForm .closeAdd {
+	height: 3em;
+	width: 8em;
+	border: none;
+	border-radius: 10em;
+	background: #016DD9;
+	font-size: 17px;
+	color: #ffffff;
+	font-family: inherit;
+	font-weight: 500;
+	float: right;
+}
+
+.container.addProduct #productForm .closeAdd:hover {
+	animation: shake3856 0.3s linear infinite both;
+}
+
+@keyframes shake3856 { 0% {
+	transform: translate(0);
+}20%
+{
+transform:translate(-2px,2px);
+}
+40%{
+transform:translate(-2px,-2px);
+}
+60%{
+transform:translate(2px,2px);
+}
+80%{
+transform:translate(2px,-2px);
+}
+100%{
+transform:translate(0);
+}
+}
+.container.addProduct #productForm #standardPriceContainer .standardPriceGroup .removeStandardPrice
+	{
+	display: none;
+}
+
+/* salesRegistration.jsp */
+/* =========================
+   기본 레이아웃
+========================= */
+#wrap.salesRegistration {
+	display: block;
+}
+
+#wrap.salesRegistration>h1 {
+	width: 100%;
+	height: 10px;
+	text-align: center;
+	transform: translateY(70px);
+}
+
+#wrap.salesRegistration>#section {
+	display: grid;
+	grid-template-columns: 6fr 4fr;
+	width: 95%;
+	height: 60vh;
+	transform: translateY(25%);
+	margin: 0 auto;
+}
+
+/* =========================
+   공통 테이블
+========================= */
+#wrap.salesRegistration #section .RegistrationUi .membertable, #wrap.salesRegistration #section .searchUi .membertable,
+	#wrap.salesRegistration #section .RegistrationUi .copyTable {
+	font-size: 25px;
+	border: 2px solid black;
+	border-collapse: collapse;
+	height: 35px;
+	line-height: 35px;
+	width: 95%;
+	border-spacing: 0;
+	backdrop-filter: blur(12px);
+	background: rgba(255, 255, 255, 0.15);
+	border-radius: 12px;
+	box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
+	color: #333;
+	overflow: hidden;
+}
+
+#wrap.salesRegistration #section .RegistrationUi .membertable thead th,
+	#wrap.salesRegistration #section .searchUi .membertable thead th {
+	background: rgba(255, 255, 255, 0.25);
+	color: #222;
+	font-weight: bold;
+	text-align: center;
+}
+
+#wrap.salesRegistration #section .RegistrationUi .membertable td, #wrap.salesRegistration #section .searchUi .membertable td
+	{
+	text-align: center;
+}
+
+#wrap.salesRegistration #section .RegistrationUi .membertable tbody tr {
+	height: 42px;
+}
+
+/* =========================
+   입력 필드
+========================= */
+#wrap.salesRegistration #section .RegistrationUi input[type="text"],
+	#wrap.salesRegistration #section .searchUi input[type="text"] {
+	width: 60%;
+	border: none;
+	border-radius: 8px;
+	background: rgba(255, 255, 255, 0.35);
+	backdrop-filter: blur(8px);
+	color: #111;
+	font-size: 20px;
+}
+
+#wrap.salesRegistration #section .RegistrationUi .discounted, #wrap.salesRegistration #section .RegistrationUi .totalCalcul,
+	#wrap.salesRegistration #section .RegistrationUi .maxTotal {
+	background: rgba(255, 255, 255, 0.3);
+	border-radius: 8px;
+	border: none;
+}
+
+/* =========================
+   버튼
+========================= */
+#wrap.salesRegistration #section .RegistrationUi .memberDel {
+	position: absolute;
+	top: -50px;
+	left: 0;
+	border: none;
+	background-color: #DC143C;
+	padding: 10px 20px;
+	font-size: 12px;
+	font-weight: 700;
+	color: #fff;
+	border-radius: 5px;
+	box-shadow: 0px 5px 0px 0px #A52A2A;
+	cursor: pointer;
+}
+
+#wrap.salesRegistration #section .RegistrationUi .memberDel:active {
+	transform: translateY(5px);
+	box-shadow: none;
+}
+
+#wrap.salesRegistration #section .RegistrationUi .saveBtn {
+	width: 10%;
+	height: 30%;
+	float: right;
+	margin-right: 5%;
+	font-size: 25px;
+}
+
+/* =========================
+   메모 textarea
+========================= */
+#wrap.salesRegistration #section .RegistrationUi .memoTextarea {
+	width: 85%;
+	height: 30%;
+	font-size: 25px;
+}
+
+/* =========================
+   resultData 테이블 스크롤
+========================= */
+#wrap.salesRegistration #section .searchUi .resultData tbody {
+	display: block;
+	max-height: 300px;
+	overflow-y: auto;
+}
+
+#wrap.salesRegistration #section .searchUi .resultData thead, #wrap.salesRegistration #section .searchUi .resultData tbody tr
+	{
+	display: table;
+	width: 100%;
+	table-layout: fixed;
+}
+
+.selectRegist {
+	background-color: #e0f7fa !important;
+}
+
+/* =========================
+   editModal (wrap 밖)
+========================= */
+body>#editModal {
+	position: absolute;
+	display: none;
+	background: white;
+	padding: 20px;
+	border-radius: 10px;
+	width: 800px;
+	max-height: 80vh;
+	overflow-y: auto;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	box-shadow: 5px 5px 17px 0px;
+	z-index: 1000;
+}
+
+body>#editModal>div {
+	background: white;
+	padding: 20px;
+	border-radius: 10px;
+	width: 700px;
+	max-height: 80vh;
+	overflow-y: auto;
+	margin: 0 auto;
+}
+
+body>#editModal .updateMedicineName {
+	width: 250px;
+	height: 35px;
+}
+
+#editModalContent input {
+	max-width: 180px;
+	background-color: #f1f9f9;
+	padding: .15rem .5rem;
+	min-height: 40px;
+	border-radius: 4px;
+	margin: 10px 5px;
+}
+
+/* =========================
+   popup (wrap 밖)
+========================= */
+body>#popup.selectMember {
+	width: 85vh;
+	height: 50vh;
+	display: none;
+	position: fixed;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	padding: 20px;
+	background-color: white;
+	border: 1px solid #ccc;
+	border-radius: 5px;
+	box-shadow: 0px 0px 30px 0px;
+	z-index: 100;
+}
+
+body>#popup.selectMember #popupContent {
+	width: 100%;
+	display: flex;
+	justify-content: center;
+	margin-top: 40px;
+}
+
+body>#popup.selectMember .closePopup {
+	position: absolute;
+	right: 0;
+	top: 0;
+	width: 100px;
+	height: 35px;
+	line-height: 35px;
+	font-size: 25px;
+}
+
+/* =========================
+   blackBG + medicinepopup
+========================= */
+body>.blackBG {
+	position: fixed;
+	inset: 0;
+	background-color: rgba(127, 127, 127, 0.6);
+	display: none;
+	z-index: 100;
+}
+
+body>.blackBG>#medicinepopup {
+	position: fixed;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	background: white;
+	border: 1px solid #ccc;
+	width: 900px;
+	min-height: 30vh;
+	box-shadow: 0 0 10px gray;
+}
+
+body>.blackBG>#medicinepopup .closeMedicine {
+	width: 100px;
+	height: 50px;
+	float: right;
+	border: 1px solid black;
+	text-align: center;
+	font-size: 30px;
+	cursor: pointer;
+}
+
+body>.blackBG>#medicinepopup h3 {
+	position: fixed;
+	width: 100%;
+	text-align: center;
+	margin: 10px;
+}
+
+body>.blackBG>#medicinepopup #popup-table {
+	display: block;
+	width: 100%;
+	height: 50vh;
+	border-collapse: collapse;
+	margin-top: 50px;
+	overflow: auto;
+}
+
+/* =========================
+   addMedicine 모달
+========================= */
+body>.blackBG .addMedicine {
+	display: none;
+	position: fixed;
+	inset: 0;
+	width: 60%;
+	height: 60%;
+	margin: auto;
+	top: 50%;
+	transform: translateY(-50%);
+	z-index: 9999;
+}
+
+body>.blackBG .addMedicine .modal-content {
+	background: white;
+	padding: 20px;
+	border-radius: 10px;
+	height: 100%;
+	overflow: auto;
+	border: 1px solid black;
+	box-shadow: 0 0 15px 5px;
+}
+
+/* =========================
+   context menu
+========================= */
+body>#customContextMenu {
+	display: none;
+	position: absolute;
+	z-index: 9999;
+	list-style: none;
+	background: #fff;
+	border: 1px solid #ccc;
+	padding: 5px;
+	border-radius: 5px;
+}
+
+body>#customContextMenu li {
+	padding: 5px 10px;
+	cursor: pointer;
+}
+
+body>#customContextMenu li:hover {
+	background: #eee;
+}
+
+/* =========================
+   standardDetail
+========================= */
+body>.standardDetail {
+	display: none;
+	width: 100px;
+	border: 1px solid black;
+	background: white;
+	font-size: 25px;
+	box-shadow: 5px 5px 10px 2px;
+	cursor: pointer;
+}
+
+body>.standardDetail div:hover {
+	background: #4B0082;
+	color: white;
+}
+
+/* =========================
+   포커스 스타일
+========================= */
+.inputCheckStyle, .selectCheck {
+	box-shadow: 0 0 10px 2px;
+	border: 3px solid green;
+}
+
+#popup #popupContent  .table-container {
+	position: absolute;
+	height: 80%;
+	overflow-y: auto;
+	border: 1px solid #ccc;
+}
+
+/* 전체 테이블 스타일 */
+#popup #popupContent  .sticky-header-table {
+	width: 100%;
+	border-collapse: collapse;
+	table-layout: fixed;
+}
+
+/* 테이블 셀 공통 스타일 */
+#popup #popupContent  .sticky-header-table th, .sticky-header-table td {
+	border: 1px solid #ccc;
+	padding: 8px;
+	text-align: center;
+}
+
+/* 헤더 고정 */
+#popup #popupContent  .sticky-header-table thead th {
+	position: sticky;
+	top: 0;
+	background-color: #D8BFD8;
+	z-index: 1;
+	color: #141145;
+}
+
+#popup #popupContent  .sticky-header-table tbody tr:nth-child(even) {
+	background-color: #EFFFFF;
+}
+
+#popup #popupContent p {
+	margin-top: 40px;
+	text-align: center;
+}

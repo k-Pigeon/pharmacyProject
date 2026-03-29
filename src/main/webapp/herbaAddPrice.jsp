@@ -1,0 +1,65 @@
+<%@ page language="java" contentType="application/json; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ page import="java.io.*, java.util.*"%>
+<%@ page import="java.sql.*"%>
+<%@ page import="org.json.JSONObject"%>
+<%@ include file="sessionManager.jsp"%>
+<%@ include file="DBconnection.jsp"%>
+<%
+	response.setContentType("application/json; charset=UTF-8");
+    String dbName = (session != null) ? (String) session.getAttribute("dbName") : null;
+    String id = (session != null) ? (String) session.getAttribute("id") : null;
+    String password = (session != null) ? (String) session.getAttribute("password") : null;
+
+    String domainType = (session != null) ? (String) session.getAttribute("domainType") : null; if (id == null || dbName == null) {
+        response.sendRedirect("login.jsp");
+        return;
+    }
+
+    // 요청 인코딩 설정
+    request.setCharacterEncoding("UTF-8");
+
+    PreparedStatement pstmt = null;
+    ResultSet rs = null;
+    String clickName = request.getParameter("clickName"); // 클릭된 medicineName
+
+    try {
+        // SQL 쿼리 실행
+        String sql = "SELECT setName , Buyingprice, price, inventory FROM productSet  WHERE setName  = ?  AND domain_type = ? ";
+        pstmt = conn.prepareStatement(sql);
+        pstmt.setString(1, clickName); // 쿼리 파라미터 설정
+        pstmt.setString(2, domainType);
+        rs = pstmt.executeQuery();
+
+        JSONObject result = new JSONObject();
+        if (rs.next()) {
+            // 데이터가 존재하는 경우 JSON 객체에 데이터 추가
+            result.put("setName", rs.getString("setName"));
+            result.put("Buyingprice", rs.getDouble("Buyingprice"));
+            result.put("price", rs.getDouble("price"));
+            result.put("inventory", rs.getInt("inventory"));
+            System.out.println(result);
+        } else {
+            // 데이터가 없을 경우 오류 메시지 추가
+            result.put("error", "No data found for the given setName");
+            System.out.println(result);
+        }
+
+        // JSON 형태로 결과 반환
+        response.setContentType("application/json; charset=UTF-8");
+        out.println(result.toString());
+
+    } catch (SQLException e) {
+        e.printStackTrace();
+        response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+        out.println("{\"error\":\"Database error occurred\"}");
+    } finally {
+        // 리소스 정리
+        try {
+            try { if (pstmt != null) pstmt.close(); } catch (Exception ignored) {}
+            try { if (rs != null) rs.close(); } catch (Exception ignored) {}
+            try { if (conn != null) conn.close(); } catch (Exception ignored) {}
+        } catch (Exception se) {
+            se.printStackTrace();
+        }
+    }
+%>

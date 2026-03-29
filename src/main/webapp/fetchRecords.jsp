@@ -1,0 +1,63 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ page import="java.sql.*" %>
+<%@ include file="sessionManager.jsp"%>
+<%@ include file="DBconnection.jsp"%>
+<%
+String dbName = (session != null) ? (String) session.getAttribute("dbName") : null;
+String id = (session != null) ? (String) session.getAttribute("id") : null;
+String password = (session != null) ? (String) session.getAttribute("password") : null;
+
+/* out.println(password);
+out.println(dbName);
+out.println(id);
+out.println(password); */
+
+String domainType = (session != null) ? (String) session.getAttribute("domainType") : null; if (id == null || dbName == null) {
+    response.sendRedirect("login.jsp");
+    return;
+}
+
+jdbcDriver = dbName;
+%>
+<%
+    String startDate = request.getParameter("startDate");
+    String endDate = request.getParameter("endDate");
+    Class.forName("com.mysql.cj.jdbc.Driver");
+    PreparedStatement pstmt = null;
+    ResultSet rs = null;
+    response.setContentType("text/html;charset=UTF-8");
+
+    try {
+        conn = DriverManager.getConnection(jdbcDriver, dbUser, dbPwd);
+
+        String sql = "SELECT DISTINCT A.saleDate AS saleDate, "
+                   + "B.maxmedicinePrice AS maxmedicinePrice, B.generalPrice AS generalPrice, "
+                   + "(B.maxmedicinePrice + B.generalPrice) AS totalPrice "
+                   + "FROM SalesRecord  A "
+                   + "JOIN priceRecord B ON A.saleDate = B.saleDate "
+                   + "WHERE A.saleDate BETWEEN ? AND ? AND domain_type = ?";
+        pstmt = conn.prepareStatement(sql);
+        pstmt.setString(1, startDate);
+        pstmt.setString(2, endDate);
+        pstmt.setString(3, domainType);
+        rs = pstmt.executeQuery();
+        while (rs.next()) {
+%>
+        <tr data-sale-date="<%= rs.getString("saleDate") %>">
+            <td><%= rs.getString("saleDate") %></td>
+            <td><%= rs.getString("maxmedicinePrice") %></td>
+            <td><%= rs.getString("generalPrice") %></td>
+            <td><%= rs.getString("totalPrice") %></td>
+        </tr>
+<%
+        }
+    } catch (SQLException se) {
+        se.printStackTrace();
+    } finally {
+        try { if (pstmt != null) pstmt.close(); } catch (Exception ignored) {}
+        try { if (rs != null) rs.close(); } catch (Exception ignored) {}
+        if (conn != null) {
+            try { conn.close(); } catch (Exception ignore) {}
+        }
+    }
+%>

@@ -1,0 +1,83 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ page import="java.sql.*" %>
+<%@ page import="java.util.regex.*" %>
+<%@ include file="sessionManager.jsp" %>
+<%@ include file="DBconnection.jsp" %>
+
+<%
+String dbName = (session != null) ? (String) session.getAttribute("dbName") : null;
+String id = (session != null) ? (String) session.getAttribute("id") : null;
+String password = (session != null) ? (String) session.getAttribute("password") : null;
+
+String domainType = (session != null) ? (String) session.getAttribute("domainType") : null;
+if (id == null || dbName == null) {
+    response.sendRedirect("login.jsp");
+    return;
+}
+
+jdbcDriver = dbName;
+%>
+
+<%
+String medicineName = request.getParameter("medicineName");
+PreparedStatement pstmt = null;
+ResultSet rs = null;
+
+boolean hasResult = false;
+
+try {
+    String sql = "SELECT medicineName, companyName, standard, kind, inventory, serialNumber, " +
+                 "receiptDate, deliveryDate, FORMAT(buyingprice, 0) AS buyingprice," + 
+    			 " FORMAT(price, 0) AS price, quantity " +
+                 "FROM testTable  WHERE medicineName LIKE ? AND domain_type = ?";
+    pstmt = conn.prepareStatement(sql);
+    pstmt.setString(1, "%" + medicineName + "%");
+    pstmt.setString(2, domainType);
+    rs = pstmt.executeQuery();
+%>
+
+<%
+while (rs.next()) {
+    hasResult = true;
+%>
+<tr class='result-row' style='cursor: pointer;'
+    data-medicinename='<%= rs.getString("medicineName") %>'
+    data-companyname='<%= rs.getString("companyName") %>'
+    data-standard='<%= rs.getString("standard") %>'
+    data-inventory='<%= rs.getString("inventory") %>'
+    data-kind='<%= rs.getString("kind") %>'
+    data-serialnumber='<%= rs.getString("serialNumber") %>'
+    data-receiptdate='<%= rs.getString("receiptDate") %>'
+    data-deliverydate='<%= rs.getString("deliveryDate") %>'
+    data-quantity='<%= rs.getString("quantity") %>'
+    data-buyingprice='<%= rs.getString("buyingprice") %>'
+    data-price='<%= rs.getString("price") %>'>
+    <td style='border: 1px solid #ccc; padding: 5px;'><%= rs.getString("medicineName") %></td>
+    <td style='border: 1px solid #ccc; padding: 5px;'><%= rs.getString("companyName") %></td>
+    <td style='border: 1px solid #ccc; padding: 5px;'><%= rs.getString("inventory") %></td>
+    <td style='border: 1px solid #ccc; padding: 5px;'><%= rs.getString("kind") %></td>
+    <td style='border: 1px solid #ccc; padding: 5px;'><%= rs.getString("serialNumber") %></td>
+    <td style='border: 1px solid #ccc; padding: 5px;'><%= rs.getString("receiptDate") %></td>
+    <td style='border: 1px solid #ccc; padding: 5px;'><%= rs.getString("deliveryDate") %></td>
+    <td style='border: 1px solid #ccc; padding: 5px;'><%= rs.getString("quantity") %></td>
+    <td style='border: 1px solid #ccc; padding: 5px;'><%= rs.getString("buyingprice") %></td>
+    <td style='border: 1px solid #ccc; padding: 5px;'><%= rs.getString("price") %></td>
+</tr>
+<% } %>
+
+<% if (!hasResult) { %>
+<tr>
+    <td colspan="9" style="text-align: center; padding: 10px;">검색 결과가 없습니다.</td>
+</tr>
+
+<% } %>
+
+<%
+} catch (Exception e) {
+    e.printStackTrace();
+} finally {
+    try { if (rs != null) rs.close(); } catch (Exception ignored) {}
+    try { if (pstmt != null) pstmt.close(); } catch (Exception ignored) {}
+    try { if (conn != null) conn.close(); } catch (Exception ignored) {}
+}
+%>
