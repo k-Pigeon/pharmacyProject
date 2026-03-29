@@ -1,8 +1,0 @@
-<%@ page import="java.sql.*" %>
-<%
-    try {
-        if (conn != null && !conn.isClosed()) {
-            conn.close();
-        }
-    } catch (Exception ignored) {}
-%>
