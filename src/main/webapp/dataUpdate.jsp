@@ -1,0 +1,69 @@
+<%@ page contentType="application/json; charset=UTF-8" %>
+<%@ page import="java.sql.*" %>
+<%@ include file="sessionManager.jsp"%>
+<%@ include file="DBconnection.jsp"%>
+
+<%
+String dbName = (session != null) ? (String) session.getAttribute("dbName") : null;
+String id = (session != null) ? (String) session.getAttribute("id") : null;
+String domainType = (session != null) ? (String) session.getAttribute("domainType") : null;
+
+if (id == null || dbName == null) {
+    response.setStatus(401);
+    out.print("{\"result\":\"fail\",\"reason\":\"session\"}");
+    return;
+}
+
+jdbcDriver = dbName;
+
+request.setCharacterEncoding("UTF-8");
+String medicineName = request.getParameter("secondData");
+
+// DB
+PreparedStatement pstmt = null;
+ResultSet rs = null;
+
+try {
+	String query =
+			  "SELECT * FROM testTable WHERE medicineName LIKE ? AND domain_type = ?";
+
+    pstmt = conn.prepareStatement(query);
+    pstmt.setString(1, medicineName);
+    pstmt.setString(2, domainType);
+    System.out.println(medicineName);
+
+    rs = pstmt.executeQuery();
+
+    if (rs.next()) {
+        HttpSession userSession = request.getSession();
+        userSession.setAttribute("SerialNumber", rs.getString("SerialNumber"));
+        userSession.setAttribute("medicineName", rs.getString("medicineName"));
+        userSession.setAttribute("Buyingprice", rs.getString("Buyingprice"));
+        userSession.setAttribute("price", rs.getString("price"));
+        userSession.setAttribute("inventory", rs.getString("inventory"));
+        userSession.setAttribute("kind", rs.getString("kind"));
+        userSession.setAttribute("companyName", rs.getString("companyName"));
+        userSession.setAttribute("standard", rs.getString("standard"));
+        userSession.setAttribute("receiptDate", rs.getString("receiptDate"));
+        userSession.setAttribute("DeliveryDate", rs.getString("DeliveryDate"));
+        userSession.setAttribute("countNumber", rs.getString("countNumber"));
+        userSession.setAttribute("Bookmark", rs.getString("Bookmark"));
+        userSession.setAttribute("returnInv", rs.getString("returnInv"));
+
+        out.print("{\"result\":\"ok\"}");
+    } else {
+        out.print("{\"result\":\"fail\",\"reason\":\"not_found\"}");
+    }
+
+} catch (Exception e) {
+    response.setStatus(500);
+    out.print("{\"result\":\"error\",\"message\":\"" + e.getMessage().replace("\"","'") + "\"}");
+} finally {
+    if (rs != null) try { rs.close(); } catch (SQLException ignored) {}
+    if (pstmt != null) try { pstmt.close(); } catch (SQLException ignored) {}
+    if (conn != null) {
+        try { conn.close(); } catch (Exception ignore) {}
+    }
+}
+%>
+

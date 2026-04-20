@@ -1,0 +1,64 @@
+<%@ page language="java" contentType="application/json; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ page import="java.io.*, java.util.*"%>
+<%@ page import="java.sql.*"%>
+<%@ page import="org.json.JSONObject"%>
+<%@ include file="sessionManager.jsp"%>
+<%@ include file="DBconnection.jsp"%>
+<%
+String dbName = (session != null) ? (String) session.getAttribute("dbName") : null;
+String id = (session != null) ? (String) session.getAttribute("id") : null;
+String password = (session != null) ? (String) session.getAttribute("password") : null;
+
+/* out.println(password);
+out.println(dbName);
+out.println(id);
+out.println(password); */
+
+String domainType = (session != null) ? (String) session.getAttribute("domainType") : null; if (id == null || dbName == null) {
+    response.sendRedirect("login.jsp");
+    return;
+}
+
+jdbcDriver = dbName;
+%>
+<%
+request.setCharacterEncoding("UTF-8");
+
+PreparedStatement pstmt = null;
+ResultSet rs = null;
+String serialNumber = request.getParameter("serialNumber");
+
+try {
+
+    // SQL 쿼리 실행 - inventory 값이 0보다 큰 경우에 한하여 데이터를 가져옴
+    String sql = "SELECT * FROM testTable WHERE SerialNumber=? AND inventory > 0 AND returnInv = 0 AND domain_type = ? ";
+    pstmt = conn.prepareStatement(sql);
+    pstmt.setString(1, serialNumber);
+    pstmt.setString(2, domainType);
+    rs = pstmt.executeQuery();
+
+    JSONObject result = new JSONObject();
+    if (rs.next()) {
+        result.put("SerialNumber", rs.getString("SerialNumber"));
+        result.put("medicineName", rs.getString("medicineName"));
+        result.put("Buyingprice", rs.getDouble("Buyingprice"));
+        result.put("price", rs.getDouble("price"));
+        result.put("inventory", 1);
+        result.put("kind", rs.getString("kind"));
+        result.put("companyName", rs.getString("companyName"));
+        result.put("standard", rs.getString("standard"));
+        result.put("DeliveryDate", rs.getString("DeliveryDate"));
+    } else {
+        // 데이터가 없는 경우 빈 JSON 객체 반환
+        result.put("error", "No data found for the given SerialNumber or inventory is 0");
+    }
+    // JSON 형태로 결과 반환
+    out.println(result.toString());
+} catch (SQLException e) {
+    e.printStackTrace();
+} finally {
+	    try { if (pstmt != null) pstmt.close(); } catch (Exception e) {}
+	    try { if (rs != null) rs.close(); } catch (Exception e) {}
+	    try { if (conn != null) conn.close(); } catch (Exception e) {}
+}
+%>

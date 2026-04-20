@@ -1,0 +1,92 @@
+<%@ page import="org.json.JSONObject, org.json.JSONArray" %>
+<%@ page import="java.io.BufferedReader" %>
+<%@ include file="DBconnection.jsp" %>
+<%@ include file="sessionManager.jsp" %>
+<%@ page contentType="text/html; charset=UTF-8" language="java" %>
+<%@ page import="java.sql.*" %>
+
+<%
+String dbName = (session != null) ? (String) session.getAttribute("dbName") : null;
+String id = (session != null) ? (String) session.getAttribute("id") : null;
+String password = (session != null) ? (String) session.getAttribute("password") : null;
+
+String domainType = (session != null) ? (String) session.getAttribute("domainType") : null;
+if (id == null || dbName == null) {
+    response.sendRedirect("login.jsp");
+    return;
+}
+jdbcDriver = dbName;
+
+request.setCharacterEncoding("UTF-8");
+
+// JSON 데이터 읽기
+StringBuilder sb = new StringBuilder();
+BufferedReader reader = request.getReader();
+String line;
+while ((line = reader.readLine()) != null) {
+    sb.append(line);
+}
+String jsonData = sb.toString();
+
+JSONObject data = new JSONObject(jsonData);
+String medicineName = data.getString("medicineName");
+JSONArray productList = data.getJSONArray("productList");
+
+// DB 연결
+PreparedStatement deleteStmt = null;
+PreparedStatement insertTestStmt = null;
+PreparedStatement insertRegistStmt = null;
+PreparedStatement countStmt = null;
+ResultSet countRs = null;
+
+try {
+    Class.forName("com.mysql.cj.jdbc.Driver");
+    conn = DriverManager.getConnection(jdbcDriver, dbUser, dbPwd);
+
+    // 기존 데이터 삭제
+    String deleteSql = "DELETE FROM RegistTable WHERE medicineName = ? AND domain_type = ? ";
+    deleteStmt = conn.prepareStatement(deleteSql);
+    deleteStmt.setString(1, medicineName);
+    deleteStmt.setString(2, domainType);
+    deleteStmt.executeUpdate();
+
+    // MAX(countNumber) 조회
+    int nextCount = 1;
+    String countSql = "SELECT MAX(CAST(countNumber AS UNSIGNED)) FROM RegistTable where domain_type = ? ";
+    countStmt = conn.prepareStatement(countSql);
+    countStmt.setString(1, domainType);
+    countRs = countStmt.executeQuery();
+    if (countRs.next()) {
+        nextCount = countRs.getInt(1) + 1;
+    }
+    String insertRegistSql = "INSERT INTO RegistTable (medicineName, standard, buyingPrice, price, countNumber, domain_type) VALUES (?, ?, ?, ?, ?, ?)";
+    insertRegistStmt = conn.prepareStatement(insertRegistSql);
+
+    for (int i = 0; i < productList.length(); i++) {
+        JSONObject item = productList.getJSONObject(i);
+        String std = item.getString("standard");
+        double buyingPrice = item.getDouble("buyingPrice");
+        double price = item.getDouble("price");
+
+        insertRegistStmt.setString(1, medicineName);
+        insertRegistStmt.setString(2, std);
+        insertRegistStmt.setDouble(3, buyingPrice);
+        insertRegistStmt.setDouble(4, price);
+        insertRegistStmt.setString(5, String.valueOf(nextCount++));
+        insertRegistStmt.setString(6, domainType);
+        insertRegistStmt.executeUpdate();
+    }
+
+    out.print("success");
+} catch (Exception e) {
+    e.printStackTrace();
+    out.print("error: " + e.getMessage());
+} finally {
+    if (countRs != null) countRs.close();
+    if (countStmt != null) countStmt.close();
+    if (deleteStmt != null) deleteStmt.close();
+    if (insertTestStmt != null) insertTestStmt.close();
+    if (insertRegistStmt != null) insertRegistStmt.close();
+    if (conn != null) conn.close();
+}
+%>

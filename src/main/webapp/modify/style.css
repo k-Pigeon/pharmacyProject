@@ -1,0 +1,163 @@
+@charset "UTF-8";
+
+#wrap h1 {
+	text-align: center;
+	transform: translateY(150%);
+}
+
+#wrap #section {
+    position: relative;
+    width: 80%;
+    height: 70%;
+    border: 1px solid black;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, 20%);
+    border-radius: 10px;
+    background-color: white;
+}
+#wrap #section .title{
+	position: absolute;
+	margin: 20px;
+}
+#wrap #section .title .medicineName {
+	width: 200px;
+	height: 30px;
+	line-height: 30px;
+}
+
+#wrap #section .title .search {
+    width: 100px;
+    height: 30px;
+    line-height: 30px;
+    transform: translateY(2px);
+    margin-left: 10px;
+    color: #090909;
+    font-size: 18px;
+    border-radius: 0.5em;
+    background: #e8e8e8;
+    cursor: pointer;
+    border: 1px solid #e8e8e8;
+    transition: all 0.3s;
+    box-shadow: 6px 6px 12px #c5c5c5, -6px -6px 12px #ffffff;
+}
+
+#wrap #section .title .search:hover {
+  border: 1px solid white;
+}
+
+#wrap #section .title .search:active {
+  box-shadow: 4px 4px 12px #c5c5c5, -4px -4px 12px #ffffff;
+}
+#wrap #section .modify_table{
+    margin: 0 auto;
+    width: 100%;
+    border-collapse: collapse;
+}
+#wrap #section .modify_table .tableLine_body{
+	height: 80%;
+}
+#wrap #section .tableScroll {
+    display: inline-block;
+    width: 100%;
+    height: 500px;
+    overflow: auto;
+    transform: translateY(10%);
+}
+
+/* 헤더 고정 */
+#wrap #section table thead th {
+    position: sticky;
+    top: 0;	
+    height: 40px;
+	background-color: #E6E6FA;
+    z-index: 2;
+}
+#wrap #section .modify_table .tableLine_body .updateList input,
+#wrap #section .modify_table .tableLine_body .updateList select{
+    height: 40px;
+    padding: 5px;
+}
+#wrap #section .modify_table .tableLine_body .removeTR{
+    width: 80px;
+    height: 40px;
+    line-height: 40px;
+    font-size: 20px;
+}
+#wrap #section .manipulationBtn{
+    width: max-content;
+    margin: 0 auto;
+    transform: translateY(100px);
+}
+#popup{
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: white;
+    border: 1px solid #ccc;
+    z-index: 1000;
+    box-shadow: gray 0 0 10px;
+    width: 1000px;
+    height: 70vh;
+    overflow: scroll;
+}
+#popup h3 {
+    position: fixed;
+    margin: 10px;
+    width: 100%;
+    text-align: center;
+}
+#popup .popup-content{
+    position: absolute;
+    display: block;
+    width: 90%;
+    height: 80%;
+    bottom: 0;
+    overflow: auto;
+    margin: 0 auto;
+}
+/* 팝업 닫기 버튼 */
+#popup .closeMedicine {
+    position: relative;
+    width: 80px;
+    height: 40px;
+    text-align: center;
+    border: 1px solid black;
+    border-radius: 10px;
+    float: right;
+    z-index: 10000;
+    cursor: pointer;
+}
+.tableScroll .tableLine_body .focusCell{
+	background-color: #487c9b !important;
+	color: white;
+}
+.tableScroll .tableLine_body .focusRow input,
+.tableScroll .tableLine_body .focusRow select,
+.tableScroll .tableLine_body .focusCol input,
+.tableScroll .tableLine_body .focusCol select{
+	background-color: #7ccfff;
+}
+#wrap #section .manipulationBtn .save,
+#wrap #section .manipulationBtn .plus,
+#wrap #section .manipulationBtn .reset{
+    border: none;
+    outline: none;
+    background-color: #6898ff;
+    font-weight: 700;
+    color: #fff;
+    transition: all ease 0.1s;
+    box-shadow: 0px 5px 0px 0px #4031ff;
+    padding: 10px;
+    font-size: 20px;
+    border-radius: 10px;
+    cursor: pointer;
+}
+#wrap #section .manipulationBtn .save:active,
+#wrap #section .manipulationBtn .plus:active,
+#wrap #section .manipulationBtn .reset:active{
+	  transform: translateY(5px);
+  box-shadow: 0px 0px 0px 0px #a29bfe;
+}

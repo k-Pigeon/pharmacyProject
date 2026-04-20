@@ -1,0 +1,175 @@
+<%@ page import="java.sql.*"%>
+<%@ page import="java.io.*" %>
+<%@ page import="java.util.*"%>
+<%@ page import="java.text.*"%>
+<%@ page contentType="text/html;charset=UTF-8" language="java"%>
+<%@ page import="org.json.JSONArray, org.json.JSONObject" %>
+<%@ include file="sessionManager.jsp"%>
+<%@ include file="DBconnection.jsp"%>
+<%!
+private Double parseIntOrDefault(String value, Double defaultValue) {
+    if (value != null && !value.trim().isEmpty()) {
+        try {
+            return Double.parseDouble(value.trim());
+        } catch (NumberFormatException e) {
+            System.err.println("숫자 변환 오류: " + value);
+        }
+    }
+    return defaultValue; // 기본값 반환
+}
+private Double parseDoubleOrExtractNumbers(String value, Double defaultValue) {
+    if (value != null && !value.trim().isEmpty()) {
+        try {
+            String numericValue = value.replaceAll("[^0-9.]", ""); // 숫자와 점(.)만 남기고 제거
+            return numericValue.isEmpty() ? defaultValue : Double.parseDouble(numericValue);
+        } catch (NumberFormatException e) {
+            System.err.println("숫자 변환 오류: " + value);
+        }
+    }
+    return defaultValue;
+}
+
+private Double parseStandardOrMultiply(String standard, Double inventory) {
+    if (standard != null && !standard.trim().isEmpty()) {
+        // 단위 포함 여부 확인 (g, ml, l, cm)
+        boolean hasUnit = standard.matches(".*\\b(g|ml|l|cm)\\b.*");
+
+        // 띄어쓰기로 나누기 (예: "20g 4포" → ["20g", "4포"])
+        String[] parts = standard.split("\\s+");
+
+        // 숫자 목록 생성
+        List<Double> numbers = new ArrayList<Double>();
+        for (int i = 0; i < parts.length; i++) {
+            Double number = parseDoubleOrExtractNumbers(parts[i], null);
+            if (number != null) {
+                numbers.add(number);
+            }
+        }
+
+        // 숫자가 2개 이상이면 곱한 후 inventory와 곱함
+        if (numbers.size() >= 2) {
+            Double multipliedValue = 1.0;
+            for (int i = 0; i < numbers.size(); i++) {
+                multipliedValue *= numbers.get(i);
+            }
+            return inventory * multipliedValue;
+        }
+
+        // 단위가 포함된 경우 inventory 값 그대로 사용
+        if (hasUnit) {
+            return inventory;
+        }
+
+        // 숫자가 하나만 있으면 그것과 inventory 곱하기
+        if (!numbers.isEmpty()) {
+            return inventory * numbers.get(0);
+        }
+    }
+
+    return inventory;
+}
+%>
+<%
+String dbName = (session != null) ? (String) session.getAttribute("dbName") : null;
+String id = (session != null) ? (String) session.getAttribute("id") : null;
+String password = (session != null) ? (String) session.getAttribute("password") : null;
+
+/* out.println(password);
+out.println(dbName);
+out.println(id);
+out.println(password); */
+
+String domainType = (session != null) ? (String) session.getAttribute("domainType") : null; if (id == null || dbName == null) {
+    response.sendRedirect("login.jsp");
+    return;
+}
+
+jdbcDriver = dbName;
+
+request.setCharacterEncoding("UTF-8");
+PreparedStatement updateStmt = null;
+try {
+    Class.forName("com.mysql.cj.jdbc.Driver");
+    BufferedReader reader = request.getReader();
+    StringBuilder jsonBuilder = new StringBuilder();
+    String line;
+    while ((line = reader.readLine()) != null) {
+        jsonBuilder.append(line);
+    }
+    String jsonData = jsonBuilder.toString();
+
+    JSONArray rows = new JSONArray(jsonData);
+
+        for (int i = 0; i < rows.length(); i++) {
+            JSONObject row = rows.getJSONObject(i);
+
+            // 데이터 추출
+            String serialNumber = row.optString("serialNumber", "");
+            String medicineName = row.optString("medicineName", "");
+            String buyingPrice = row.optString("buyingPrice", "0");
+            String price = row.optString("price", "0");
+            String inventory = row.optString("inventory", "0");
+            String kind = row.optString("kind", "0");
+            String companyName = row.optString("companyName", "");
+            String standard = row.optString("standard", "");
+            String quantity = row.optString("quantity", "");
+            String receiptDate = row.optString("receiptDate", "");
+            String deliveryDate = row.optString("deliveryDate", "");
+            // 정규식 유통기한 변환
+            String result;
+            if (deliveryDate.matches("\\d{2}/\\d{2}/\\d{2}")) {
+                String[] parts = deliveryDate.split("/");
+                result = "20" + parts[0] + "-" + parts[1] + "-" + parts[2];
+            } else {
+                result = deliveryDate;
+            }
+            
+            Double inventoryValue = parseIntOrDefault(inventory, 0.00);
+            inventoryValue = parseStandardOrMultiply(standard, inventoryValue);
+
+            // 업데이트 쿼리
+            String updateQuery = " insert into testTable"
+            + " (serialNumber, medicineName, buyingPrice, price, inventory, companyName, standard, receiptDate, deliveryDate, returnInv, kind, quantity, domain_type) "
+            				   + " values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            updateStmt = conn.prepareStatement(updateQuery);
+            updateStmt.setString(1, serialNumber);
+            updateStmt.setString(2, medicineName);
+            updateStmt.setString(3, buyingPrice);
+            updateStmt.setString(4, price);
+            updateStmt.setDouble(5, inventoryValue);
+            updateStmt.setString(6, companyName);
+            updateStmt.setString(7, standard);
+            updateStmt.setString(8, receiptDate);
+            updateStmt.setString(9, result);
+            updateStmt.setString(10, "0");
+            updateStmt.setString(11, kind);
+            updateStmt.setString(12, quantity);
+            updateStmt.setString(13, domainType);
+
+            int rowsUpdated = updateStmt.executeUpdate();
+            updateStmt.close();
+
+            // 디버깅
+            System.out.println("Updated Rows: " + rowsUpdated);
+            System.out.println("Updated DeliveryDate: " + result);
+        }
+
+        // 빈 약품명 삭제
+        String deleteQuery = "DELETE FROM testTable  WHERE medicineName = '' AND domain_type = ? ";
+        PreparedStatement deleteStmt = conn.prepareStatement(deleteQuery);
+        deleteStmt.setString(1, domainType);
+        deleteStmt.executeUpdate();
+        deleteStmt.close();
+        
+    out.println("데이터 처리가 완료되었습니다.");
+    conn.close();
+} catch (Exception e) {
+    e.printStackTrace();
+    response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+    out.println("데이터베이스 오류 발생: " + e.getMessage());
+}finally{
+    try { if (updateStmt != null) updateStmt.close(); } catch (Exception e) {}
+    try { if (conn != null) conn.close(); } catch (Exception e) {}
+}
+%>
+
